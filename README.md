@@ -74,6 +74,7 @@ fonts give the same appearance as the tablet; see [building](docs/building.md).
 | [Build guide](docs/building.md) | Dependencies, source pins, packages, personalized images, tests |
 | [Recovery & updates](docs/maintenance.md) | Backups, kernel/image consistency, recovery and rollback |
 | [Contributing](CONTRIBUTING.md) | Test scope, patches, issue reports, and private data |
+| [Security](SECURITY.md) | Private vulnerability reporting, support scope, and authentication defaults |
 | [Technical records](docs/hardware-sm-t825.md) | Detailed driver notes and dated validation evidence |
 
 Earlier bring-up notes are retained in [HISTORY.md](HISTORY.md). They describe

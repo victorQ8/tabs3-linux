@@ -24,6 +24,6 @@ redacted logs. Do not upload `private/`, firmware, partition images, passwords,
 keys, Wi-Fi profiles, IMEI/IMSI/ICCID, serial numbers, MAC addresses or private
 network addresses. Use `scripts/check-publication.py` before committing.
 
-Security-sensitive reports should use GitHub's private vulnerability reporting
-when it is enabled. If it is unavailable, open a minimal issue asking for a
-private contact channel without posting credentials or exploitation details.
+For security vulnerabilities, follow the [security policy](SECURITY.md) and
+use [private reporting](https://github.com/victorQ8/tabs3-linux/security/advisories/new).
+Do not include vulnerability details in public issues or pull requests.
