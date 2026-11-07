@@ -1,0 +1,75 @@
+#!/usr/bin/env python3
+"""rt5508-id [--defaults]: read the SM-T825's four speaker amplifiers.
+
+Reads register 0x00 (CHIPREV) of 0x34-0x37 on BLSP1 I2C3 (7577000.i2c)
+through /dev/i2c-N with I2C_RDWR. Nothing is written to the chips (the
+register address goes out as the first byte of a combined read). Samsung's
+driver expects the upper nibble to be 0xE (RT5508) and takes the lower
+nibble as the revision (0 = A ... 6 = G). With --defaults it also prints the
+one-byte registers whose power-on values a driver relies on (EVENTINFO 0x01
+may clear on read).
+"""
+import ctypes
+import fcntl
+import glob
+import os
+import sys
+
+I2C_RDWR = 0x0707
+I2C_M_RD = 0x0001
+
+
+class I2cMsg(ctypes.Structure):
+    _fields_ = [('addr', ctypes.c_uint16), ('flags', ctypes.c_uint16),
+                ('len', ctypes.c_uint16), ('buf', ctypes.POINTER(ctypes.c_uint8))]
+
+
+class I2cRdwr(ctypes.Structure):
+    _fields_ = [('msgs', ctypes.POINTER(I2cMsg)), ('nmsgs', ctypes.c_uint32)]
+
+
+def bus_for(controller):
+    hits = glob.glob(f'/sys/bus/platform/devices/{controller}/i2c-*')
+    if not hits:
+        sys.exit(f'{controller}: no I2C adapter (bus disabled in the device tree?)')
+    return '/dev/' + os.path.basename(hits[0])
+
+
+def read_reg(fd, addr, reg):
+    out = (ctypes.c_uint8 * 1)(reg)
+    into = (ctypes.c_uint8 * 1)()
+    msgs = (I2cMsg * 2)(I2cMsg(addr, 0, 1, out), I2cMsg(addr, I2C_M_RD, 1, into))
+    fcntl.ioctl(fd, I2C_RDWR, I2cRdwr(msgs, 2))
+    return into[0]
+
+
+dev = bus_for('7577000.i2c')
+fd = os.open(dev, os.O_RDWR)
+print(f'bus {dev} (7577000.i2c)')
+found = 0
+for addr in (0x34, 0x35, 0x36, 0x37):
+    try:
+        value = read_reg(fd, addr, 0x00)
+    except OSError as e:
+        print(f'0x{addr:02x}: no answer ({e.strerror})')
+        continue
+    kind = 'RT5508' if value & 0xf0 == 0xe0 else 'unexpected chip ID'
+    rev = 'ABCDEFG'[value & 0x0f] if value & 0x0f < 7 else str(value & 0x0f)
+    print(f'0x{addr:02x}: register 0x00 = 0x{value:02x}: {kind}, revision {rev}')
+    found += kind == 'RT5508'
+if '--defaults' in sys.argv[1:]:
+    regs = {0x01: 'EVENTINFO', 0x02: 'DMGFLAG', 0x03: 'CHIPEN', 0x04: 'AUDFMT', 0x05: 'AUDSR',
+            0x06: 'I2SSEL', 0x07: 'I2SDOLRSEL', 0x08: 'I2SDOSEL', 0x09: 'FUNCEN', 0x11: 'CLIP_CTRL',
+            0x1e: 'BST_MODE', 0x5c: 'VOLUME', 0x81: 'GAIN', 0x82: 'PREPGA', 0x97: 'PLLCONF1',
+            0xb4: 'TDM_CTRL'}
+    print('reg  name        ' + '  '.join(f'0x{a:02x}' for a in (0x34, 0x35, 0x36, 0x37)))
+    for reg, name in regs.items():
+        values = []
+        for addr in (0x34, 0x35, 0x36, 0x37):
+            try:
+                values.append(f'0x{read_reg(fd, addr, reg):02x}')
+            except OSError:
+                values.append(' -- ')
+        print(f'0x{reg:02x} {name:<11} ' + '  '.join(values))
+os.close(fd)
+print(f'{found} of 4 amplifiers identified')

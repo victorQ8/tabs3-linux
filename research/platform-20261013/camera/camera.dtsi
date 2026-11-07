@@ -1,0 +1,218 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Samsung Galaxy Tab S3 LTE (SM-T825, "gts3llte") - rear camera.
+ *
+ * Sony IMX258 13 MP on CSIPHY0 / CCI master 0, Dongwoon DW9807 voice-coil
+ * actuator and the module EEPROM (the EEPROM block of the DW9807) on
+ * BLSP2 I2C1 (i2c@75b5000, stock "i2c_7"), captured through the MSM8996
+ * CAMSS (CSIPHY0 -> CSID0 -> ISPIF -> VFE0).
+ *
+ * Derived from the stock device tree (qcom,cci@a0c000 -> qcom,camera@0,
+ * i2c@75b5000 -> qcom,eeprom@50 "dw9807" and qcom,actuator@18) and from
+ * Samsung's msm8996-camera-sensor-gts3llte-r00.dtsi /
+ * msm8996-pinctrl-sec-gts3llte-r05.dtsi.  Everything that could not be
+ * taken from those sources (lane count, I2C addresses, EEPROM type) is
+ * documented in NOTES.md next to this file.
+ *
+ * Labels expected from the rest of the board DT (PM8994 RPM regulators,
+ * named as in apq8096-db820c.dts / msm8996-oneplus-common.dtsi):
+ *   vreg_s3a_1p3   PM8994 S3   1.3 V   stock "cam_vdig"
+ *   vreg_lvs1a_1p8 PM8994 LVS1 1.8 V   stock "cam_vio"
+ *   vreg_l29a_2p8  PM8994 L29  2.8 V   stock "cam_vana"
+ *   vreg_l17a_2p8  PM8994 L17  2.8 V   stock "cam_vaf"
+ *   vreg_l2a_1p25  PM8994 L2   1.25 V  stock "qcom,mipi-csi-vdd"
+ * No S2MPB02 LDO is referenced by any stock camera node.
+ */
+
+#include <dt-bindings/clock/qcom,mmcc-msm8996.h>
+#include <dt-bindings/gpio/gpio.h>
+
+/ {
+	/*
+	 * CAM_CORE_EN (TLMM 9).  The stock rear-sensor node lists both
+	 * pm8994_s3 as "cam_vdig" (1.3 V) and a CAM_CORE_EN GPIO
+	 * (qcom,gpio-core-en); the front sensor calls the equivalent GPIO
+	 * "CAM_VDIG" (qcom,gpio-vdig) and enables it right after VANA.  So
+	 * TLMM 9 enables the discrete LDO on the camera flex that produces
+	 * the sensor's digital core rail from S3, and the IMX258 (VDIG spec
+	 * 1.2 V) is not fed 1.3 V directly.  Model it as a GPIO-enabled fixed
+	 * regulator chained to S3, so that the imx258 driver sequences it as
+	 * its vdig-supply (regulators on, then MCLK).  The 1.2 V figure is
+	 * the sensor's nominal VDIG, not a measured LDO output.
+	 */
+	vreg_cam_core: regulator-cam-core {
+		compatible = "regulator-fixed";
+		regulator-name = "vreg_cam_core";
+		regulator-min-microvolt = <1200000>;
+		regulator-max-microvolt = <1200000>;
+		gpio = <&tlmm 9 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+		startup-delay-us = <1000>;
+		vin-supply = <&vreg_s3a_1p3>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&cam_rear_core_en_default>;
+	};
+};
+
+/* BLSP2 QUP1, stock i2c_7 (TLMM 55/56): DW9807 VCM + module EEPROM. */
+&blsp2_i2c1 {
+	clock-frequency = <400000>;
+	status = "okay";
+
+	/*
+	 * dongwoon,dw9807-vcm.yaml has no supply property and the driver
+	 * never touches regulators or clocks; VDD is PM8994 L17 ("cam_vaf"),
+	 * kept always-on below.  Slave address 0x18 is from the stock
+	 * qcom,actuator@18 node.
+	 */
+	cam_rear_vcm: lens@18 {
+		compatible = "dongwoon,dw9807-vcm";
+		reg = <0x18>;
+	};
+
+	/*
+	 * Calibration EEPROM = the EEPROM block of the DW9807.  Address 0x58
+	 * is the stock qcom,slave-addr 0xB0 (8-bit form); the stock node also
+	 * carries reg = <0x51>, so confirm with i2cdetect.  Samsung reads
+	 * 0x1200 bytes with 16-bit addressing, i.e. a 24c64-class device.
+	 */
+	cam_rear_eeprom: eeprom@58 {
+		compatible = "atmel,24c64";
+		reg = <0x58>;
+		read-only;
+		vcc-supply = <&vreg_l17a_2p8>;
+	};
+};
+
+&camss {
+	vdda-supply = <&vreg_l2a_1p25>;
+	status = "okay";
+
+	ports {
+		port@0 {
+			reg = <0>;
+
+			/*
+			 * 4 data lanes, straight mapping (CAF default
+			 * csi_lane_assign 0x4320 / csi_lane_mask 0x1f).  The
+			 * msm8996 CSIPHY code hard-wires the clock lane; the
+			 * clock-lanes value only documents the lane-7 register
+			 * block it uses.
+			 */
+			csiphy0_ep: endpoint {
+				clock-lanes = <7>;
+				data-lanes = <0 1 2 3>;
+				remote-endpoint = <&imx258_ep>;
+			};
+		};
+	};
+};
+
+&cci {
+	/*
+	 * msm8996.dtsi already selects cci0_default (TLMM 17/18, master 0)
+	 * and cci1_default (TLMM 19/20, master 1 - front camera, not
+	 * described here), matching the stock cci_default pin state.
+	 */
+	status = "okay";
+};
+
+/* CCI master 0 (i2c-bus@0, 400 kHz from msm8996.dtsi). */
+&cci_i2c0 {
+	camera@1a {
+		compatible = "sony,imx258";
+		reg = <0x1a>;
+
+		/* Stock cam_src_clk (mclk0_clk_src) = 24 MHz on TLMM 13. */
+		clocks = <&mmcc CAMSS_MCLK0_CLK>;
+		assigned-clocks = <&mmcc CAMSS_MCLK0_CLK>;
+		assigned-clock-rates = <24000000>;
+
+		/*
+		 * XCLR = CAM_RESET0 (TLMM 30), active low.  The 6.18 driver
+		 * does not request this GPIO; cam_rear_default parks the pin
+		 * high so an unpatched driver still finds the sensor out of
+		 * reset (see NOTES.md for the small driver patch that makes
+		 * use of this property).
+		 */
+		reset-gpios = <&tlmm 30 GPIO_ACTIVE_LOW>;
+
+		vana-supply = <&vreg_l29a_2p8>;
+		vdig-supply = <&vreg_cam_core>;
+		vif-supply = <&vreg_lvs1a_1p8>;
+
+		lens-focus = <&cam_rear_vcm>;
+		orientation = <1>;	/* rear camera */
+		rotation = <90>;	/* stock qcom,mount-angle = <90> */
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&cam_rear_default>;
+
+		port {
+			imx258_ep: endpoint {
+				data-lanes = <1 2 3 4>;
+				/*
+				 * 24 MHz INCK table of the driver: 1272 Mbps/lane
+				 * (4208x3120@30) and 642 Mbps/lane (binned modes).
+				 */
+				link-frequencies = /bits/ 64 <636000000 321000000>;
+				remote-endpoint = <&csiphy0_ep>;
+			};
+		};
+	};
+};
+
+&tlmm {
+	/* Stock cam_sensor_mclk0_active + cam_sensor_rear_active. */
+	cam_rear_default: cam-rear-default-state {
+		mclk0-pins {
+			pins = "gpio13";
+			function = "cam_mclk";
+			drive-strength = <4>;	/* stock 4 mA (SoC camera0_mclk uses 16) */
+			bias-disable;
+		};
+
+		/*
+		 * XCLR parked high: no reset-gpios support in the 6.18
+		 * imx258 driver, which instead issues a software reset
+		 * (register 0x0103) at every stream start.
+		 */
+		reset-pins {
+			pins = "gpio30";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-disable;
+			output-high;
+		};
+	};
+
+	cam_rear_core_en_default: cam-rear-core-en-default-state {
+		pins = "gpio9";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+};
+
+/*
+ * PM8994 rails the mainline consumers cannot sequence themselves:
+ *
+ *  - L17 ("cam_vaf", 2.8 V) powers the DW9807 VCM and its EEPROM.  The
+ *    dw9807-vcm binding has no supply property, so the rail must stay on
+ *    for autofocus to work at all.
+ *  - LVS1 ("cam_vio", 1.8 V load switch) is the sensor VIF and, per the
+ *    stock power-up sequences of the actuator and EEPROM nodes (cam_vio
+ *    before cam_vaf), the I/O / pull-up rail of the VCM-EEPROM bus.  Keeping
+ *    it on lets the at24 probe-time test read succeed at boot and means the
+ *    parked-high XCLR never drives an unpowered I/O domain.
+ *
+ * Both are low-current rails; move these overrides into the PMIC node if
+ * preferred.
+ */
+&vreg_l17a_2p8 {
+	regulator-always-on;
+};
+
+&vreg_lvs1a_1p8 {
+	regulator-always-on;
+};

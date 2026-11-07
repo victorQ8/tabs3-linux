@@ -1,0 +1,147 @@
+#!/usr/bin/env python3
+"""Check a booted SM-T825 over SSH, for example after installing a package.
+
+Usage: boot-check [--host USER@ADDRESS] [--identity KEY] [--known-hosts FILE]
+                  [--expect-package VERSION]
+
+Defaults match this project's USB networking: dev@172.16.42.2 with
+private/id_ed25519 and private/installed-known-hosts. Read-only: it runs
+status commands (sudo -n for dmesg), changes nothing on the tablet and prints
+no IMEI, IMSI, ICCID or MAC address. Exit status 1 when any check fails;
+warnings do not fail.
+"""
+import argparse
+import pathlib
+import subprocess
+import sys
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+REMOTE = r'''
+echo "@model $(tr -d '\000' </proc/device-tree/model)"
+echo "@variant $(tr -d '\000' </proc/device-tree/soc@0/gpu@b00000/status 2>/dev/null)"
+echo "@kernel $(uname -r)"
+echo "@proc $(cat /proc/version)"
+# The image holds more than one banner; the running one must be among them.
+echo "@image $(zcat /boot/vmlinuz-$(uname -r) 2>/dev/null | grep -a -o 'Linux version [[:print:]]*' |
+    grep -c -x -F "$(cat /proc/version)")"
+dpkg-query -W -f='@pkg ${Package} ${Version}\n' linux-tabs3 tabs3-base tabs3-desktop 2>/dev/null
+echo "@uptime $(cut -d' ' -f1 /proc/uptime)"
+echo "@state $(systemctl is-system-running 2>/dev/null)"
+systemctl --failed --no-legend --plain 2>/dev/null | awk '{print "@failed " $1}'
+sudo -n dmesg -t 2>/dev/null > /tmp/.boot-check-dmesg && echo "@dmesg ok"
+grep -c 'gpu fault' /tmp/.boot-check-dmesg | sed 's/^/@gpufaults /'
+# Known since package 33: clk-rcg2 update_config warnings at startup
+# (6.19 prints "WARNING: <file> at <fn>", 6.18 "WARNING: CPU: n PID: n at <file> <fn>").
+grep -c -E 'WARNING:.*clk-rcg2\.c:[0-9]+.*update_config' /tmp/.boot-check-dmesg | sed 's/^/@rcg /'
+grep -E 'Oops|BUG:|WARNING:' /tmp/.boot-check-dmesg | grep -v -c -E 'clk-rcg2\.c:[0-9]+.*update_config' |
+    sed 's/^/@oops /'
+sudo -n dmesg -t --level=emerg,alert,crit,err 2>/dev/null | sed 's/^/@err /'
+rm -f /tmp/.boot-check-dmesg
+sed -n 's/^ *[0-9]* \[\([^]]*\)\].*/@sound \1/p' /proc/asound/cards
+for r in /sys/class/remoteproc/remoteproc*; do echo "@rproc $(cat $r/name) $(cat $r/state)"; done
+sed -n 's/^N: Name="\(.*\)"/@input \1/p' /proc/bus/input/devices
+echo "@wlan $(cat /sys/class/net/wlan0/operstate 2>/dev/null)"
+b=/sys/class/power_supply/sm5705-battery
+echo "@battery $(cat $b/capacity 2>/dev/null) $(cat $b/status 2>/dev/null) $(cat $b/temp 2>/dev/null)"
+echo "@backlight $(cat /sys/class/backlight/ams968hh01/brightness 2>/dev/null)"
+for c in /sys/class/drm/card*-DSI-*; do [ -e "$c" ] && echo "@dsi $(basename $c) $(cat $c/status) $(cat $c/enabled)"; done
+for r in /sys/class/usb_role/*; do [ -e "$r" ] && echo "@usbrole $(cat $r/role)"; done
+for m in /sys/bus/mmc/devices/*; do [ -e "$m" ] && echo "@mmc $(basename $m) $(cat $m/type)"; done
+for z in /sys/class/thermal/thermal_zone*; do echo "@tz $(cat $z/type) $(cat $z/temp)"; done
+for c in /sys/class/thermal/cooling_device*; do echo "@cool $(cat $c/type) $(cat $c/cur_state)"; done
+sudo -n /usr/bin/tabs3-modem-status 2>/dev/null | grep -E '^(Modem processor|SIM card|Registration):' | sed 's/^/@modem /'
+'''
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument('--host', default='dev@172.16.42.2')
+    parser.add_argument('--identity', default=str(ROOT / 'private/id_ed25519'))
+    parser.add_argument('--known-hosts', default=str(ROOT / 'private/installed-known-hosts'))
+    parser.add_argument('--expect-package', help='expected linux-tabs3 version, e.g. 6.19.5-41')
+    args = parser.parse_args()
+    ssh = ['ssh', '-i', args.identity, '-o', 'IdentitiesOnly=yes', '-o', 'BatchMode=yes',
+           '-o', 'ConnectTimeout=5', '-o', f'UserKnownHostsFile={args.known_hosts}', args.host, 'sh -s']
+    result = subprocess.run(ssh, input=REMOTE, capture_output=True, text=True, timeout=120)
+    if result.returncode != 0 and not result.stdout:
+        sys.exit(f'SSH failed: {result.stderr.strip()}')
+    facts = {}
+    for line in result.stdout.splitlines():
+        if line.startswith('@'):
+            key, _, value = line[1:].partition(' ')
+            facts.setdefault(key, []).append(value.strip())
+    one = lambda key: (facts.get(key) or [''])[0]
+    full = one('variant') == 'okay'
+    report = []
+
+    def add(level, name, detail=''):
+        report.append((level, name, detail))
+
+    add('PASS' if one('model') == 'Samsung Galaxy Tab S3 LTE (SM-T825)' else 'FAIL', 'model', one('model'))
+    add('INFO', 'variant', 'full Debian (GPU, audio, modem)' if full else 'display only')
+    packages = dict(p.split(' ', 1) for p in facts.get('pkg', []) if ' ' in p)
+    add('INFO', 'packages', ', '.join(f'{k} {v}' for k, v in sorted(packages.items())))
+    if args.expect_package:
+        found = packages.get('linux-tabs3')
+        add('PASS' if found == args.expect_package else 'FAIL', 'linux-tabs3 version', found or 'not installed')
+    matches = one('image') not in ('', '0')
+    add('PASS' if matches else 'FAIL', 'running kernel matches the installed package',
+        '' if matches else 'the boot partition and /boot differ: flash the matching boot image')
+    add('INFO', 'uptime', f'{float(one("uptime") or 0):.0f} s, system {one("state")}')
+    failed = facts.get('failed', [])
+    add('PASS' if not failed else 'FAIL', 'failed units', ', '.join(failed) or 'none')
+    if one('dmesg') == 'ok':
+        add('PASS' if one('gpufaults') == '0' else 'FAIL', 'GPU faults', one('gpufaults'))
+        add('PASS' if one('oops') == '0' else 'FAIL', 'kernel oops/BUG/WARNING', one('oops'))
+        if one('rcg') not in ('', '0'):
+            add('WARN', 'known clk-rcg2 update_config warnings', one('rcg'))
+        errors = facts.get('err', [])
+        add('PASS' if not errors else 'WARN', 'kernel error messages', f'{len(errors)}' +
+            ''.join(f'\n        {e[:110]}' for e in errors[:8]))
+    else:
+        add('WARN', 'kernel log', 'sudo -n dmesg not permitted')
+    inputs = set(facts.get('input', []))
+    for name in ('pm8941_pwrkey', 'pm8941_resin', 'gpio-keys', 'tm2-touchkey'):
+        add('PASS' if name in inputs else 'FAIL', f'input {name}')
+    dsi = facts.get('dsi', [])
+    add('PASS' if any(' connected enabled' in d for d in dsi) else 'WARN', 'panel', '; '.join(dsi) or 'no DSI connector')
+    add('INFO', 'backlight', one('backlight'))
+    add('PASS' if one('wlan') == 'up' else 'WARN', 'Wi-Fi', one('wlan') or 'no wlan0')
+    capacity, status, temp = (one('battery').split() + ['', '', ''])[:3]
+    level = 'PASS' if capacity.isdigit() and int(capacity) >= 20 else 'WARN'
+    add(level, 'battery', f'{capacity}% {status}, {int(temp) / 10:.1f} C' if temp.lstrip('-').isdigit() else one('battery'))
+    # SoC temperature sensors (TSENS, package 43+): 14 zones from msm8996.dtsi.
+    soc = {}
+    for entry in facts.get('tz', []):
+        name, _, milli = entry.rpartition(' ')
+        if milli.lstrip('-').isdigit() and not name.startswith(('sm5705', 'pm8994')):
+            soc[name.removesuffix('-thermal')] = int(milli) // 1000
+    if not soc:
+        add('FAIL', 'SoC temperature sensors', 'none: qcom_tsens not loaded, so nothing throttles')
+    else:
+        hottest = max(soc, key=soc.get)
+        level = 'FAIL' if soc[hottest] >= 95 else 'WARN' if soc[hottest] >= 80 else 'PASS'
+        if len(soc) < 14:
+            level = 'FAIL'
+        cooling = [c.split()[0] for c in facts.get('cool', []) if c.startswith(('cpufreq', 'devfreq'))]
+        add(level, 'SoC temperature sensors', f'{len(soc)} zones, hottest {hottest} {soc[hottest]} C, '
+            f'cooling: {", ".join(cooling) or "none"}')
+    mmc = facts.get('mmc', [])
+    add('PASS' if any(m.endswith(' MMC') for m in mmc) else 'FAIL', 'eMMC', ', '.join(mmc))
+    add('INFO', 'microSD', 'card present' if any(m.endswith(' SD') for m in mmc) else 'no card detected')
+    if full:
+        sound = facts.get('sound', [])
+        add('PASS' if 'SMT825' in sound else 'FAIL', 'sound card', ', '.join(sound) or 'none')
+        rprocs = dict(r.split(' ', 1) for r in facts.get('rproc', []) if ' ' in r)
+        for label, name in (('audio DSP', 'adsp'), ('modem', '2080000.remoteproc')):
+            state = rprocs.get(name, 'absent')
+            add('PASS' if state == 'running' else 'FAIL', f'{label} processor', state)
+        add('INFO', 'USB role', ', '.join(facts.get('usbrole', [])) or 'no role switch')
+        add('INFO', 'modem', '; '.join(facts.get('modem', [])) or 'no status')
+    for level, name, detail in report:
+        print(f'{level:4}  {name}' + (f': {detail}' if detail else ''))
+    sys.exit(1 if any(level == 'FAIL' for level, _, _ in report) else 0)
+
+
+if __name__ == '__main__':
+    main()

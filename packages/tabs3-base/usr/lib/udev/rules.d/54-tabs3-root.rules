@@ -1,0 +1,7 @@
+# The initramfs creates tabs3root (tabs3.root_extend=system) with dmsetup but
+# without udev, so the coldplug "add" event carries no device-mapper flags and
+# 55-dm.rules would hide the root device from systemd. Mark it as activated.
+SUBSYSTEM=="block", KERNEL=="dm-[0-9]*", ACTION=="add", ATTR{dm/name}=="tabs3root", ENV{DM_UDEV_PRIMARY_SOURCE_FLAG}="1"
+# Userdata shows the same filesystem UUID; the by-uuid link must name the
+# whole root device.
+SUBSYSTEM=="block", KERNEL=="dm-[0-9]*", ACTION=="add|change", ATTR{dm/name}=="tabs3root", OPTIONS+="link_priority=10"

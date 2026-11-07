@@ -1,0 +1,85 @@
+# tracer: nop
+#
+# entries-in-buffer/entries-written: 73/73   #P:4
+#
+#                                _-----=> irqs-off/BH-disabled
+#                               / _----=> need-resched
+#                              | / _---=> hardirq/softirq
+#                              || / _--=> preempt-depth
+#                              ||| / _-=> migrate-disable
+#                              |||| /     delay
+#           TASK-PID     CPU#  |||||  TIMESTAMP  FUNCTION
+#              | |         |   |||||     |         |
+              sh-1105    [002] ...1.   923.781157: tracing_mark_write: STATIC_VERIFY_START
+              sh-1105    [002] ...1.   926.790579: tracing_mark_write: R1_BEGIN
+              sh-1105    [001] ...1.   926.801151: tracing_mark_write: SEND 06 da 1
+              sh-1105    [003] ...1.   926.817330: tracing_mark_write: SEND 15 b0 5a
+              sh-1105    [001] ...1.   926.837173: tracing_mark_write: SEND 24 d8 01 1
+              sh-1105    [003] ...1.   926.851870: tracing_mark_write: SEND 06 db 1
+              sh-1105    [001] ...1.   926.872562: tracing_mark_write: SEND 15 b0 5b
+              sh-1105    [001] ...1.   926.893279: tracing_mark_write: SEND 24 d8 01 1
+              sh-1105    [003] ...1.   926.909210: tracing_mark_write: SEND 06 dc 1
+              sh-1105    [001] ...1.   926.928515: tracing_mark_write: SEND 15 b0 5b
+              sh-1105    [001] ...1.   926.947500: tracing_mark_write: SEND 24 d8 01 1
+              sh-1105    [003] ...1.   926.966084: tracing_mark_write: SEND 06 da 1
+              sh-1105    [001] ...1.   926.985182: tracing_mark_write: SEND 15 b0 5a
+              sh-1105    [003] ...1.   927.002618: tracing_mark_write: SEND 24 d8 01 1
+              sh-1105    [001] ...1.   927.022484: tracing_mark_write: SEND 06 db 1
+              sh-1105    [003] ...1.   927.041285: tracing_mark_write: SEND 15 b0 5a
+              sh-1105    [003] ...1.   927.060651: tracing_mark_write: SEND lp 24 d8 01 1
+              sh-1105    [003] ...1.   927.077559: tracing_mark_write: SEND 06 dc 1
+              sh-1105    [001] ...1.   927.094293: tracing_mark_write: SEND 15 b0 5b
+              sh-1105    [000] ...1.   927.107857: tracing_mark_write: SEND lp 24 d8 01 1
+              sh-1105    [003] ...1.   927.116533: tracing_mark_write: R1_PASS
+              sh-1105    [003] ...1.   927.116628: tracing_mark_write: R2_BEGIN
+              sh-1105    [003] ...1.   927.124255: tracing_mark_write: SEND 06 da 1
+              sh-1105    [002] ...1.   927.144994: tracing_mark_write: SEND 15 b0 70
+              sh-1105    [001] ...1.   927.166826: tracing_mark_write: SEND 24 d2 01 1
+              sh-1105    [002] ...1.   927.184767: tracing_mark_write: SEND 06 db 1
+              sh-1105    [001] ...1.   927.205969: tracing_mark_write: SEND 15 b0 70
+              sh-1105    [001] ...1.   927.224366: tracing_mark_write: SEND 24 d2 01 1
+              sh-1105    [002] ...1.   927.241935: tracing_mark_write: SEND 06 da 1
+              sh-1105    [001] ...1.   927.261581: tracing_mark_write: SEND 15 b0 67
+              sh-1105    [002] ...1.   927.278597: tracing_mark_write: SEND 24 d2 01 1
+              sh-1105    [001] ...1.   927.299976: tracing_mark_write: SEND 06 db 1
+              sh-1105    [002] ...1.   927.317722: tracing_mark_write: SEND 15 b0 67
+              sh-1105    [001] ...1.   927.337848: tracing_mark_write: SEND 24 d2 01 1
+              sh-1105    [002] ...1.   927.354901: tracing_mark_write: SEND 06 da 1
+              sh-1105    [001] ...1.   927.375885: tracing_mark_write: SEND 15 b0 36
+              sh-1105    [001] ...1.   927.396397: tracing_mark_write: SEND 24 d2 01 1
+              sh-1105    [002] ...1.   927.413653: tracing_mark_write: SEND 06 db 1
+              sh-1105    [003] ...1.   927.433790: tracing_mark_write: SEND 15 b0 36
+              sh-1105    [001] ...1.   927.453858: tracing_mark_write: SEND 24 d2 01 1
+              sh-1105    [003] ...1.   927.470728: tracing_mark_write: SEND 06 da 1
+              sh-1105    [001] ...1.   927.491778: tracing_mark_write: SEND 15 b0 4d
+              sh-1105    [003] ...1.   927.509037: tracing_mark_write: SEND 24 d2 01 1
+              sh-1105    [001] ...1.   927.529773: tracing_mark_write: SEND 06 db 1
+              sh-1105    [003] ...1.   927.546354: tracing_mark_write: SEND 15 b0 4d
+              sh-1105    [001] ...1.   927.567114: tracing_mark_write: SEND 24 d2 01 1
+              sh-1105    [000] ...1.   927.574178: tracing_mark_write: R2_END
+              sh-1105    [000] ...1.   927.574396: tracing_mark_write: R3_BEGIN
+              sh-1105    [000] ...1.   927.582861: tracing_mark_write: SEND 15 b0 36
+              sh-1105    [003] ...1.   927.600748: tracing_mark_write: SEND 39 b2 10
+              sh-1105    [001] ...1.   927.619956: tracing_mark_write: SEND 15 b0 35
+              sh-1105    [003] ...1.   927.637456: tracing_mark_write: SEND 39 b2 01
+              sh-1105    [001] ...1.   927.647309: tracing_mark_write: R3_ACL_OFF
+              sh-1105    [001] ...1.   927.655685: tracing_mark_write: SEND 06 da 1
+              sh-1105    [003] ...1.   927.673551: tracing_mark_write: SEND 15 b0 36
+              sh-1105    [003] ...1.   927.688139: tracing_mark_write: SEND 24 d2 01 1
+              sh-1105    [003] ...1.   927.706314: tracing_mark_write: SEND 06 db 1
+              sh-1105    [001] ...1.   927.728541: tracing_mark_write: SEND 15 b0 36
+              sh-1105    [002] ...1.   927.745512: tracing_mark_write: SEND 24 d2 01 1
+              sh-1105    [001] ...1.   927.765060: tracing_mark_write: SEND 15 b0 36
+              sh-1105    [002] ...1.   927.781280: tracing_mark_write: SEND 39 b2 12
+              sh-1105    [002] ...1.   927.801354: tracing_mark_write: SEND 15 b0 35
+              sh-1105    [001] ...1.   927.821804: tracing_mark_write: SEND 39 b2 01
+              sh-1105    [000] ...1.   927.828953: tracing_mark_write: R3_ACL_ON
+              sh-1105    [001] ...1.   927.837787: tracing_mark_write: SEND 06 db 1
+              sh-1105    [002] ...1.   927.857269: tracing_mark_write: SEND 15 b0 36
+              sh-1105    [001] ...1.   927.876788: tracing_mark_write: SEND 24 d2 01 1
+              sh-1105    [001] ...1.   927.896924: tracing_mark_write: SEND 06 da 1
+              sh-1105    [000] ...1.   927.912703: tracing_mark_write: SEND 15 b0 36
+              sh-1105    [002] ...1.   927.930306: tracing_mark_write: SEND 24 d2 01 1
+              sh-1105    [001] ...1.   927.940395: tracing_mark_write: R3_END
+              sh-1105    [001] ...1.   927.940816: tracing_mark_write: STATIC_READ_END
+              sh-1105    [001] ...1.   927.941328: tracing_mark_write: CLEANUP_ACL_ON

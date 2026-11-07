@@ -1,0 +1,23 @@
+[    8.830832] Bluetooth: hci0: QCA setup on UART is completed
+[    8.850278] msm_dpu 901000.display-controller: [drm] fb0: msmdrmfb frame buffer device
+[    9.265970] wlan0: authenticate with <ap-bssid> (local address=<wlan0-mac>)
+[    9.266050] wlan0: send auth to <ap-bssid> (try 1/3)
+[    9.268384] wlan0: authenticated
+[    9.270497] wlan0: associate with <ap-bssid> (try 1/3)
+[    9.273888] wlan0: RX AssocResp from <ap-bssid> (capab=0x1511 status=0 aid=3)
+[    9.282338] wlan0: associated
+[    9.357787] wlan0: Limiting TX power to 20 (23 - 3) dBm as advertised by <ap-bssid>
+[    9.973387] Bluetooth: MGMT ver 1.23
+[   18.921620] platform 67a000.crypto: deferred probe pending: qcrypto: Failed to get TX DMA channel
+[   18.921748] gcc-msm8996 300000.clock-controller: sync_state() pending due to 83000.rng
+[   18.921791] gcc-msm8996 300000.clock-controller: sync_state() pending due to 644000.dma-controller
+[   18.921829] gcc-msm8996 300000.clock-controller: sync_state() pending due to 67a000.crypto
+[   64.832744] [drm:dpu_encoder_helper_wait_for_irq [msm]] *ERROR* encoder is disabled id=33, callback=dpu_encoder_phys_cmd_pp_tx_done_irq [msm], IRQ=[0, 8]
+[   64.833870] [drm:dpu_encoder_phys_cmd_wait_for_tx_complete [msm]] *ERROR* failed wait_for_idle: id:33 ret:-11 intf:1
+[   64.866472] msm_dsi 994000.dsi: LP11 experiment: clock deferred, lane_ctrl=00000000
+[   64.890473] msm_dsi 996000.dsi: LP11 experiment: clock deferred, lane_ctrl=00000000
+[   64.986437] panel-samsung-ams968hh01 994000.dsi.0: startup checkpoint: reset released
+[   65.047589] panel-samsung-ams968hh01 994000.dsi.0: startup checkpoint: TCON_RDY=1 ret=0
+[   65.049779] msm_dsi 996000.dsi: LP11 experiment: first command starts clock, lane_ctrl=10000000
+[   65.049824] msm_dsi 994000.dsi: LP11 experiment: first command starts clock, lane_ctrl=10000000
+-62988

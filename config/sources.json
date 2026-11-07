@@ -1,0 +1,36 @@
+{
+  "port": {
+    "url": "https://github.com/wh1ter0z3/gts3lwifi-mainline.git",
+    "commit": "97e9c58c29bc34c4776ca47ee147226464120cda"
+  },
+  "lk2nd": {
+    "url": "https://github.com/msm8916-mainline/lk2nd.git",
+    "commit": "8b46487c4c76776c4f2f61468d44a74c69e6b9ea",
+    "reserved_bytes": 4194304,
+    "force_fastboot": true
+  },
+  "kernel": {
+    "base": "kernel.org longterm 6.18.y (projected EOL Dec 2028)",
+    "version": "6.18.56",
+    "commit": "17ad2612c11a748b50d32eefc681344b26fea946",
+    "local_version": "-gts3l1",
+    "url": "https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.18.56.tar.xz",
+    "sha256": "4633bbda2ab95eaf2a7af4041236451d6759c72e6946265531af4b3aacefbf89",
+    "sha512": "0d6ddc25db99ce0be26337a9e8dfbb95d44911841df8a6ff13dc9104be51acbc3ddbb1c84593ec7c80ba4a0782ab392b78bd52f3ccd80171a7fcf4ab17b28702",
+    "directory": "linux-6.18.56",
+    "base_patches": "kernel/base",
+    "community_reference": {
+      "url": "https://gitlab.com/msm8996-mainline/linux.git",
+      "branch": "msm8996-stable-6.19.y",
+      "commit": "1aed438cb5f49d7a61593f764d4a82f83b14114f",
+      "carried": "kernel/base/0001-0004"
+    },
+    "usb_power_domain_reference": "https://lore.kernel.org/all/20260610-topic-8996_61x5_qusb2phy-v1-3-d7135980e78f@oss.qualcomm.com/"
+  },
+  "lvgl": {
+    "url": "https://github.com/lvgl/lvgl.git",
+    "tag": "v9.4.0",
+    "commit": "c016f72d4c125098287be5e83c0f1abed4706ee5",
+    "use": "recovery touch screen (MIT)"
+  }
+}

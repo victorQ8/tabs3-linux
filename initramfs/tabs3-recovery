@@ -1,0 +1,542 @@
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# tabS3 recovery helper, run as root over USB SSH in the recovery initramfs.
+set -eu
+# shellcheck source=initramfs/rootmap.sh
+. /usr/lib/tabs3/rootmap.sh
+g=/sys/kernel/config/usb_gadget/tabs3
+lun=$g/functions/mass_storage.0
+mnt=/mnt/root
+lock=${TABS3_RECOVERY_LOCK:-/run/tabs3-recovery.lock}
+sb_opts=
+
+# One storage operation at a time: flashing, checking, mounting, exporting
+# and leaving exclude each other. The lock is a directory (mkdir is atomic)
+# holding its owner's pid; a dead owner's lock is reclaimed.
+try_lock() {
+    if ! mkdir "$lock" 2>/dev/null; then
+        owner=$(cat "$lock/pid" 2>/dev/null || true)
+        if [ -n "$owner" ] && [ -d "/proc/$owner" ]; then
+            echo "tabs3-recovery: another operation is running (pid $owner); wait for it" >&2
+            return 1
+        fi
+        rm -rf "$lock"
+        mkdir "$lock" 2>/dev/null || return 1
+    fi
+    echo $$ >"$lock/pid"
+    trap 'rm -rf "$lock"' EXIT
+}
+
+take_lock() {
+    try_lock || exit 1
+}
+
+# The export worker runs detached: the lock passes from the caller to it.
+hand_lock_to() {
+    echo "$1" >"$lock/pid"
+    trap - EXIT
+}
+
+die() {
+    echo "tabs3-recovery: $*" >&2
+    exit 1
+}
+
+# Also show progress on the tablet screen.
+say() {
+    echo "$*"
+    echo "  $*" >/dev/console 2>/dev/null || true
+}
+
+usage() {
+    cat <<'EOF'
+tabs3-recovery status             partitions, root filesystem, mounts and USB export
+tabs3-recovery mount [rw]         mount the Debian root at /mnt/root (read-only unless rw)
+tabs3-recovery umount             unmount it
+tabs3-recovery fsck [-y]          check the root filesystem (report only unless -y)
+tabs3-recovery storage ro|rw|off  export the whole eMMC to the PC as a USB disk
+tabs3-recovery flash-boot FILE    write a combined lk2nd/Linux image to boot, verify readback
+tabs3-recovery screen on|off      switch the display (also: power key, touch wakes)
+tabs3-recovery fastboot           reboot into lk2nd fastboot once (120-second idle timeout)
+tabs3-recovery reboot             leave recovery and boot Debian
+tabs3-recovery poweroff           power off
+
+Copy files in with:  ssh root@172.16.42.2 'cat > /tmp/boot.img' < boot.img
+EOF
+}
+
+part() {
+    for uevent in /sys/class/block/mmcblk0p*/uevent; do
+        if grep -qx "PARTNAME=$1" "$uevent"; then
+            dev=${uevent%/uevent}
+            echo "/dev/${dev##*/}"
+            return 0
+        fi
+    done
+    die "no $1 partition"
+}
+
+sectors() {
+    dev=$1
+    cat "/sys/class/block/${dev#/dev/}/size"
+}
+
+# A field of the ext4 superblock; when the primary one is unreadable the
+# first backup is used (block 32768 for 4 KiB blocks, 8193 for 1 KiB), the
+# damage e2fsck repairs with -b.
+fs_field() {
+    value=$(dumpe2fs -h $sb_opts "$2" 2>/dev/null | sed -n "s/^$1: *//p")
+    if [ -z "$value" ] && [ -z "$sb_opts" ]; then
+        for bs in 4096 1024 2048; do
+            [ "$bs" = 1024 ] && sb=8193 || sb=32768
+            value=$(dumpe2fs -h -o "superblock=$sb" -o "blocksize=$bs" "$2" 2>/dev/null | sed -n "s/^$1: *//p")
+            if [ -n "$value" ]; then
+                sb_opts="-o superblock=$sb -o blocksize=$bs"
+                break
+            fi
+        done
+    fi
+    printf '%s\n' "$value"
+}
+
+# "-b N -B SIZE" for e2fsck when only a backup superblock is readable.
+backup_superblock_args() {
+    [ -n "$(dumpe2fs -h "$1" 2>/dev/null | sed -n 's/^Block count: *//p')" ] && return 0
+    for bs in 4096 1024 2048; do
+        [ "$bs" = 1024 ] && sb=8193 || sb=32768
+        if [ -n "$(dumpe2fs -h -o "superblock=$sb" -o "blocksize=$bs" "$1" 2>/dev/null | sed -n 's/^Block count: *//p')" ]; then
+            echo "-b $sb -B $bs"
+            return 0
+        fi
+    done
+}
+
+mounted() {
+    grep -q " $mnt " /proc/mounts
+}
+
+exported() {
+    [ -L "$g/configs/c.1/mass_storage.0" ]
+}
+
+# Userdata alone, or userdata + system when the filesystem was grown over
+# both (tabs3.root_extend=system). Decided from the ext4 superblock.
+root_dev() {
+    data=$(part userdata)
+    [ "$data" = /dev/mmcblk0p47 ] || die 'userdata is not mmcblk0p47'
+    if [ -e /dev/mapper/tabs3root ]; then
+        echo /dev/mapper/tabs3root
+        return 0
+    fi
+    blocks=$(fs_field 'Block count' "$data")
+    block_size=$(fs_field 'Block size' "$data")
+    if [ -z "$blocks" ] || [ -z "$block_size" ]; then die 'no ext4 filesystem on userdata'; fi
+    if [ $((blocks * (block_size / 512))) -le "$(sectors "$data")" ]; then
+        echo "$data"
+        return 0
+    fi
+    map_root_system || die 'cannot map userdata + system'
+    echo /dev/mapper/tabs3root
+}
+
+status() {
+    for name in boot recovery system userdata; do
+        dev=$(part "$name")
+        printf '%-9s %-16s %s bytes\n' "$name" "$dev" $(($(sectors "$dev") * 512))
+    done
+    data=$(part userdata)
+    blocks=$(fs_field 'Block count' "$data")
+    block_size=$(fs_field 'Block size' "$data")
+    if [ -n "$blocks" ]; then
+        fs_bytes=$((blocks * block_size))
+        layout='userdata only'
+        [ $((fs_bytes / 512)) -le "$(sectors "$data")" ] || layout='userdata + system'
+        echo "root ext4 $(fs_field 'Filesystem UUID' "$data"): $fs_bytes bytes, $layout, state $(fs_field 'Filesystem state' "$data")"
+    else
+        echo 'root: no ext4 filesystem on userdata'
+    fi
+    if [ -e /dev/mapper/tabs3root ]; then
+        dmsetup table tabs3root
+    fi
+    if mounted; then grep " $mnt " /proc/mounts; else echo "root not mounted"; fi
+    if exported; then echo "USB export: $(cat "$lun/lun.0/file") ro=$(cat "$lun/lun.0/ro")"; else echo 'USB export: off'; fi
+}
+
+# key=value lines for the screen app.
+status_kv() {
+    data=$(part userdata)
+    blocks=$(fs_field 'Block count' "$data")
+    block_size=$(fs_field 'Block size' "$data")
+    if [ -n "$blocks" ] && [ -n "$block_size" ]; then
+        echo "root_bytes=$((blocks * block_size))"
+        echo "root_free_bytes=$(($(fs_field 'Free blocks' "$data") * block_size))"
+        echo "root_state=$(fs_field 'Filesystem state' "$data")"
+        if [ $((blocks * (block_size / 512))) -le "$(sectors "$data")" ]; then
+            echo 'root_layout=userdata'
+        else
+            echo 'root_layout=userdata + system'
+        fi
+    fi
+    # Combined image: lk2nd at 0, Linux at 4 MiB with its command line at +64.
+    boot=$(part boot)
+    if [ "$(head -c 8 "$boot")" = 'ANDROID!' ] &&
+       [ "$(dd if="$boot" bs=8 skip=524288 count=1 2>/dev/null)" = 'ANDROID!' ]; then
+        cmdline=$(dd if="$boot" bs=64 skip=65537 count=8 2>/dev/null | tr -d '\000')
+        case "$cmdline" in
+            *tabs3.mode=installed*tabs3.root_extend=system*) desc='Debian, extended root' ;;
+            *tabs3.mode=installed*) desc='Debian' ;;
+            *) desc='Other Linux image' ;;
+        esac
+        echo 'boot_ok=1'
+        echo "boot_desc=$desc"
+    else
+        echo 'boot_ok=0'
+        echo 'boot_desc=Unknown image'
+    fi
+    if exported; then
+        if [ "$(cat "$lun/lun.0/ro")" = 1 ]; then echo 'usb_export=ro'; else echo 'usb_export=rw'; fi
+    else
+        echo 'usb_export=off'
+    fi
+    if grep -qx configured /sys/class/udc/*/state 2>/dev/null; then echo 'usb_host=1'; else echo 'usb_host=0'; fi
+}
+
+mount_root() {
+    # Read-only must not write: plain "ro" still lets ext4 replay the journal.
+    # With noload a journal that needs replay is left alone and the view can
+    # be stale; fsck -y or a rw mount replays it.
+    opt=ro,noload
+    [ "${1:-}" != rw ] || opt=rw
+    mounted && die "already mounted at $mnt"
+    exported && die 'stop the USB export first (tabs3-recovery storage off)'
+    dev=$(root_dev)
+    mkdir -p "$mnt"
+    mount -t ext4 -o "$opt" "$dev" "$mnt" || die "mount $opt failed"
+    if [ "$opt" = ro,noload ] && [ "$(fs_field 'Filesystem state' "$dev")" != clean ]; then
+        say 'Note: the journal was not replayed; files may be stale until fsck -y'
+    fi
+    say "Debian root mounted $opt at $mnt ($dev)"
+}
+
+umount_root() {
+    mounted || die 'not mounted'
+    umount "$mnt"
+    say 'Debian root unmounted'
+}
+
+fsck_root() {
+    # Use e2fsck's operational-error status for preflight failures too: status
+    # 1 means repairs succeeded, so it must not represent a refused check.
+    if mounted; then
+        say 'Cannot check: unmount first (tabs3-recovery umount)'
+        return 8
+    fi
+    if exported; then
+        say 'Cannot check: stop the USB export first (tabs3-recovery storage off)'
+        return 8
+    fi
+    dev=$(root_dev) || return 8
+    sb_args=$(backup_superblock_args "$dev")
+    [ -z "$sb_args" ] || say "Primary superblock unreadable; checking with the backup ($sb_args)"
+    say "Checking $dev ..."
+    rc=0
+    # shellcheck disable=SC2086
+    if [ "${1:-}" = -y ]; then e2fsck -fy $sb_args "$dev" || rc=$?; else e2fsck -fn $sb_args "$dev" || rc=$?; fi
+    say "e2fsck finished with exit code $rc (0 clean, 1 repaired, 4 errors left)"
+    return "$rc"
+}
+
+# Reconfiguring the gadget drops the USB link for a moment, which would also
+# end this SSH session, so the change runs detached.
+storage() {
+    case "${1:-}" in
+        ro|rw)
+            exported && die 'already exported; run storage off first'
+            [ "$1" = ro ] || ! mounted || die 'unmount first (tabs3-recovery umount)'
+            ;;
+        off) exported || die 'not exported' ;;
+        *) die 'usage: storage ro|rw|off' ;;
+    esac
+    setsid "$0" _storage "$1" >/run/log/storage.log 2>&1 </dev/null &
+    hand_lock_to $!
+    echo "USB reconnects in a few seconds; SSH back in afterwards. Log: /run/log/storage.log"
+}
+
+storage_apply() {
+    trap 'rm -rf "$lock"' EXIT
+    udc=$(cat "$g/UDC")
+    [ -n "$udc" ] || udc=$(ls /sys/class/udc)
+    sleep 1
+    # Whatever fails below, the controller is bound again on the way out, or
+    # the USB network and this SSH path would stay dead.
+    trap 'echo "$udc" >"$g/UDC" 2>/dev/null; rm -rf "$lock"' EXIT
+    echo '' >"$g/UDC"
+    if [ "$1" = off ]; then
+        rm -f "$g/configs/c.1/mass_storage.0"
+        echo '' >"$lun/lun.0/file" 2>/dev/null || true
+        rmdir "$lun" 2>/dev/null || true
+        say 'USB export stopped'
+    else
+        mkdir -p "$lun"
+        if [ "$1" = ro ]; then echo 1 >"$lun/lun.0/ro"; else echo 0 >"$lun/lun.0/ro"; fi
+        echo /dev/mmcblk0 >"$lun/lun.0/file"
+        ln -s "$lun" "$g/configs/c.1/"
+        say "Whole eMMC exported to the PC over USB ($1)"
+    fi
+}
+
+# Little-endian 32-bit word at byte offset $2 of $1.
+le32() {
+    dd if="$1" bs=1 skip="$2" count=4 2>/dev/null | od -An -tu4 | tr -d ' \n'
+}
+
+# The same number as four little-endian bytes.
+le32_bytes() {
+    # shellcheck disable=SC2059
+    printf "$(printf '\\%03o\\%03o\\%03o\\%03o' $(($1 & 255)) $((($1 >> 8) & 255)) $((($1 >> 16) & 255)) $((($1 >> 24) & 255)))"
+}
+
+align_up() {
+    echo $(( ($1 + $2 - 1) / $2 * $2 ))
+}
+
+# An Android v0 boot header at byte offset $2 of $1 (a multiple of 8) whose
+# payloads must end within $3 bytes of it. Prints "page kernel ramdisk second
+# dt" or fails.
+boot_header() {
+    [ "$(dd if="$1" bs=8 skip=$(($2 / 8)) count=1 2>/dev/null)" = 'ANDROID!' ] || return 1
+    ks=$(le32 "$1" $(($2 + 8))); rs=$(le32 "$1" $(($2 + 16))); ss=$(le32 "$1" $(($2 + 24)))
+    ps=$(le32 "$1" $(($2 + 36))); dt=$(le32 "$1" $(($2 + 40)))
+    case "$ps" in 2048|4096|8192|16384) ;; *) return 1 ;; esac
+    [ "${ks:-0}" -gt 0 ] || return 1
+    # Old Samsung headers keep appended-DTB sizes here; small values are
+    # modern header versions this helper does not understand.
+    [ "$dt" -eq 0 ] || [ "$dt" -ge 4096 ] || return 1
+    end=$(( ps + $(align_up "$ks" "$ps") + $(align_up "$rs" "$ps") + $(align_up "$ss" "$ps") + dt ))
+    [ "$end" -le "$3" ] || return 1
+    echo "$ps $ks $rs $ss $dt"
+}
+
+# SHA1 over the kernel, the initramfs and an empty second stage, each followed
+# by its length: the id field our packer writes into generated images.
+boot_id() {
+    file=$1 base=$2 ps=$3 ks=$4 rs=$5
+    {
+        dd if="$file" bs="$ps" skip=$((base / ps + 1)) count=$(((ks + ps - 1) / ps)) 2>/dev/null | head -c "$ks"
+        le32_bytes "$ks"
+        dd if="$file" bs="$ps" skip=$((base / ps + 1 + (ks + ps - 1) / ps)) count=$(((rs + ps - 1) / ps)) 2>/dev/null | head -c "$rs"
+        le32_bytes "$rs"
+        le32_bytes 0
+    } | sha1sum | cut -d' ' -f1
+}
+
+flash_boot() {
+    file=${1:-}
+    [ -f "$file" ] || die 'usage: flash-boot FILE'
+    exported && die 'stop the USB export first (tabs3-recovery storage off)'
+    dev=$(part boot)
+    size=$(stat -c %s "$file")
+    [ "$size" -le $(($(sectors "$dev") * 512)) ] || die 'image is larger than the boot partition'
+    [ "$size" -gt $((4194304 + 1632)) ] || die 'too small for a combined lk2nd/Linux image'
+    boot_header "$file" 0 4194304 >/dev/null || die 'no valid lk2nd boot image at the start of the file'
+    hdr=$(boot_header "$file" 4194304 $((size - 4194304))) ||
+        die 'no valid Linux boot image at 4 MiB: truncated, or not a combined lk2nd/Linux image'
+    # shellcheck disable=SC2086
+    set -- $hdr
+    ps=$1 ks=$2 rs=$3 ss=$4 dt=$5
+    [ "$rs" -gt 0 ] || die 'the Linux image has no initramfs'
+    if [ "$dt" -eq 0 ] && [ "$ss" -eq 0 ]; then
+        want_id=$(dd if="$file" bs=1 skip=$((4194304 + 576)) count=20 2>/dev/null | od -An -tx1 | tr -d ' \n')
+        [ "$(boot_id "$file" 4194304 "$ps" "$ks" "$rs")" = "$want_id" ] ||
+            die 'Linux image id checksum mismatch: the file is corrupt or was not fully copied'
+    fi
+    cmdline=$(dd if="$file" bs=64 skip=65537 count=8 2>/dev/null | tr -d '\000')
+    case " $cmdline " in
+        *' tabs3.mode=recovery '*) die 'this is a recovery image; it does not belong in the boot partition' ;;
+    esac
+    mode_word=$(printf '%s\n' "$cmdline" | tr ' ' '\n' | grep '^tabs3.mode=' | head -n 1)
+    say "Image checked: kernel $ks bytes, initramfs $rs bytes, ${mode_word:-no tabs3.mode}"
+    want=$(sha256sum <"$file" | cut -d' ' -f1)
+    say "Writing $size bytes to boot ($dev) ..."
+    dd if="$file" of="$dev" bs=1M conv=fsync 2>/dev/null
+    sync
+    echo 3 >/proc/sys/vm/drop_caches 2>/dev/null || true
+    got=$(head -c "$size" "$dev" | sha256sum | cut -d' ' -f1)
+    [ "$want" = "$got" ] || die "readback mismatch: wrote $want, read $got"
+    say "Boot image written and verified ($want)"
+}
+
+banner() {
+    clear
+    cat <<'EOF'
+
+  tabS3 recovery
+
+  Nothing is mounted; Debian on internal storage is untouched.
+
+  From a PC on USB:   ssh root@172.16.42.2      (project key)
+  Then run:           tabs3-recovery help
+  To leave:           hold Power for 3 seconds, or tabs3-recovery reboot
+
+  Short Power press: screen off/on. Touch wakes it. It switches off after
+  10 minutes. Holding Power until the tablet resets (about 9 seconds) comes
+  back here; leave with a 3-second hold instead.
+
+EOF
+}
+
+panel_blank=/sys/class/graphics/fb0/blank
+
+screen() {
+    case "${1:-}" in
+        on) value=0 ;;
+        off) value=4 ;;
+        *) die 'usage: screen on|off' ;;
+    esac
+    # fbdev's initial blank property can still say POWERDOWN while fbcon
+    # has enabled DRM. Always make the requested state explicit.
+    echo "$value" >"$panel_blank"
+}
+
+# Display drivers are modules; the installed system loads them from its root.
+# Same rules as tabs3-screen in Debian: power key toggles, touch wakes, the
+# AMOLED panel switches off after a while without input.
+screen_daemon() {
+    if ! modprobe panel-samsung-ams968hh01 || ! modprobe msm; then
+        echo 'Recovery: no display driver'
+        return 0
+    fi
+    modprobe evdev || echo 'Recovery: no input events (power key, touch)'
+    for _ in $(seq 30); do
+        [ -e "$panel_blank" ] && break
+        sleep 1
+    done
+    [ -e "$panel_blank" ] || return 0
+    # Panel initialization completes before DRM presents the first frame.
+    screen on
+    setfont -C /dev/tty1 /usr/share/tabs3/console-32x16.psf || true
+    banner >/dev/tty1
+    # The touch screen app; the text banner below is the fallback.
+    if [ -x /usr/bin/tabs3-recovery-ui ]; then
+        /usr/bin/tabs3-recovery-ui >>/run/log/recovery-ui.log 2>&1 ||
+            echo "Recovery screen app exited with $?" >>/run/log/recovery-ui.log
+    fi
+    setfont -C /dev/tty1 /usr/share/tabs3/console-32x16.psf || true
+    banner >/dev/tty1
+    fifo=/run/tabs3-recovery-screen
+    rm -f "$fifo"
+    mkfifo -m 600 "$fifo"
+    exec 3<>"$fifo"
+    for ev in /sys/class/input/event*; do
+        dev=/dev/input/${ev##*/}
+        case "$(cat "$ev/device/name" 2>/dev/null)" in
+            pm8941_pwrkey)
+                # One 24-byte struct input_event per read: type, code, value
+                # are 16-bit words 9-11 (EV_KEY 1, KEY_POWER 116). A short
+                # press toggles the screen, a 3-second hold leaves recovery.
+                down=0
+                while :; do
+                    # shellcheck disable=SC2046
+                    set -- $(dd if="$dev" bs=24 count=1 2>/dev/null | od -An -v -tu2)
+                    if [ "${9:-}" != 1 ] || [ "${10:-}" != 116 ]; then continue; fi
+                    if [ "${11:-}" = 1 ]; then
+                        down=$(date +%s)
+                    elif [ "${11:-}" = 0 ] && [ "$down" != 0 ]; then
+                        if [ $(($(date +%s) - down)) -ge 3 ]; then echo leave >&3; else echo power >&3; fi
+                        down=0
+                    fi
+                done &
+                ;;
+            *Synaptics*|*s5807*)
+                while dd if="$dev" bs=4096 count=1 of=/dev/null 2>/dev/null; do
+                    echo touch >&3
+                    sleep 1
+                done &
+                ;;
+        esac
+    done
+    state=on
+    while :; do
+        # busybox ash supports read -t.
+        # shellcheck disable=SC3045
+        if read -r -t 600 event <&3; then
+            case "$event" in
+                leave)
+                    screen on
+                    if try_lock; then
+                        leave Rebooting
+                    else
+                        say 'Cannot leave while another operation runs; wait for it'
+                    fi
+                    ;;
+                power) if [ "$(cat "$panel_blank")" = 0 ]; then state=off; else state=on; fi ;;
+                touch) state=on ;;
+            esac
+        else
+            state=off
+        fi
+        screen "$state"
+    done
+}
+
+# Samsung's bootloader keeps booting recovery while the first word of its
+# param partition is 2 (seen on SM-T825); Samsung's recovery clears it when
+# it reboots. A reboot or forced reset without this lands in recovery again.
+clear_recovery_flag() {
+    param=$(part param)
+    [ "$(od -An -tx1 -N4 "$param" | tr -d ' \n')" = 02000000 ] || return 0
+    printf '\000\000\000\000' | dd of="$param" bs=4 count=1 conv=notrunc,fsync 2>/dev/null
+    echo 3 >/proc/sys/vm/drop_caches
+    [ "$(od -An -tx1 -N4 "$param" | tr -d ' \n')" = 00000000 ] || die 'could not clear the recovery flag'
+    say 'Samsung recovery flag cleared'
+}
+
+leave() {
+    if exported; then
+        say 'Stopping the USB export first'
+        storage_apply off
+    fi
+    if mounted; then umount "$mnt"; fi
+    clear_recovery_flag
+    sync
+    say "$1 ..."
+    if [ "$1" = Rebooting ]; then reboot -f; else poweroff -f; fi
+}
+
+enter_fastboot() {
+    if ! grep -qw 'tabs3.mode=recovery' /proc/cmdline && [ ! -f /run/tabs3-recovery-mode ]; then
+        die 'not running recovery'
+    fi
+    exported && die 'turn off USB storage export first'
+    if mounted; then umount "$mnt"; fi
+    . /usr/lib/tabs3/fastboot-request.sh
+    tabs3_fastboot_request arm || die 'could not arm fastboot'
+    sync
+    say 'Entering fastboot; idle timeout returns to recovery after 120 seconds'
+    # Also works from a RAM-booted recovery where Samsung's flag may be clear.
+    # PID 1 is our initramfs, so use RESTART2 directly rather than systemctl.
+    /usr/sbin/tabs3-reboot-recovery || {
+        tabs3_fastboot_request cancel
+        die 'recovery reboot failed'
+    }
+    tabs3_fastboot_request cancel
+    die 'reboot returned without restarting'
+}
+
+case "${1:-help}" in
+    status) status ;;
+    _status) status_kv ;;
+    mount) take_lock; mount_root "${2:-}" ;;
+    umount) take_lock; umount_root ;;
+    fsck) take_lock; fsck_root "${2:-}" ;;
+    storage) take_lock; storage "${2:-}" ;;
+    _storage) storage_apply "$2" ;;
+    flash-boot) take_lock; flash_boot "${2:-}" ;;
+    screen) screen "${2:-}" ;;
+    _screen) screen_daemon ;;
+    fastboot) take_lock; enter_fastboot ;;
+    reboot) take_lock; leave Rebooting ;;
+    poweroff) take_lock; leave 'Powering off' ;;
+    help|-h|--help) usage ;;
+    *) usage >&2; exit 1 ;;
+esac

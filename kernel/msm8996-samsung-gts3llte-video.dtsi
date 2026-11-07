@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Hardware video codec (Venus). TrustZone authenticates this tablet's own
+ * signed venus.mdt (apnhlos partition, tools/install-venus-firmware) inside
+ * the stock peripheral region (carveouts.dtsi).
+ */
+&venus {
+	firmware-name = "qcom/msm8996/samsung/gts3llte/venus.mdt";
+	status = "okay";
+};

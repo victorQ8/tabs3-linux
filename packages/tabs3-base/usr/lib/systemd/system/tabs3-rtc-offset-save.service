@@ -1,0 +1,8 @@
+[Unit]
+Description=Tab S3 LTE save the RTC offset
+Documentation=file:/usr/libexec/tabs3-rtc-offset
+After=time-sync.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/tabs3-rtc-offset save

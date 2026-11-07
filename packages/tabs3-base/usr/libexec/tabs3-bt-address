@@ -1,0 +1,46 @@
+#!/bin/sh
+set -eu
+
+# The QCA6174 has no Bluetooth address of its own, so the kernel registers an
+# unconfigured controller. Samsung keeps this tablet's address in the EFS
+# partition (/bluetooth/bt_addr). Read it once, read-only, cache it under /etc
+# and configure the controller at every boot. Only runs on gts3llte.
+tr '\000' '\n' < /sys/firmware/devicetree/base/compatible | grep -qx 'samsung,gts3llte' || exit 0
+command -v btmgmt >/dev/null || exit 0
+
+cache=/etc/tabs3/bt-address
+mac='^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$'
+if ! grep -qE "$mac" "$cache" 2>/dev/null; then
+    efs=/dev/disk/by-partlabel/efs
+    addr=$(debugfs -c -R 'cat /bluetooth/bt_addr' "$efs" 2>/dev/null | tr -d '\r\n ')
+    if ! printf '%s\n' "$addr" | grep -qE "$mac"; then
+        echo 'No Bluetooth address found in EFS' >&2
+        exit 1
+    fi
+    install -d -m 0755 /etc/tabs3
+    printf '%s\n' "$addr" > "$cache"
+fi
+addr=$(cat "$cache")
+
+# btmgmt is an interactive shell: with stdin at EOF (systemd's /dev/null) it
+# exits before the kernel replies, and it can also wait forever. Keep stdin
+# open for a bounded time instead.
+mgmt() {
+    sleep 3 | timeout 3 btmgmt "$@"
+}
+
+# hci0 appears before hci_qca finishes downloading firmware; retry until the
+# controller reports either configured or unconfigured.
+tries=0
+while :; do
+    tries=$((tries + 1))
+    [ "$tries" -le 30 ] || { echo 'Bluetooth controller did not become ready' >&2; exit 1; }
+    if mgmt info 2>/dev/null | grep -q '^hci0:'; then
+        exit 0
+    fi
+    if mgmt --index 0 config 2>/dev/null | grep -q 'missing options:.*public-address'; then
+        mgmt --index 0 public-addr "$addr"
+        exit 0
+    fi
+    sleep 1
+done

@@ -1,0 +1,957 @@
+Subject: [PATCH] ASoC: codecs: add Richtek RT5508 speaker amplifier
+
+The SM-T825 drives its four speakers with Richtek RT5508 mono class-D
+amplifiers on I2C, fed by the SoC's primary TDM interface. Mainline has no
+driver for them.
+
+Port the playback path of the vendor driver in Samsung's SM-T825 kernel:
+the probe-time reset and chip ID check, the general and revision-G
+register tables (the tablet's chips report revision 8), the temperature
+coefficient read from OTP, and the exact power-up and power-down sequences
+of the clock and boost/amplifier stages. The vendor's tuning loader,
+calibration (which programs OTP) and data output are left out; OTP is only
+ever read.
+
+The DAC volume powers up at 0 dB and the vendor driver never changes it;
+start at -40 dB instead and expose it as "DAC Volume". Registers only
+accept writes while the chip is out of power-down, so the volume, format
+and sample settings are kept in memory and applied at power-up.
+
+Assisted-by: Claude:claude-opus-5-5
+
+--- a/sound/soc/codecs/Kconfig
++++ b/sound/soc/codecs/Kconfig
+@@ -1728,6 +1728,15 @@
+ 	select REGMAP_SOUNDWIRE
+ 	select REGMAP_SOUNDWIRE_MBQ
+ 
++config SND_SOC_RT5508
++	tristate "Richtek RT5508 Mono Class-D Smart Amplifier"
++	depends on I2C
++	select REGMAP
++	help
++	  Enable support for the Richtek RT5508 mono class-D speaker
++	  amplifier with boost converter, controlled over I2C and fed by
++	  I2S or TDM. Only playback is supported.
++
+ config SND_SOC_RT5514
+ 	tristate
+ 	depends on I2C
+--- a/sound/soc/codecs/Makefile
++++ b/sound/soc/codecs/Makefile
+@@ -250,6 +250,7 @@
+ snd-soc-rt274-y := rt274.o
+ snd-soc-rt286-y := rt286.o
+ snd-soc-rt298-y := rt298.o
++snd-soc-rt5508-y := rt5508.o
+ snd-soc-rt5514-y := rt5514.o
+ snd-soc-rt5514-spi-y := rt5514-spi.o
+ snd-soc-rt5616-y := rt5616.o
+@@ -681,6 +682,7 @@
+ obj-$(CONFIG_SND_SOC_RT274)	+= snd-soc-rt274.o
+ obj-$(CONFIG_SND_SOC_RT286)	+= snd-soc-rt286.o
+ obj-$(CONFIG_SND_SOC_RT298)	+= snd-soc-rt298.o
++obj-$(CONFIG_SND_SOC_RT5508)	+= snd-soc-rt5508.o
+ obj-$(CONFIG_SND_SOC_RT5514)	+= snd-soc-rt5514.o
+ obj-$(CONFIG_SND_SOC_RT5514_SPI)	+= snd-soc-rt5514-spi.o
+ obj-$(CONFIG_SND_SOC_RT5514_SPI_BUILTIN)	+= snd-soc-rt5514-spi.o
+--- /dev/null
++++ b/sound/soc/codecs/rt5508.c
+@@ -0,0 +1,897 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Richtek RT5508 mono class-D smart amplifier
++ *
++ * Ported from the vendor driver in Samsung's SM-T825 kernel
++ * (Copyright (C) 2016 Richtek Technology Corp.). Only playback over I2S or
++ * TDM is supported, with the vendor's register setup: no speaker protection
++ * tuning, no calibration and no data output.
++ */
++
++#include <linux/bits.h>
++#include <linux/delay.h>
++#include <linux/i2c.h>
++#include <linux/module.h>
++#include <linux/of.h>
++#include <linux/regmap.h>
++#include <sound/pcm_params.h>
++#include <sound/soc.h>
++#include <sound/tlv.h>
++
++#define RT5508_REG_CHIPREV	0x00
++#define RT5508_REG_EVENTINFO	0x01
++#define RT5508_REG_CHIPEN	0x03
++#define RT5508_REG_AUDFMT	0x04
++#define RT5508_REG_AUDSR	0x05
++#define RT5508_REG_I2SSEL	0x06
++#define RT5508_REG_AMPCONF	0x15
++#define RT5508_REG_BST_MODE	0x1e
++#define RT5508_REG_BST_CONF1	0x22
++#define RT5508_REG_OCPOTPEN	0x26
++#define RT5508_REG_CALIB_CTRL	0x50
++#define RT5508_REG_VOLUME	0x5c
++#define RT5508_REG_SWRESET	0x80
++#define RT5508_REG_DSPKCONF4	0x85
++#define RT5508_REG_DSPKVMID	0x86
++#define RT5508_REG_DSPKEN1	0x8a
++#define RT5508_REG_DSPKCONF5	0x94
++#define RT5508_REG_OVPUVPCTRL	0x96
++#define RT5508_REG_PLLCONF1	0x97
++#define RT5508_REG_PLLDIVISOR	0x9c
++#define RT5508_REG_TDM_CTRL	0xb4
++#define RT5508_REG_ECO_CTRL	0xb5
++#define RT5508_REG_OTPCONF	0xc0
++#define RT5508_REG_OTPADDR	0xc1
++#define RT5508_REG_OTPDIN	0xc2
++#define RT5508_REG_VTEMP_TRIM	0xc4
++#define RT5508_REG_TCOEFF	0xc5
++#define RT5508_REG_CLKEN1	0xf4
++#define RT5508_REG_CLKEN2	0xf5
++#define RT5508_REG_MAX		0xf7
++
++#define RT5508_CHIPID_MASK	GENMASK(7, 4)
++#define RT5508_CHIP_ID		0xe0
++#define RT5508_CHIPREV_MASK	GENMASK(3, 0)
++#define RT5508_CHIP_REVG	6
++
++/* CHIPEN */
++#define RT5508_TRIWAVE_EN	BIT(5)
++#define RT5508_SPKAMP_EN_SHIFT	3
++#define RT5508_SPKMUTE		BIT(2)
++#define RT5508_CHIP_PD		BIT(0)
++
++/* AUDFMT: DSP mode [4], interface format [3:2], sample width [1:0] */
++#define RT5508_DSPMODE_B	BIT(4)
++#define RT5508_AUDFMT_MASK	GENMASK(3, 2)
++#define RT5508_AUDFMT_LEFTJ	(1 << 2)
++#define RT5508_AUDFMT_RIGHTJ	(2 << 2)
++#define RT5508_AUDBIT_MASK	GENMASK(1, 0)
++#define RT5508_AUDBIT_24	0
++#define RT5508_AUDBIT_20	1
++#define RT5508_AUDBIT_18	2
++#define RT5508_AUDBIT_16	3
++
++/* AUDSR: bit clock per frame [4:3], sample rate [2:0] */
++#define RT5508_BCKMODE_32FS	(0 << 3)
++#define RT5508_BCKMODE_48FS	(1 << 3)
++#define RT5508_BCKMODE_64FS	(2 << 3)
++
++#define RT5508_I2SLRSEL_MASK	GENMASK(3, 2)
++#define RT5508_I2SLRSEL_SHIFT	2
++
++/* TDM_CTRL */
++#define RT5508_TDM_EN		BIT(3)
++#define RT5508_TDM_ADCSLOT	BIT(2)
++#define RT5508_TDM_DACSLOT	BIT(1)
++
++/* OTPCONF: the only two commands this driver may write, both reads */
++#define RT5508_OTP_READ_FLAGS	0x80
++#define RT5508_OTP_READ_VTEMP	0x88
++
++#define RT5508_BST_MODE_OFF	0x08
++#define RT5508_BST_MODE_RAMP	0x09
++
++/* DAC volume: 0.5 dB steps of attenuation, 0x00 = 0 dB, 0xff = -127.5 dB */
++#define RT5508_VOLUME_MAX	255
++#define RT5508_VOLUME_DEFAULT	(RT5508_VOLUME_MAX - 80)	/* -40 dB */
++
++struct rt5508_priv {
++	struct device *dev;
++	struct regmap *regmap;
++	unsigned int chip_rev;
++	unsigned int bst_mode;
++	unsigned int volume;		/* control value, 0 = -127.5 dB */
++	unsigned int audsr;
++	unsigned int audfmt;
++	unsigned int audbit;
++	unsigned int pll_divider;
++	unsigned int channel;
++	bool tdm_mode;
++	bool dac_slot;
++	bool adc_slot;
++	bool powered;
++};
++
++struct rt5508_reg_config {
++	u8 reg;
++	u16 val;
++};
++
++/* Written in this order at probe; later entries override earlier ones. */
++static const struct rt5508_reg_config rt5508_general_config[] = {
++	{ 0x1e, 0x2b }, { 0x23, 0x34 }, { 0x1f, 0xbc }, { 0x20, 0x8a },
++	{ 0x21, 0x58 }, { 0x2c, 0x00 }, { 0x5b, 0x01 }, { 0x84, 0x14 },
++	{ 0x87, 0x10 }, { 0x88, 0x90 }, { 0x89, 0x14 }, { 0x90, 0x9b },
++	{ 0x91, 0x55 }, { 0x92, 0x55 }, { 0x93, 0x55 }, { 0x95, 0x40 },
++	{ 0x96, 0x00 }, { 0x98, 0x00 }, { 0x99, 0x0c }, { 0x9a, 0x1c },
++	{ 0x9d, 0x43 }, { 0x9e, 0x80 }, { 0x9f, 0x0c }, { 0xc5, 0x00 },
++	{ 0xc6, 0x03 }, { 0xc7, 0x00 }, { 0x10, 0x02 }, { 0x11, 0x80 },
++	{ 0x12, 0x80 }, { 0x13, 0x3bbb }, { 0x14, 0x7fff }, { 0x81, 0x99 },
++	{ 0x43, 0x22 }, { 0x44, 0xb1 }, { 0x45, 0x1a }, { 0x50, 0x3e },
++	{ 0xc3, 0x08 }, { 0x85, 0xdd }, { 0x8d, 0x60 },
++};
++
++/* Revision G and later (the SM-T825 has revision 8) */
++static const struct rt5508_reg_config rt5508_revg_config[] = {
++	{ 0x1e, 0x0b }, { 0x18, 0x0a }, { 0x1c, 0x7f }, { 0x1d, 0x80 },
++	{ 0x25, 0x10 }, { 0x28, 0x20 }, { 0x50, 0x0c }, { 0x5b, 0x00 },
++	{ 0x81, 0x9d }, { 0x86, 0x18 }, { 0x87, 0x02 }, { 0x92, 0x5d },
++	{ 0x93, 0x56 }, { 0x99, 0x00 }, { 0x9a, 0xdc }, { 0xa0, 0x28 },
++	{ 0xb4, 0x01 }, { 0xb5, 0x24 }, { 0x82, 0xc3 }, { 0x83, 0x45 },
++	{ 0xb3, 0x02 }, { 0x94, 0x15 }, { 0x14, 0x6c00 }, { 0x16, 0x48 },
++	{ 0x17, 0x10 }, { 0x19, 0x01b0 }, { 0x1a, 0x00 }, { 0x1f, 0xba },
++	{ 0x20, 0x97 }, { 0x21, 0x64 }, { 0x22, 0x05 }, { 0x23, 0x3a },
++	{ 0x24, 0xb1 }, { 0x2b, 0x30 }, { 0x2c, 0x7f },
++};
++
++static int rt5508_reg_size(unsigned int reg)
++{
++	switch (reg) {
++	case 0x12 ... 0x14:
++	case 0x19 ... 0x1a:
++	case 0x32:
++	case 0x34 ... 0x35:
++	case 0x49 ... 0x4a:
++	case 0x4f:
++	case 0x51 ... 0x52:
++	case 0x59 ... 0x5a:
++	case 0x8b ... 0x8c:
++	case 0x8f:
++	case 0xc1:
++	case 0xc4 ... 0xc5:
++	case 0xdf:
++		return 2;
++	case 0x46 ... 0x47:
++	case 0x4e:
++	case 0xa3 ... 0xb0:
++	case 0xc7:
++		return 3;
++	case 0x53 ... 0x54:
++	case 0x5d ... 0x5e:
++	case 0x74 ... 0x7d:
++	case 0x9c:
++	case 0xc2:
++		return 4;
++	default:
++		return 1;
++	}
++}
++
++/* Registers are big-endian and 1 to 4 bytes long; longer ones are left out. */
++static int rt5508_reg_read(void *context, unsigned int reg, unsigned int *val)
++{
++	struct i2c_client *i2c = context;
++	int size = rt5508_reg_size(reg);
++	u8 raw[4];
++	int ret, i;
++
++	ret = i2c_smbus_read_i2c_block_data(i2c, reg, size, raw);
++	if (ret < 0)
++		return ret;
++	if (ret != size)
++		return -EIO;
++
++	*val = 0;
++	for (i = 0; i < size; i++)
++		*val = *val << 8 | raw[i];
++	return 0;
++}
++
++static int rt5508_reg_write(void *context, unsigned int reg, unsigned int val)
++{
++	struct i2c_client *i2c = context;
++	int size = rt5508_reg_size(reg);
++	u8 raw[4];
++	int i;
++
++	for (i = size - 1; i >= 0; i--, val >>= 8)
++		raw[i] = val & 0xff;
++	return i2c_smbus_write_i2c_block_data(i2c, reg, size, raw);
++}
++
++static const struct regmap_range rt5508_readable_ranges[] = {
++	regmap_reg_range(0x00, 0x09),
++	regmap_reg_range(0x10, 0x2c),
++	regmap_reg_range(0x30, 0x35),
++	regmap_reg_range(0x38, 0x5e),
++	regmap_reg_range(0x74, 0xb5),
++	regmap_reg_range(0xc0, 0xc8),
++	regmap_reg_range(0xcf, 0xd0),
++	regmap_reg_range(0xdf, 0xdf),
++	regmap_reg_range(0xf0, 0xf7),
++};
++
++static const struct regmap_access_table rt5508_rd_table = {
++	.yes_ranges = rt5508_readable_ranges,
++	.n_yes_ranges = ARRAY_SIZE(rt5508_readable_ranges),
++};
++
++/*
++ * No test-mode registers (0xf0-0xf3, 0xf6, 0xf7), no calibration output and
++ * of the test-current registers (0x27-0x2a) only the one the revision G
++ * table sets.
++ */
++static const struct regmap_range rt5508_writeable_ranges[] = {
++	regmap_reg_range(0x03, 0x09),
++	regmap_reg_range(0x10, 0x26),
++	regmap_reg_range(0x28, 0x28),
++	regmap_reg_range(0x2b, 0x2c),
++	regmap_reg_range(0x30, 0x35),
++	regmap_reg_range(0x38, 0x50),
++	regmap_reg_range(0x55, 0x5c),
++	regmap_reg_range(0x80, 0xa0),
++	regmap_reg_range(0xb1, 0xb5),
++	regmap_reg_range(0xc0, 0xc1),
++	regmap_reg_range(0xc3, 0xc7),
++	regmap_reg_range(0xf4, 0xf5),
++};
++
++static const struct regmap_access_table rt5508_wr_table = {
++	.yes_ranges = rt5508_writeable_ranges,
++	.n_yes_ranges = ARRAY_SIZE(rt5508_writeable_ranges),
++};
++
++static const struct regmap_config rt5508_regmap_config = {
++	.reg_bits = 8,
++	.val_bits = 32,
++	.max_register = RT5508_REG_MAX,
++	.reg_read = rt5508_reg_read,
++	.reg_write = rt5508_reg_write,
++	.rd_table = &rt5508_rd_table,
++	.wr_table = &rt5508_wr_table,
++	.cache_type = REGCACHE_NONE,
++};
++
++static int rt5508_write_table(struct rt5508_priv *rt5508,
++			      const struct rt5508_reg_config *table, size_t n)
++{
++	size_t i;
++	int ret;
++
++	for (i = 0; i < n; i++) {
++		ret = regmap_write(rt5508->regmap, table[i].reg, table[i].val);
++		if (ret)
++			return ret;
++	}
++	return 0;
++}
++
++/* Register writes only take effect while CHIP_PD is clear. */
++static int rt5508_chip_power(struct rt5508_priv *rt5508, bool on)
++{
++	int ret;
++
++	ret = regmap_update_bits(rt5508->regmap, RT5508_REG_CHIPEN, RT5508_CHIP_PD,
++				 on ? 0 : RT5508_CHIP_PD);
++	if (ret)
++		return ret;
++	usleep_range(1000, 1500);
++	rt5508->powered = on;
++	return 0;
++}
++
++static unsigned int rt5508_volume_reg(unsigned int volume)
++{
++	return RT5508_VOLUME_MAX - volume;
++}
++
++static int rt5508_power_up(struct rt5508_priv *rt5508)
++{
++	int ret;
++
++	ret = rt5508_chip_power(rt5508, true);
++	if (ret)
++		return ret;
++	ret = regmap_write(rt5508->regmap, RT5508_REG_BST_MODE, rt5508->bst_mode);
++	if (ret)
++		return ret;
++	ret = regmap_write(rt5508->regmap, RT5508_REG_DSPKCONF4, 0xdd);
++	if (ret)
++		return ret;
++	return regmap_write(rt5508->regmap, RT5508_REG_VOLUME,
++			    rt5508_volume_reg(rt5508->volume));
++}
++
++static int rt5508_power_down(struct rt5508_priv *rt5508)
++{
++	int ret;
++
++	ret = regmap_write(rt5508->regmap, RT5508_REG_DSPKCONF4, 0x5d);
++	if (ret)
++		return ret;
++	ret = regmap_read(rt5508->regmap, RT5508_REG_BST_MODE, &rt5508->bst_mode);
++	if (ret)
++		return ret;
++	ret = regmap_write(rt5508->regmap, RT5508_REG_BST_MODE, RT5508_BST_MODE_OFF);
++	if (ret)
++		return ret;
++	return rt5508_chip_power(rt5508, false);
++}
++
++static int rt5508_set_bias_level(struct snd_soc_component *component,
++				 enum snd_soc_bias_level level)
++{
++	struct rt5508_priv *rt5508 = snd_soc_component_get_drvdata(component);
++
++	switch (level) {
++	case SND_SOC_BIAS_STANDBY:
++		if (snd_soc_component_get_bias_level(component) == SND_SOC_BIAS_OFF)
++			return rt5508_power_up(rt5508);
++		return 0;
++	case SND_SOC_BIAS_OFF:
++		return rt5508_power_down(rt5508);
++	default:
++		return 0;
++	}
++}
++
++static int rt5508_otp_read(struct rt5508_priv *rt5508, unsigned int addr,
++			   unsigned int cmd, unsigned int *val)
++{
++	int ret;
++
++	if (cmd != RT5508_OTP_READ_FLAGS && cmd != RT5508_OTP_READ_VTEMP)
++		return -EINVAL;
++	ret = regmap_write(rt5508->regmap, RT5508_REG_OTPADDR, addr);
++	if (ret)
++		return ret;
++	ret = regmap_write(rt5508->regmap, RT5508_REG_OTPCONF, cmd);
++	if (ret)
++		return ret;
++	return regmap_read(rt5508->regmap, RT5508_REG_OTPDIN, val);
++}
++
++/* Temperature-sense coefficient from the VTEMP trim in OTP, as the vendor does. */
++static int rt5508_tcsense_fix(struct rt5508_priv *rt5508)
++{
++	unsigned int val, vtemp, tc;
++	int i, j = -1, ret;
++
++	ret = regmap_read(rt5508->regmap, RT5508_REG_CALIB_CTRL, &val);
++	if (ret)
++		return ret;
++	if (val & BIT(4)) {
++		ret = regmap_read(rt5508->regmap, RT5508_REG_VTEMP_TRIM, &vtemp);
++		if (ret)
++			return ret;
++	} else {
++		/* The flags at 0x90-0x97 mark which VTEMP entry is the last one. */
++		for (i = 0; i < 8; i++) {
++			ret = rt5508_otp_read(rt5508, 0x97 - i, RT5508_OTP_READ_FLAGS, &val);
++			if (ret)
++				return ret;
++			for (j = 7; j >= 0; j--)
++				if (!(val & BIT(j)))
++					break;
++			if (j >= 0)
++				break;
++		}
++		if (i == 8) {
++			vtemp = 0x8000;
++		} else {
++			ret = rt5508_otp_read(rt5508, ((7 - i) * 8 + j) * 2 + 0x98,
++					      RT5508_OTP_READ_VTEMP, &vtemp);
++			if (ret)
++				return ret;
++		}
++	}
++	vtemp &= 0xffff;
++	if (!vtemp)
++		vtemp = 0x8000;
++
++	tc = (1073741824U / vtemp * 250 / 280) << 1;
++	if (tc & 0x10000)
++		tc = (tc & 0xffff) + 1;
++	tc &= 0xffff;
++	dev_dbg(rt5508->dev, "vtemp %04x, tc_sense %04x\n", vtemp, tc);
++	return regmap_write(rt5508->regmap, RT5508_REG_TCOEFF, tc);
++}
++
++static int rt5508_component_probe(struct snd_soc_component *component)
++{
++	struct rt5508_priv *rt5508 = snd_soc_component_get_drvdata(component);
++	unsigned int tdm;
++	int ret;
++
++	ret = rt5508_chip_power(rt5508, true);
++	if (ret)
++		return ret;
++	ret = rt5508_write_table(rt5508, rt5508_general_config,
++				 ARRAY_SIZE(rt5508_general_config));
++	if (!ret && rt5508->chip_rev >= RT5508_CHIP_REVG)
++		ret = rt5508_write_table(rt5508, rt5508_revg_config,
++					 ARRAY_SIZE(rt5508_revg_config));
++	if (ret)
++		goto err;
++
++	ret = regmap_update_bits(rt5508->regmap, RT5508_REG_I2SSEL, RT5508_I2SLRSEL_MASK,
++				 rt5508->channel << RT5508_I2SLRSEL_SHIFT);
++	if (ret)
++		goto err;
++	tdm = (rt5508->tdm_mode ? RT5508_TDM_EN : 0) |
++	      (rt5508->adc_slot ? RT5508_TDM_ADCSLOT : 0) |
++	      (rt5508->dac_slot ? RT5508_TDM_DACSLOT : 0);
++	ret = regmap_update_bits(rt5508->regmap, RT5508_REG_TDM_CTRL,
++				 RT5508_TDM_EN | RT5508_TDM_ADCSLOT | RT5508_TDM_DACSLOT, tdm);
++	if (ret)
++		goto err;
++
++	ret = rt5508_tcsense_fix(rt5508);
++	if (ret)
++		goto err;
++
++	/* Never left at the power-on default, which is 0 dB */
++	ret = regmap_write(rt5508->regmap, RT5508_REG_VOLUME,
++			   rt5508_volume_reg(rt5508->volume));
++	if (ret)
++		goto err;
++
++	return rt5508_power_down(rt5508);
++err:
++	dev_err(rt5508->dev, "setup failed: %d\n", ret);
++	rt5508_chip_power(rt5508, false);
++	return ret;
++}
++
++static int rt5508_clk_event(struct snd_soc_dapm_widget *w,
++			    struct snd_kcontrol *kcontrol, int event)
++{
++	struct snd_soc_component *component = snd_soc_dapm_to_component(w->dapm);
++	struct rt5508_priv *rt5508 = snd_soc_component_get_drvdata(component);
++	struct regmap *map = rt5508->regmap;
++	int ret;
++
++	switch (event) {
++	case SND_SOC_DAPM_PRE_PMU:
++		/* set_fmt, set_tdm_slot and hw_params may run with the chip off */
++		ret = regmap_write(map, RT5508_REG_AUDSR, rt5508->audsr);
++		if (!ret)
++			ret = regmap_update_bits(map, RT5508_REG_AUDFMT,
++						 RT5508_DSPMODE_B | RT5508_AUDFMT_MASK |
++						 RT5508_AUDBIT_MASK,
++						 rt5508->audfmt | rt5508->audbit);
++		if (!ret)
++			ret = regmap_update_bits(map, RT5508_REG_TDM_CTRL, RT5508_TDM_EN,
++						 rt5508->tdm_mode ? RT5508_TDM_EN : 0);
++		if (!ret)
++			ret = regmap_write(map, RT5508_REG_PLLDIVISOR, rt5508->pll_divider);
++		if (!ret)
++			ret = regmap_write(map, RT5508_REG_CLKEN1, 0xbf);
++		if (!ret)
++			ret = regmap_write(map, RT5508_REG_CLKEN2, 0x03);
++		return ret;
++	case SND_SOC_DAPM_POST_PMD:
++		ret = regmap_write(map, RT5508_REG_CLKEN2, 0x00);
++		if (!ret)
++			ret = regmap_write(map, RT5508_REG_CLKEN1, 0x00);
++		return ret;
++	default:
++		return 0;
++	}
++}
++
++static const struct rt5508_reg_config rt5508_amp_on[] = {
++	{ RT5508_REG_BST_MODE, RT5508_BST_MODE_RAMP },
++	{ RT5508_REG_DSPKCONF5, 0x55 },
++	{ RT5508_REG_DSPKVMID, 0x98 },
++	{ RT5508_REG_DSPKEN1, 0xc3 },
++	{ RT5508_REG_AMPCONF, 0xb8 },
++	{ RT5508_REG_BST_CONF1, 0x85 },
++	{ RT5508_REG_OCPOTPEN, 0x03 },
++};
++
++static const struct rt5508_reg_config rt5508_amp_off[] = {
++	{ RT5508_REG_CHIPEN, 0x00 },
++	{ RT5508_REG_AMPCONF, 0x00 },
++	{ RT5508_REG_DSPKEN1, 0x03 },
++	{ RT5508_REG_DSPKVMID, 0x18 },
++	{ RT5508_REG_DSPKCONF5, 0x15 },
++	{ RT5508_REG_BST_CONF1, 0x05 },
++};
++
++/* The vendor's amplifier and boost ramp, step for step */
++static int rt5508_boost_event(struct snd_soc_dapm_widget *w,
++			      struct snd_kcontrol *kcontrol, int event)
++{
++	struct snd_soc_component *component = snd_soc_dapm_to_component(w->dapm);
++	struct rt5508_priv *rt5508 = snd_soc_component_get_drvdata(component);
++	struct regmap *map = rt5508->regmap;
++	unsigned int ovpuvp = rt5508->chip_rev >= RT5508_CHIP_REVG ? 0xe0 : 0xc0;
++	unsigned int event_info;
++	int ret;
++
++	switch (event) {
++	case SND_SOC_DAPM_PRE_PMU:
++		ret = regmap_read(map, RT5508_REG_BST_MODE, &rt5508->bst_mode);
++		if (!ret)
++			ret = rt5508_write_table(rt5508, rt5508_amp_on,
++						 ARRAY_SIZE(rt5508_amp_on));
++		if (!ret)
++			ret = regmap_write(map, RT5508_REG_OVPUVPCTRL, ovpuvp);
++		/* Triangle wave on; protection, mute and power-down bits clear */
++		if (!ret)
++			ret = regmap_write(map, RT5508_REG_CHIPEN, RT5508_TRIWAVE_EN);
++		return ret;
++	case SND_SOC_DAPM_POST_PMU:
++		usleep_range(5000, 5500);
++		ret = regmap_write(map, RT5508_REG_CLKEN1, 0xff);
++		if (!ret)
++			ret = regmap_write(map, RT5508_REG_BST_MODE, rt5508->bst_mode);
++		if (!ret)
++			ret = regmap_write(map, RT5508_REG_ECO_CTRL, 0x64);
++		if (!ret && !regmap_read(map, RT5508_REG_EVENTINFO, &event_info) &&
++		    (event_info & (BIT(7) | BIT(6))) != (BIT(7) | BIT(6)))
++			dev_warn(rt5508->dev, "bit clock or PLL not locked: %02x\n",
++				 event_info);
++		return ret;
++	case SND_SOC_DAPM_PRE_PMD:
++		ret = regmap_write(map, RT5508_REG_ECO_CTRL, 0x24);
++		if (!ret)
++			ret = regmap_write(map, RT5508_REG_BST_CONF1, 0xb5);
++		if (!ret)
++			ret = regmap_read(map, RT5508_REG_BST_MODE, &rt5508->bst_mode);
++		if (!ret)
++			ret = regmap_write(map, RT5508_REG_BST_MODE, RT5508_BST_MODE_RAMP);
++		if (!ret)
++			ret = regmap_write(map, RT5508_REG_CLKEN1, 0xbf);
++		if (!ret)
++			ret = regmap_write(map, RT5508_REG_OVPUVPCTRL, 0x00);
++		if (!ret)
++			ret = regmap_write(map, RT5508_REG_OCPOTPEN, 0x00);
++		return ret;
++	case SND_SOC_DAPM_POST_PMD:
++		usleep_range(5000, 5500);
++		ret = rt5508_write_table(rt5508, rt5508_amp_off, ARRAY_SIZE(rt5508_amp_off));
++		if (!ret)
++			ret = regmap_write(map, RT5508_REG_BST_MODE, rt5508->bst_mode);
++		return ret;
++	default:
++		return 0;
++	}
++}
++
++static const struct snd_soc_dapm_widget rt5508_dapm_widgets[] = {
++	SND_SOC_DAPM_DAC("DAC", NULL, SND_SOC_NOPM, 0, 0),
++	SND_SOC_DAPM_PGA("PGA", SND_SOC_NOPM, 0, 0, NULL, 0),
++	SND_SOC_DAPM_OUT_DRV_E("BOOST", RT5508_REG_CHIPEN, RT5508_SPKAMP_EN_SHIFT, 0,
++			       NULL, 0, rt5508_boost_event,
++			       SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMU |
++			       SND_SOC_DAPM_PRE_PMD | SND_SOC_DAPM_POST_PMD),
++	/* PLLCONF1 bit 0 powers the clocks down */
++	SND_SOC_DAPM_SUPPLY("CLK", RT5508_REG_PLLCONF1, 0, 1, rt5508_clk_event,
++			    SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
++	SND_SOC_DAPM_OUTPUT("SPK"),
++};
++
++static const struct snd_soc_dapm_route rt5508_dapm_routes[] = {
++	{ "DAC", NULL, "AIF Playback" },
++	{ "DAC", NULL, "CLK" },
++	{ "PGA", NULL, "DAC" },
++	{ "BOOST", NULL, "PGA" },
++	{ "SPK", NULL, "BOOST" },
++};
++
++static int rt5508_volume_get(struct snd_kcontrol *kcontrol,
++			     struct snd_ctl_elem_value *ucontrol)
++{
++	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
++	struct rt5508_priv *rt5508 = snd_soc_component_get_drvdata(component);
++
++	ucontrol->value.integer.value[0] = rt5508->volume;
++	return 0;
++}
++
++/* Kept in memory and applied at power-up: writes need the chip powered. */
++static int rt5508_volume_put(struct snd_kcontrol *kcontrol,
++			     struct snd_ctl_elem_value *ucontrol)
++{
++	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
++	struct rt5508_priv *rt5508 = snd_soc_component_get_drvdata(component);
++	unsigned int volume = ucontrol->value.integer.value[0];
++	int ret;
++
++	if (volume > RT5508_VOLUME_MAX)
++		return -EINVAL;
++	if (volume == rt5508->volume)
++		return 0;
++	rt5508->volume = volume;
++	if (rt5508->powered) {
++		ret = regmap_write(rt5508->regmap, RT5508_REG_VOLUME,
++				   rt5508_volume_reg(volume));
++		if (ret)
++			return ret;
++	}
++	return 1;
++}
++
++static const DECLARE_TLV_DB_SCALE(rt5508_volume_tlv, -12750, 50, 1);
++
++static const struct snd_kcontrol_new rt5508_controls[] = {
++	SOC_SINGLE_EXT_TLV("DAC Volume", SND_SOC_NOPM, 0, RT5508_VOLUME_MAX, 0,
++			   rt5508_volume_get, rt5508_volume_put, rt5508_volume_tlv),
++};
++
++static const struct snd_soc_component_driver rt5508_component_driver = {
++	.probe = rt5508_component_probe,
++	.set_bias_level = rt5508_set_bias_level,
++	.controls = rt5508_controls,
++	.num_controls = ARRAY_SIZE(rt5508_controls),
++	.dapm_widgets = rt5508_dapm_widgets,
++	.num_dapm_widgets = ARRAY_SIZE(rt5508_dapm_widgets),
++	.dapm_routes = rt5508_dapm_routes,
++	.num_dapm_routes = ARRAY_SIZE(rt5508_dapm_routes),
++	.endianness = 1,
++};
++
++static int rt5508_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
++{
++	struct rt5508_priv *rt5508 = snd_soc_component_get_drvdata(dai->component);
++	unsigned int val;
++
++	if ((fmt & SND_SOC_DAIFMT_CLOCK_PROVIDER_MASK) != SND_SOC_DAIFMT_CBC_CFC)
++		return -EINVAL;
++
++	switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
++	case SND_SOC_DAIFMT_I2S:
++	case SND_SOC_DAIFMT_DSP_A:
++		val = 0;
++		break;
++	case SND_SOC_DAIFMT_LEFT_J:
++		val = RT5508_AUDFMT_LEFTJ;
++		break;
++	case SND_SOC_DAIFMT_RIGHT_J:
++		val = RT5508_AUDFMT_RIGHTJ;
++		break;
++	case SND_SOC_DAIFMT_DSP_B:
++		val = RT5508_DSPMODE_B;
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	rt5508->audfmt = val;
++	return 0;
++}
++
++static int rt5508_hw_params(struct snd_pcm_substream *substream,
++			    struct snd_pcm_hw_params *params, struct snd_soc_dai *dai)
++{
++	struct rt5508_priv *rt5508 = snd_soc_component_get_drvdata(dai->component);
++	unsigned int audsr, audbit, divider;
++
++	switch (params_format(params)) {
++	case SNDRV_PCM_FORMAT_S16_LE:
++		audsr = RT5508_BCKMODE_32FS;
++		audbit = RT5508_AUDBIT_16;
++		divider = 0x00100000;
++		break;
++	case SNDRV_PCM_FORMAT_S24_3LE:
++		audsr = RT5508_BCKMODE_48FS;
++		audbit = RT5508_AUDBIT_24;
++		divider = 0x000c0000;
++		break;
++	case SNDRV_PCM_FORMAT_S32_LE:
++		audsr = RT5508_BCKMODE_64FS;
++		audbit = RT5508_AUDBIT_24;
++		divider = 0x00080000;
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	switch (params_rate(params)) {
++	case 8000:
++		audsr |= 0;
++		divider *= 6;
++		break;
++	case 11025:
++	case 12000:
++		audsr |= 1;
++		divider *= 4;
++		break;
++	case 16000:
++		audsr |= 2;
++		divider *= 3;
++		break;
++	case 22050:
++	case 24000:
++		audsr |= 3;
++		divider *= 2;
++		break;
++	case 32000:
++		audsr |= 4;
++		divider = divider * 3 / 2;
++		break;
++	case 44100:
++	case 48000:
++		audsr |= 5;
++		break;
++	case 88200:
++	case 96000:
++		audsr |= 6;
++		divider /= 2;
++		break;
++	case 176400:
++	case 192000:
++		audsr |= 7;
++		divider /= 4;
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	/* The bit clock carries twice the samples in TDM mode */
++	if (rt5508->tdm_mode)
++		divider /= 2;
++
++	rt5508->audsr = audsr;
++	rt5508->audbit = audbit;
++	rt5508->pll_divider = divider;
++	return 0;
++}
++
++static int rt5508_set_tdm_slot(struct snd_soc_dai *dai, unsigned int tx_mask,
++			       unsigned int rx_mask, int slots, int slot_width)
++{
++	struct rt5508_priv *rt5508 = snd_soc_component_get_drvdata(dai->component);
++
++	/* The slot comes from the device tree; only 4-slot TDM exists. */
++	if (slots && slots != 4)
++		return -EINVAL;
++	rt5508->tdm_mode = slots == 4;
++	return 0;
++}
++
++static int rt5508_mute_stream(struct snd_soc_dai *dai, int mute, int stream)
++{
++	struct rt5508_priv *rt5508 = snd_soc_component_get_drvdata(dai->component);
++
++	if (!rt5508->powered)
++		return 0;
++	return regmap_update_bits(rt5508->regmap, RT5508_REG_CHIPEN, RT5508_SPKMUTE,
++				  mute ? RT5508_SPKMUTE : 0);
++}
++
++static const struct snd_soc_dai_ops rt5508_dai_ops = {
++	.set_fmt = rt5508_set_fmt,
++	.hw_params = rt5508_hw_params,
++	.set_tdm_slot = rt5508_set_tdm_slot,
++	.mute_stream = rt5508_mute_stream,
++	.no_capture_mute = 1,
++};
++
++static struct snd_soc_dai_driver rt5508_dai = {
++	.name = "rt5508-aif",
++	.playback = {
++		.stream_name = "AIF Playback",
++		.channels_min = 1,
++		.channels_max = 2,
++		.rates = SNDRV_PCM_RATE_8000_192000,
++		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_3LE |
++			   SNDRV_PCM_FMTBIT_S32_LE,
++	},
++	.ops = &rt5508_dai_ops,
++};
++
++static int rt5508_chip_init(struct rt5508_priv *rt5508)
++{
++	unsigned int val;
++	int ret;
++
++	ret = rt5508_chip_power(rt5508, true);
++	if (ret)
++		return ret;
++	ret = regmap_update_bits(rt5508->regmap, RT5508_REG_SWRESET, BIT(7), BIT(7));
++	if (ret)
++		return ret;
++	msleep(30);
++	ret = rt5508_chip_power(rt5508, true);
++	if (ret)
++		return ret;
++
++	ret = regmap_read(rt5508->regmap, RT5508_REG_CHIPREV, &val);
++	if (ret)
++		return ret;
++	if ((val & RT5508_CHIPID_MASK) != RT5508_CHIP_ID)
++		return dev_err_probe(rt5508->dev, -ENODEV, "unknown chip ID %02x\n", val);
++	rt5508->chip_rev = val & RT5508_CHIPREV_MASK;
++	dev_info(rt5508->dev, "RT5508 revision %u\n", rt5508->chip_rev);
++
++	/* Triangle wave and all digital clocks off */
++	ret = regmap_update_bits(rt5508->regmap, RT5508_REG_CHIPEN, RT5508_TRIWAVE_EN, 0);
++	if (!ret)
++		ret = regmap_write(rt5508->regmap, RT5508_REG_CLKEN1, 0x00);
++	if (!ret)
++		ret = regmap_update_bits(rt5508->regmap, RT5508_REG_CLKEN2, 0x03, 0);
++	if (ret)
++		return ret;
++	return rt5508_chip_power(rt5508, false);
++}
++
++static int rt5508_i2c_probe(struct i2c_client *i2c)
++{
++	struct device *dev = &i2c->dev;
++	struct rt5508_priv *rt5508;
++	u32 val;
++	int ret;
++
++	if (!i2c_check_functionality(i2c->adapter, I2C_FUNC_SMBUS_I2C_BLOCK))
++		return -EOPNOTSUPP;
++
++	rt5508 = devm_kzalloc(dev, sizeof(*rt5508), GFP_KERNEL);
++	if (!rt5508)
++		return -ENOMEM;
++	rt5508->dev = dev;
++	rt5508->volume = RT5508_VOLUME_DEFAULT;
++	i2c_set_clientdata(i2c, rt5508);
++
++	rt5508->tdm_mode = device_property_read_bool(dev, "richtek,tdm-mode");
++	rt5508->dac_slot = !device_property_read_u32(dev, "richtek,tdm-dac-slot", &val) && val;
++	rt5508->adc_slot = !device_property_read_u32(dev, "richtek,tdm-adc-slot", &val) && val;
++	rt5508->channel = 1;	/* (left + right) / 2 */
++	if (!device_property_read_u32(dev, "richtek,channel", &val)) {
++		if (val > 2)
++			return dev_err_probe(dev, -EINVAL, "richtek,channel must be 0-2\n");
++		rt5508->channel = val;
++	}
++	/* Stock operating point until hw_params: 48 kHz, 16 bit */
++	rt5508->audsr = RT5508_BCKMODE_32FS | 5;
++	rt5508->audbit = RT5508_AUDBIT_16;
++	rt5508->pll_divider = rt5508->tdm_mode ? 0x00080000 : 0x00100000;
++
++	rt5508->regmap = devm_regmap_init(dev, NULL, i2c, &rt5508_regmap_config);
++	if (IS_ERR(rt5508->regmap))
++		return dev_err_probe(dev, PTR_ERR(rt5508->regmap), "regmap init failed\n");
++
++	ret = rt5508_chip_init(rt5508);
++	if (ret)
++		return dev_err_probe(dev, ret, "chip init failed\n");
++
++	return devm_snd_soc_register_component(dev, &rt5508_component_driver,
++					       &rt5508_dai, 1);
++}
++
++static const struct of_device_id rt5508_of_match[] = {
++	{ .compatible = "richtek,rt5508" },
++	{ }
++};
++MODULE_DEVICE_TABLE(of, rt5508_of_match);
++
++static const struct i2c_device_id rt5508_i2c_id[] = {
++	{ "rt5508" },
++	{ }
++};
++MODULE_DEVICE_TABLE(i2c, rt5508_i2c_id);
++
++static struct i2c_driver rt5508_i2c_driver = {
++	.driver = {
++		.name = "rt5508",
++		.of_match_table = rt5508_of_match,
++	},
++	.probe = rt5508_i2c_probe,
++	.id_table = rt5508_i2c_id,
++};
++module_i2c_driver(rt5508_i2c_driver);
++
++MODULE_DESCRIPTION("Richtek RT5508 speaker amplifier driver");
++MODULE_LICENSE("GPL");

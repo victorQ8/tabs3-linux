@@ -1,0 +1,19 @@
+patch	old_numbers	on_v6.19.5-msm8996	on_v6.18.56+base	on_v7.2.10+base	upstream_status(7.3-rc7)	action
+port-0001 gts3lwifi DTS	port	applies	applies exact	CONFLICT dts/qcom/Makefile context (1 line)	not upstream	keep; refresh Makefile hunk for 7.x
+port-0002 AMS968HH01 driver	port	applies	applies (offset)	applies (offset) but BUILD ERROR: drm_panel_init() static since v7.2 (fe417df954a)	not upstream	convert probe to devm_drm_panel_alloc() (also valid on 6.18)
+port-0003 MDP5 bonded split	port	applies	applies exact	applies (offset x12)	not upstream	inert with msm.prefer_mdp5=0 (DPU); optional drop
+0004 DPU CTL split + fbdev VIRTFB	0004	applies	applies (offset)	applies exact	fbdev hunk = ea9dadeac79 (v7.3-rc4, not in 6.18.y/7.2.y); CTL hunk not upstream	keep; drop fbdev hunk once base >= 7.3
+0005 DSI defer continuous clock	0028+0029+0030	applies	applies (offset) ONLY with community 9825cdf0; on vanilla 6.18.56 only with fuzz (wrong context: put_pm/dsi_mgr_power_on)	applies (offset) with 9825cdf0	not upstream	keep + carry base/0001 (community DSI PM)
+0006 panel complete	0005-0015,0018,0019,0023,0025-0027,0031 (+panel parts of 0028/0029)	applies	applies (offset)	applies (offset); needs the 0002 devm_drm_panel_alloc fix to build	not upstream	keep
+0007 pcie qcom,ep-latency	0016	applies	applies (offset)	CONFLICT: qcom_ep_reset_deassert() renamed qcom_pcie_perst_deassert() (8d8db7dbf21, v7.0)	not upstream	keep (bring-up); 10-line port for 7.x
+0008 QMP PCIe v3 tables	0017	applies	applies exact	applies but BUILD ERROR: QSERDES_COM_*/QSERDES_RX_* renamed QSERDES_V2_* (764f409b840, c7cd4798faf, v7.2); 51 macros, values identical	not upstream	keep; mechanical rename for 7.2+
+0009 SM5705 FG+charger	0020	applies	applies exact	applies (offset)	not upstream	keep
+0010 SM5705 input limit	0021	applies	applies exact	applies exact	not upstream	keep
+0011 SM5705 thermal	0022	applies	applies exact	applies (offset)	not upstream	keep
+0012 SM5705 inhibit	0024	applies	applies exact	applies exact	not upstream	keep
+0013 SM5705 OTG VBUS	0038	applies	applies exact	applies exact	not upstream	keep (+ base/0002 dwc3 VBUS, base/0005 role switch on 6.18)
+0014 shared global-VM mappings	0032+0033	applies	applies (offset)	msm_gem.c applies; msm_gem.h hunk CONFLICT (context: msm_gem_mmap_offset removed, 3f6cf0653f8); git 3-way merge clean	not upstream (bug still in 7.3-rc7 and drm/msm msm-next 2026-10-05)	keep; regenerate with -U3; upstream candidate
+0015 tm2-touchkey TC305K	0034	applies	applies exact	applies exact	not upstream (7.3-rc7 has tc360 only)	keep
+0016 apq8096 BE S16_LE	0035	applies	applies exact	applies (offset)	not upstream	keep
+0017 q6asm-dai backport	0036	applies	ALREADY APPLIED: v6.18.35 c4609fff066/35be14ea829/90983f841df	ALREADY APPLIED (v7.1-rc6: cee3e63e7106, 048c540ee76d, 4b4db09f283d)	upstream	DROP
+0018 q6asm capture pause/flush	0037	applies	applies (offset)	applies (offset)	not upstream	keep

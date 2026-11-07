@@ -1,0 +1,5 @@
+NAME=tabS3
+VERSION=0.1.35
+BASE=debian-trixie
+DEVICE=gts3llte
+STATUS=experimental-hardware-bringup

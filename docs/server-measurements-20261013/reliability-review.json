@@ -1,0 +1,321 @@
+{
+  "recorded_utc": "2026-10-13T12:11:23Z",
+  "method": "Read-only SSH inspection of installed package 55; no reboot, load test or device setting change",
+  "kernel_package": "6.18.56-55",
+  "base_package": "0.1.13",
+  "power": {
+    "sm5705-charger": {
+      "input_current_limit": "500000",
+      "online": "1",
+      "type": "USB",
+      "health": "Good",
+      "status": "Full",
+      "temp": "325",
+      "constant_charge_voltage": "4380000",
+      "constant_charge_current": "1500000",
+      "usb_type": "Unknown [SDP] DCP CDP"
+    },
+    "sm5705-battery": {
+      "charge_full_design": "6000000",
+      "current_now": "151367",
+      "type": "Battery",
+      "capacity": "100",
+      "voltage_now": "4371582",
+      "status": "Full",
+      "temp": "285"
+    }
+  },
+  "thermal": {
+    "thermal_zone2": {
+      "type": "sm5705-battery",
+      "temp": "28500",
+      "trips": {},
+      "cooling_links": {}
+    },
+    "thermal_zone16": {
+      "type": "gpu-bottom-thermal",
+      "temp": "35700",
+      "trips": {
+        "trip_point_0_type": "passive",
+        "trip_point_0_temp": "90000"
+      },
+      "cooling_links": {
+        "cdev0": "cooling_device2"
+      }
+    },
+    "thermal_zone0": {
+      "type": "sm5705-charger",
+      "temp": "32500",
+      "trips": {},
+      "cooling_links": {}
+    },
+    "thermal_zone14": {
+      "type": "modemtx-thermal",
+      "temp": "35700",
+      "trips": {
+        "trip_point_0_type": "hot",
+        "trip_point_0_temp": "90000"
+      },
+      "cooling_links": {}
+    },
+    "thermal_zone9": {
+      "type": "cpu3-thermal",
+      "temp": "39800",
+      "trips": {
+        "trip_point_2_type": "critical",
+        "trip_point_1_type": "passive",
+        "trip_point_2_temp": "110000",
+        "trip_point_0_type": "passive",
+        "trip_point_1_temp": "90000",
+        "trip_point_0_temp": "85000"
+      },
+      "cooling_links": {
+        "cdev1": "cooling_device1",
+        "cdev0": "cooling_device1"
+      }
+    },
+    "thermal_zone12": {
+      "type": "q6-dsp-thermal",
+      "temp": "36700",
+      "trips": {
+        "trip_point_0_type": "hot",
+        "trip_point_0_temp": "90000"
+      },
+      "cooling_links": {}
+    },
+    "thermal_zone7": {
+      "type": "cluster0-l2-thermal",
+      "temp": "39200",
+      "trips": {
+        "trip_point_0_type": "hot",
+        "trip_point_0_temp": "90000"
+      },
+      "cooling_links": {}
+    },
+    "thermal_zone10": {
+      "type": "cluster1-l2-thermal",
+      "temp": "40100",
+      "trips": {
+        "trip_point_0_type": "hot",
+        "trip_point_0_temp": "90000"
+      },
+      "cooling_links": {}
+    },
+    "thermal_zone5": {
+      "type": "cpu0-thermal",
+      "temp": "39500",
+      "trips": {
+        "trip_point_2_type": "critical",
+        "trip_point_1_type": "passive",
+        "trip_point_2_temp": "110000",
+        "trip_point_0_type": "passive",
+        "trip_point_1_temp": "90000",
+        "trip_point_0_temp": "85000"
+      },
+      "cooling_links": {
+        "cdev1": "cooling_device0",
+        "cdev0": "cooling_device0"
+      }
+    },
+    "thermal_zone3": {
+      "type": "m4m-thermal",
+      "temp": "38800",
+      "trips": {
+        "trip_point_0_type": "hot",
+        "trip_point_0_temp": "90000"
+      },
+      "cooling_links": {}
+    },
+    "thermal_zone1": {
+      "type": "pm8994-thermal",
+      "temp": "34790",
+      "trips": {
+        "trip_point_1_type": "critical",
+        "trip_point_0_type": "passive",
+        "trip_point_1_temp": "125000",
+        "trip_point_0_temp": "95000"
+      },
+      "cooling_links": {}
+    },
+    "thermal_zone15": {
+      "type": "gpu-top-thermal",
+      "temp": "34400",
+      "trips": {
+        "trip_point_0_type": "passive",
+        "trip_point_0_temp": "90000"
+      },
+      "cooling_links": {
+        "cdev0": "cooling_device2"
+      }
+    },
+    "thermal_zone13": {
+      "type": "mem-thermal",
+      "temp": "36000",
+      "trips": {
+        "trip_point_0_type": "hot",
+        "trip_point_0_temp": "90000"
+      },
+      "cooling_links": {}
+    },
+    "thermal_zone8": {
+      "type": "cpu2-thermal",
+      "temp": "39200",
+      "trips": {
+        "trip_point_2_type": "critical",
+        "trip_point_1_type": "passive",
+        "trip_point_2_temp": "110000",
+        "trip_point_0_type": "passive",
+        "trip_point_1_temp": "90000",
+        "trip_point_0_temp": "85000"
+      },
+      "cooling_links": {
+        "cdev1": "cooling_device1",
+        "cdev0": "cooling_device1"
+      }
+    },
+    "thermal_zone11": {
+      "type": "camera-thermal",
+      "temp": "36300",
+      "trips": {
+        "trip_point_0_type": "hot",
+        "trip_point_0_temp": "90000"
+      },
+      "cooling_links": {}
+    },
+    "thermal_zone6": {
+      "type": "cpu1-thermal",
+      "temp": "41400",
+      "trips": {
+        "trip_point_2_type": "critical",
+        "trip_point_1_type": "passive",
+        "trip_point_2_temp": "110000",
+        "trip_point_0_type": "passive",
+        "trip_point_1_temp": "90000",
+        "trip_point_0_temp": "85000"
+      },
+      "cooling_links": {
+        "cdev1": "cooling_device0",
+        "cdev0": "cooling_device0"
+      }
+    },
+    "thermal_zone4": {
+      "type": "l3-or-venus-thermal",
+      "temp": "37600",
+      "trips": {
+        "trip_point_0_type": "hot",
+        "trip_point_0_temp": "90000"
+      },
+      "cooling_links": {}
+    }
+  },
+  "cooling": {
+    "cooling_device1": {
+      "type": "cpufreq-cpu2",
+      "cur_state": "0",
+      "max_state": "24"
+    },
+    "cooling_device2": {
+      "type": "devfreq-b00000.gpu",
+      "cur_state": "0",
+      "max_state": "6"
+    },
+    "cooling_device0": {
+      "type": "cpufreq-cpu0",
+      "cur_state": "0",
+      "max_state": "15"
+    },
+    "cooling_device3": {
+      "type": "ath10k_thermal",
+      "cur_state": "0",
+      "max_state": "100"
+    }
+  },
+  "iio": {
+    "iio:device1": "qcom-smgr-accel",
+    "iio:device0": "400f000.spmi:pmic@0:adc@3100"
+  },
+  "remoteproc": {
+    "remoteproc2": {
+      "name": "adsp",
+      "state": "running"
+    },
+    "remoteproc0": {
+      "name": "slpi",
+      "state": "running"
+    },
+    "remoteproc1": {
+      "name": "2080000.remoteproc",
+      "state": "running"
+    }
+  },
+  "kernel_config": "CONFIG_RCU_STALL_COMMON=y\n# CONFIG_ARM_PSCI_CPUIDLE is not set\nCONFIG_WATCHDOG=y\nCONFIG_WATCHDOG_CORE=y\n# CONFIG_WATCHDOG_NOWAYOUT is not set\nCONFIG_WATCHDOG_HANDLE_BOOT_ENABLED=y\nCONFIG_WATCHDOG_OPEN_TIMEOUT=0\n# CONFIG_WATCHDOG_SYSFS is not set\n# CONFIG_WATCHDOG_HRTIMER_PRETIMEOUT is not set\n# CONFIG_WATCHDOG_PRETIMEOUT_GOV is not set\nCONFIG_QCOM_WDT=y\nCONFIG_PSTORE=y\nCONFIG_PSTORE_DEFAULT_KMSG_BYTES=10240\nCONFIG_PSTORE_COMPRESS=y\nCONFIG_PSTORE_CONSOLE=y\nCONFIG_PSTORE_PMSG=y\n# CONFIG_PSTORE_FTRACE is not set\nCONFIG_PSTORE_RAM=y\n# CONFIG_PSTORE_BLK is not set\n# CONFIG_CRYPTO_DEV_QCOM_RNG is not set\n# CONFIG_PANIC_ON_OOPS is not set\nCONFIG_PANIC_TIMEOUT=0\n# CONFIG_SOFTLOCKUP_DETECTOR is not set\n# CONFIG_HARDLOCKUP_DETECTOR is not set\n# CONFIG_DETECT_HUNG_TASK is not set",
+  "unused_power_boot_flags": [
+    "clk_ignore_unused",
+    "pd_ignore_unused",
+    "loglevel=8",
+    "ignore_loglevel",
+    "panic=30"
+  ],
+  "rng": "256\n[    5.824684] random: crng init done",
+  "persistent_journal": {
+    "present": true,
+    "size": "Archived and active journals take up 388.3M in the file system."
+  },
+  "pstore": {
+    "platform_nodes": [
+      "84b00000.ramoops"
+    ],
+    "current_files": [],
+    "archives": {
+      "console-ramoops-0": {
+        "size": 43797,
+        "mtime": 1791892557.723345,
+        "fatal_lines": []
+      },
+      "dmesg-ramoops-0": {
+        "size": 81336,
+        "mtime": 1791633454.055845,
+        "fatal_lines": []
+      }
+    },
+    "note": "Archived console includes visibly damaged bytes; no captured panic identifies the package-57 reset."
+  },
+  "software_lockup_detection": "SOFTLOCKUP_DETECTOR, HARDLOCKUP_DETECTOR and DETECT_HUNG_TASK disabled",
+  "hardware_watchdog": "No registered watchdog on installed kernel; RuntimeWatchdogUSec=0",
+  "storage": {
+    "filesystem": "/ ext4 rw,noatime",
+    "health": "Filesystem features:      has_journal ext_attr resize_inode dir_index filetype needs_recovery extent flex_bg sparse_super large_file huge_file dir_nlink extra_isize metadata_csum\nFilesystem state:         clean\nErrors behavior:          Continue\nLast checked:             Sat Oct 10 14:16:04 2026\nLifetime writes:          26 GB",
+    "fstrim_timer": "enabled",
+    "fstrim_recent": "fstrim.service: Deactivated successfully.\nFinished fstrim.service - Discard unused blocks on filesystems from /etc/fstab.\nfstrim.service: Consumed 1.405s CPU time, 2.4M memory peak.\nStarting fstrim.service - Discard unused blocks on filesystems from /etc/fstab...\n/: 24.1 GiB (25880227840 bytes) trimmed on /dev/mapper/tabs3root\nfstrim.service: Deactivated successfully.\nFinished fstrim.service - Discard unused blocks on filesystems from /etc/fstab.\nfstrim.service: Consumed 1.516s CPU time, 2.4M memory peak.",
+    "swap": ""
+  },
+  "network": {
+    "services": "Result=success\nNRestarts=0\nId=ssh.service\n\nResult=success\nNRestarts=0\nId=NetworkManager.service\n\nResult=success\nNRestarts=0\nId=iwd.service\n\nResult=success\nNRestarts=0\nId=tabs3-screen.service",
+    "device_ownership": "100 (connected)\nlo loopback carrier unmanaged\nusb0 gadget routable configured\nwlan0 wlan routable unmanaged",
+    "host_and_charge_simultaneously": "Not supported by current Type-C/OTG implementation"
+  },
+  "maintenance": {
+    "unattended_upgrades_installed": false,
+    "apt_periodic_policy": "",
+    "sshd_auth": "permitrootlogin no\npubkeyauthentication yes\npasswordauthentication yes\nkbdinteractiveauthentication no\npermitemptypasswords no",
+    "standard_firewall_tools_found": "",
+    "backup_monitor_name_search": "",
+    "note": "Absence in limited service/path search is not proof no external backup or monitoring exists. Remote restore and outage recovery have not been demonstrated."
+  },
+  "kernel_warning_headers": "[    0.000000] OF: reserved mem: 0x0000000084b00000..0x0000000084bfffff (1024 KiB) map non-reusable ramoops@84b00000\n[    0.000000] psci: [Firmware Bug]: failed to set PC mode: -1\n[    0.001396] pid_max: default: 32768 minimum: 301\n[    0.112701] ramoops: found existing invalid buffer, size 126, start 254\n[    0.112856] pstore: Using crash dump compression: deflate\n[    0.112877] printk: legacy console [ramoops-1] enabled\n[    0.118681] pstore: Registered ramoops as persistent store backend\n[    0.118706] ramoops: using 0x100000@0x84b00000, ecc: 0\n[    1.253579] qcom-spmi-vadc 400f000.spmi:pmic@0:adc@3100: error -ENXIO: IRQ index 0 not found\n[    1.629301] bam-dma-engine 644000.dma-controller: probe with driver bam-dma-engine failed with error -22\n[    4.630910] systemd[1]: Starting modprobe@efi_pstore.service - Load Kernel Module efi_pstore...\n[    4.819188] systemd[1]: modprobe@efi_pstore.service: Deactivated successfully.\n[    4.821970] systemd[1]: Finished modprobe@efi_pstore.service - Load Kernel Module efi_pstore.\n[    4.953642] systemd[1]: systemd-pstore.service - Platform Persistent Storage Archival skipped, unmet condition check ConditionDirectoryNotEmpty=/sys/fs/pstore\n[    8.603465] PDR: service lookup for avs/audio failed: -6\n[    8.632701] Bluetooth: hci0: Frame reassembly failed (-84)\n[    9.170564] ath10k_pci 0000:01:00.0: failed to fetch board data for bus=pci,vendor=168c,device=003e,subsystem-vendor=0000,subsystem-device=0000 from ath10k/QCA6174/hw3.0/board-2.bin\n[    9.541843] WARNING: CPU: 3 PID: 350 at drivers/clk/qcom/clk-rcg2.c:136 update_config+0xe0/0xf8\n[    9.547108] WARNING: CPU: 3 PID: 350 at drivers/clk/qcom/clk-rcg2.c:136 update_config+0xe0/0xf8\n[    9.570579] WARNING: CPU: 3 PID: 350 at drivers/clk/qcom/clk-rcg2.c:136 update_config+0xe0/0xf8\n[    9.586785] WARNING: CPU: 3 PID: 350 at drivers/clk/qcom/clk-rcg2.c:136 update_config+0xe0/0xf8",
+  "user_process_names": "(sd-pam)\nsshd-session\nsudo\nsystemd",
+  "cpu_supported_ceilings_khz": [
+    960000,
+    940800
+  ],
+  "remaining_qualification": [
+    "Isolate aggregate platform reset before installing drivers",
+    "Sustained charger/load and termination, battery backup and low-battery shutdown",
+    "Skin temperature and cooling qualification",
+    "Watchdog keepalive/disarm/timeout and crash evidence retention",
+    "Offline RTC retention",
+    "Router outage and reconnect; powered wired Ethernet if needed",
+    "Real workload soak over multiple days with data-integrity and reboot checks",
+    "Backups with restore test, update and monitoring policies"
+  ]
+}

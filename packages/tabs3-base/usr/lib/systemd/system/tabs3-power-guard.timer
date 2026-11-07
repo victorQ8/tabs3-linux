@@ -1,0 +1,11 @@
+[Unit]
+Description=Check the Tab S3 battery reserve every 15 seconds
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=15s
+AccuracySec=1s
+Unit=tabs3-power-guard.service
+
+[Install]
+WantedBy=timers.target

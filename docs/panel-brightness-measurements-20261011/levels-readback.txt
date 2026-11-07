@@ -1,0 +1,52 @@
+LEVEL 0
+D2[67]=19 (1 bytes)
+D2[6d]=81 (1 bytes)
+D2[36]=12 (1 bytes)
+D2[4d]=05 (1 bytes)
+D2[49]=7f (1 bytes)
+CURRENT_UA=138671
+LEVEL 17
+D2[67]=1c (1 bytes)
+D2[6d]=81 (1 bytes)
+D2[36]=12 (1 bytes)
+D2[4d]=05 (1 bytes)
+D2[49]=7f (1 bytes)
+CURRENT_UA=-4882
+LEVEL 51
+D2[67]=21 (1 bytes)
+D2[6d]=85 (1 bytes)
+D2[36]=12 (1 bytes)
+D2[4d]=05 (1 bytes)
+D2[49]=7f (1 bytes)
+CURRENT_UA=76171
+LEVEL 86
+D2[67]=21 (1 bytes)
+D2[6d]=85 (1 bytes)
+D2[36]=12 (1 bytes)
+D2[4d]=05 (1 bytes)
+D2[49]=7f (1 bytes)
+CURRENT_UA=55664
+LEVEL 142
+D2[67]=1f (1 bytes)
+D2[6d]=85 (1 bytes)
+D2[36]=12 (1 bytes)
+D2[4d]=05 (1 bytes)
+D2[49]=7f (1 bytes)
+CURRENT_UA=173828
+LEVEL 193
+D2[67]=1e (1 bytes)
+D2[6d]=85 (1 bytes)
+D2[36]=12 (1 bytes)
+D2[4d]=05 (1 bytes)
+D2[49]=7f (1 bytes)
+CURRENT_UA=125976
+LEVEL 255
+D2[67]=1b (1 bytes)
+D2[6d]=85 (1 bytes)
+D2[36]=12 (1 bytes)
+D2[4d]=05 (1 bytes)
+D2[49]=7f (1 bytes)
+CURRENT_UA=90820
+OFF_STATE_CHANGE
+RAPID_WAKE_RETAINS_LEVEL_142
+PASS

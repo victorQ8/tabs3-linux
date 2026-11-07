@@ -1,0 +1,20 @@
+multi-user.target
+active
+disabled
+disabled
+iwd 3.8-2
+libegl-mesa0 26.1.6-1~bpo13+1
+mesa-libgallium 26.1.6-1~bpo13+1
+network-manager 1.52.1-1
+tabs3-desktop 0.1.5
+active
+active
+101
+  UNIT LOAD ACTIVE SUB DESCRIPTION
+
+0 loaded units listed.
+Oct 11 11:10:37 tabs3 systemd[1]: Stopping greetd.service - Greeter daemon...
+Oct 11 11:10:37 tabs3 systemd[1]: greetd.service: Deactivated successfully.
+Oct 11 11:10:37 tabs3 systemd[1]: Stopped greetd.service - Greeter daemon.
+Oct 11 11:10:37 tabs3 systemd[1]: greetd.service: Consumed 1.260s CPU time, 23.2M memory peak.
+Oct 11 11:53:01 tabs3 systemd[1]: Started greetd.service - Greeter daemon.

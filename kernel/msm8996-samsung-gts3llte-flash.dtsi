@@ -1,0 +1,19 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * The rear flash LED on the SM5705's first flash output (stock sm5705_fled
+ * leds1: torch 180 mA, flash 1200 mA, one-shot timer 7, that is 800 ms).
+ * The stock tree drives it through the FLEN and TORCH pins on TLMM 12 and
+ * 11; the charger driver runs it over I2C instead, so the pins stay
+ * reserved. Package 78.
+ */
+#include <dt-bindings/leds/common.h>
+
+&sm5705_charger {
+	led {
+		function = LED_FUNCTION_FLASH;
+		color = <LED_COLOR_ID_WHITE>;
+		led-max-microamp = <180000>;
+		flash-max-microamp = <1200000>;
+		flash-max-timeout-us = <800000>;
+	};
+};

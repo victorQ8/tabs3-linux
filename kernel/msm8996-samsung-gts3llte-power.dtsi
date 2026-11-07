@@ -1,0 +1,110 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/* SM5705 charger and fuel gauge, battery and charger thermistors. */
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
+
+/*
+ * SM5705 charger and fuel gauge. The stock kernel reaches both over
+ * bit-banged I2C: the fuel gauge (0x71) on TLMM 6 (SDA) / 7 (SCL), the
+ * charger (0x49; MUIC 0x25) on TLMM 33 (SDA) / 32 (SCL), with external
+ * pull-ups. Charger control uses the stock PM8994 ADCs and nCHGEN pin;
+ * interrupts are not wired yet.
+ */
+/ {
+	battery: battery {
+		compatible = "simple-battery";
+		charge-full-design-microamp-hours = <6000000>;
+	};
+
+	i2c-sm5705-fg {
+		compatible = "i2c-gpio";
+		sda-gpios = <&tlmm 6 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+		scl-gpios = <&tlmm 7 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+		i2c-gpio,delay-us = <2>;
+		pinctrl-0 = <&sm5705_fg_i2c_default>;
+		pinctrl-names = "default";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		fuel-gauge@71 {
+			compatible = "siliconmitus,sm5705-fuel-gauge";
+			reg = <0x71>;
+			monitored-battery = <&battery>;
+			io-channels = <&pm8994_vadc VADC_LR_MUX5_PU1_AMUX_THM2>;
+			io-channel-names = "battery-therm";
+			power-supplies = <&sm5705_charger>;
+		};
+	};
+
+	i2c-sm5705 {
+		compatible = "i2c-gpio";
+		sda-gpios = <&tlmm 33 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+		scl-gpios = <&tlmm 32 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+		i2c-gpio,delay-us = <2>;
+		pinctrl-0 = <&sm5705_i2c_default>;
+		pinctrl-names = "default";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		sm5705_charger: charger@49 {
+			compatible = "siliconmitus,sm5705-charger";
+			reg = <0x49>;
+			enable-gpios = <&pm8994_gpios 13 GPIO_ACTIVE_LOW>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&sm5705_enable_default>;
+			io-channels = <&pm8994_vadc VADC_LR_MUX5_PU1_AMUX_THM2>,
+				      <&pm8994_vadc VADC_LR_MUX8_PU1_AMUX_THM4>;
+			io-channel-names = "battery-therm", "charger-therm";
+		};
+	};
+};
+
+&tlmm {
+	sm5705_fg_i2c_default: sm5705-fg-i2c-default-state {
+		pins = "gpio6", "gpio7";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	sm5705_i2c_default: sm5705-i2c-default-state {
+		pins = "gpio32", "gpio33";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+};
+
+/* Samsung sec_battery.c reads RAW codes on 0x74 (battery) and 0x77
+ * (charger board), with the tables in this tablet's stock DTB. */
+&pm8994_vadc {
+	/* Stock uses conversion-completion polling, not the EOC interrupt. */
+	/delete-property/ interrupts;
+	channel@74 {
+		reg = <VADC_LR_MUX5_PU1_AMUX_THM2>;
+		label = "battery_therm";
+		qcom,ratiometric;
+		qcom,decimation = <512>;
+		qcom,hw-settle-time = <200>;
+		qcom,avg-samples = <1>;
+	};
+	channel@77 {
+		reg = <VADC_LR_MUX8_PU1_AMUX_THM4>;
+		label = "charger_therm";
+		qcom,ratiometric;
+		qcom,decimation = <512>;
+		qcom,hw-settle-time = <200>;
+		qcom,avg-samples = <1>;
+	};
+};
+
+&pm8994_gpios {
+	sm5705_enable_default: sm5705-enable-state {
+		pins = "gpio13";
+		function = "normal";
+		power-source = <PM8994_GPIO_S4>;
+		drive-push-pull;
+		bias-pull-up;
+		output-high; /* nCHGEN: disabled until valid temperature and limits */
+	};
+};

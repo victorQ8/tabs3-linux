@@ -1,0 +1,64 @@
+UTC=2026-10-11T13:29:14Z
+Linux tabs3 6.19.5-gts3l1 #18 SMP PREEMPT 2026-10-10 00:00:00 UTC aarch64 GNU/Linux
+libgl1-mesa-dri 26.1.6-1~bpo13+1
+linux-tabs3 6.19.5-33
+tabs3-desktop 0.1.5
+
+Before greeter:
+Total:       20 objects,  13082624 bytes
+Resident:    20 objects,  13082624 bytes
+
+Kernel error checks:
+[    0.000000] printk: debug: ignoring loglevel setting.
+[    0.118570] ramoops: using 0x100000@0x84b00000, ecc: 0
+[    7.943201] WARNING: drivers/clk/qcom/clk-rcg2.c:136 at update_config+0xe0/0xf8, CPU#3: (udev-worker)/244
+[    7.954009] WARNING: drivers/clk/qcom/clk-rcg2.c:136 at update_config+0xe0/0xf8, CPU#3: (udev-worker)/244
+[    7.962852] WARNING: drivers/clk/qcom/clk-rcg2.c:136 at update_config+0xe0/0xf8, CPU#3: (udev-worker)/244
+[    7.967740] WARNING: drivers/clk/qcom/clk-rcg2.c:136 at update_config+0xe0/0xf8, CPU#3: (udev-worker)/244
+
+Battery and charger:
+sm5705-battery/capacity=78
+sm5705-battery/status=Charging
+sm5705-battery/temp=219
+sm5705-battery/current_now=-133789
+sm5705-battery/voltage_now=4023437
+sm5705-charger/status=Charging
+sm5705-charger/usb_type=Unknown [SDP] DCP CDP
+sm5705-charger/input_current_limit=500000
+sm5705-charger/temp=262
+
+Thermal zones:
+sm5705-charger 26200
+pm8994-thermal 29347
+sm5705-battery 21900
+
+User rendering overrides:
+
+Idle timeout:
+uint32 300
+
+Restoring greeter:
+Id=greetd.service
+ActiveState=active
+SubState=running
+UnitFileState=disabled
+
+Id=phosh.service
+ActiveState=inactive
+SubState=dead
+UnitFileState=disabled
+
+Default target:
+multi-user.target
+
+Failed units:
+  UNIT LOAD ACTIVE SUB DESCRIPTION
+
+0 loaded units listed.
+
+Remaining temporary rendering overrides:
+
+After greeter:
+Total:       67 objects,  41619456 bytes
+Resident:    66 objects,  41615360 bytes
+fault_lines=0

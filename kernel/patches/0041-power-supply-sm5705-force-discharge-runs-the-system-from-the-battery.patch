@@ -1,0 +1,199 @@
+From: tabS3 bring-up <noreply@localhost>
+Subject: [PATCH] power: supply: sm5705: force-discharge runs the system from the battery
+
+A tablet that lives on its charger is kept between 65 and 80 percent by
+inhibiting charging above the window, but inhibit alone cannot bring a
+full battery down: with the buck supplying the system the cell only
+self-discharges, which takes weeks. Add the force-discharge charge
+behaviour: operation mode SUSPEND (the stock driver's "buck off", used
+for its store mode) switches the buck off, so the system runs from the
+battery although VBUS is present, with charging disabled through the
+enable pin. The driver ends it on its own when the gauge reaches 15
+percent, when VBUS goes away or after a control fault, reports the
+battery as discharging meanwhile, and restores the normal mode on
+shutdown and suspend, so userspace dying cannot drain the battery.
+
+Assisted-by: Claude:claude-fable-5-1
+---
+diff -ruN a/drivers/power/supply/sm5705_charger.c b/drivers/power/supply/sm5705_charger.c
+--- a/drivers/power/supply/sm5705_charger.c	2026-10-15 09:37:18.255709805 +0300
++++ b/drivers/power/supply/sm5705_charger.c	2026-10-15 09:37:18.274909540 +0300
+@@ -35,6 +35,8 @@
+ #define SM5705_CNTL		0x0c
+ #define SM5705_CNTL_MODE		GENMASK(2, 0)
+ #define SM5705_MODE_CHG_ON		5
++/* Buck off: the system runs from the battery although VBUS is present */
++#define SM5705_MODE_SUSPEND		0
+ #define SM5705_MODE_USB_OTG		7
+ #define SM5705_VBUSCNTL		0x0d
+ #define SM5705_CHGCNTL2		0x10
+@@ -52,6 +54,8 @@
+ #define SM5705_DEVICEID		0x37
+ 
+ #define SM5705_POLL_MS		1000
++/* A forced discharge ends on its own at this percentage */
++#define SM5705_DISCHARGE_FLOOR	15
+ 
+ /* MUIC part of the SM5705, same bus */
+ #define SM5705_MUIC_ADDR	0x25
+@@ -80,6 +84,8 @@
+ 	struct sm5705_safety safety;
+ 	int user_limit;
+ 	bool inhibit;
++	bool force_discharge;	/* run from the battery while VBUS is present */
++	bool suspended;		/* the buck is off (operation mode SUSPEND) */
+ 	bool temp_valid;
+ 	int battery_temp, charger_temp;
+ 	int last_error;
+@@ -197,6 +203,7 @@
+ 	if (err)
+ 		return err;
+ 	chg->otg_on = false;
++	chg->suspended = false;
+ 	err = sm5705_update_verified(chg, SM5705_CHGCNTL6, SM5705_CHGCNTL6_OTG,
+ 				     SM5705_OTG_500MA);
+ 	ret = sm5705_update_verified(chg, SM5705_FLEDCNTL6, SM5705_FLEDCNTL6_BSTOUT,
+@@ -234,6 +241,41 @@
+ 	return 0;
+ }
+ 
++/* The fuel gauge's percentage, or -1 without it. Its capacity read does
++ * not call back into this driver.
++ */
++static int sm5705_battery_percent(void)
++{
++	struct power_supply *psy = power_supply_get_by_name("sm5705-battery");
++	union power_supply_propval val;
++	int ret;
++
++	if (!psy)
++		return -1;
++	ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_CAPACITY, &val);
++	power_supply_put(psy);
++	return ret ? -1 : val.intval;
++}
++
++/* Called with lock held. Operation mode SUSPEND switches the buck off, so
++ * the system runs from the battery although VBUS is present (the stock
++ * driver's "buck off", used for its store mode); CHG_ON is the normal
++ * mode, charging itself being gated by the enable pin.
++ */
++static int sm5705_set_suspended(struct sm5705_chg *chg, bool suspended)
++{
++	int ret;
++
++	if (chg->suspended == suspended)
++		return 0;
++	ret = sm5705_update_verified(chg, SM5705_CNTL, SM5705_CNTL_MODE,
++				     suspended ? SM5705_MODE_SUSPEND : SM5705_MODE_CHG_ON);
++	if (ret)
++		return ret;
++	chg->suspended = suspended;
++	return 0;
++}
++
+ /* Called with lock held. Battery charge and system input are independent:
+  * a thermal inhibit leaves the buck supply available. Control/read faults
+  * still disable charging and fall back to the minimum input limit.
+@@ -260,6 +302,32 @@
+ 		goto fail;
+ 	}
+ 	valid = chg->temp_valid;
++	/* A forced discharge (charge_behaviour force-discharge) runs the
++	 * system from the battery until userspace ends it, VBUS goes away or
++	 * the gauge reaches the floor; then the normal policy resumes.
++	 */
++	if (chg->force_discharge) {
++		int percent = sm5705_battery_percent();
++
++		if (!(s1 & SM5705_STATUS1_VBUSPOK) ||
++		    (percent >= 0 && percent <= SM5705_DISCHARGE_FLOOR)) {
++			dev_info(&chg->client->dev, "forced discharge ends at %d %%%s\n",
++				 percent, (s1 & SM5705_STATUS1_VBUSPOK) ? "" : " (VBUS gone)");
++			chg->force_discharge = false;
++		}
++	}
++	if (chg->force_discharge) {
++		ret = sm5705_enable(chg, false);
++		if (ret)
++			goto fail;
++		ret = sm5705_set_suspended(chg, true);
++		if (ret)
++			goto fail;
++		return 0;
++	}
++	ret = sm5705_set_suspended(chg, false);
++	if (ret)
++		goto fail;
+ 	if (s1 & SM5705_STATUS1_VBUSPOK) {
+ 		type = sm5705_chg_usb_type(chg);
+ 		if (type < 0) {
+@@ -304,6 +372,11 @@
+ fail:
+ 	if (sm5705_enable(chg, false))
+ 		dev_err_ratelimited(&chg->client->dev, "cannot confirm charging disabled\n");
++	/* Never leave the system on the battery after a fault. */
++	chg->force_discharge = false;
++	if (chg->suspended &&
++	    !sm5705_update_verified(chg, SM5705_CNTL, SM5705_CNTL_MODE, SM5705_MODE_CHG_ON))
++		chg->suspended = false;
+ 	/* Best effort conservative input even if the enable GPIO failed. */
+ 	sm5705_update_verified(chg, SM5705_VBUSCNTL, 0x7f, 0);
+ 	chg->safety.blocked = true;
+@@ -323,7 +396,8 @@
+ 	case POWER_SUPPLY_PROP_TEMP:
+ 		return sm5705_read_temperature(chg->charger_therm, true, &val->intval);
+ 	case POWER_SUPPLY_PROP_CHARGE_BEHAVIOUR:
+-		val->intval = chg->inhibit ? POWER_SUPPLY_CHARGE_BEHAVIOUR_INHIBIT_CHARGE :
++		val->intval = chg->force_discharge ? POWER_SUPPLY_CHARGE_BEHAVIOUR_FORCE_DISCHARGE :
++			chg->inhibit ? POWER_SUPPLY_CHARGE_BEHAVIOUR_INHIBIT_CHARGE :
+ 			POWER_SUPPLY_CHARGE_BEHAVIOUR_AUTO;
+ 		return 0;
+ 	case POWER_SUPPLY_PROP_ONLINE:
+@@ -337,7 +411,7 @@
+ 		ret = sm5705_chg_status(chg, &s1, &s2, NULL);
+ 		if (ret)
+ 			return ret;
+-		if (chg->otg_on || !(s1 & SM5705_STATUS1_VBUSPOK))
++		if (chg->otg_on || chg->suspended || !(s1 & SM5705_STATUS1_VBUSPOK))
+ 			val->intval = POWER_SUPPLY_STATUS_DISCHARGING;
+ 		else if (s2 & (SM5705_STATUS2_DONE | SM5705_STATUS2_TOPOFF))
+ 			val->intval = POWER_SUPPLY_STATUS_FULL;
+@@ -434,10 +508,14 @@
+ 			chg->user_limit = val->intval;
+ 	} else if (psp == POWER_SUPPLY_PROP_CHARGE_BEHAVIOUR) {
+ 		if (val->intval != POWER_SUPPLY_CHARGE_BEHAVIOUR_AUTO &&
+-		    val->intval != POWER_SUPPLY_CHARGE_BEHAVIOUR_INHIBIT_CHARGE)
++		    val->intval != POWER_SUPPLY_CHARGE_BEHAVIOUR_INHIBIT_CHARGE &&
++		    val->intval != POWER_SUPPLY_CHARGE_BEHAVIOUR_FORCE_DISCHARGE) {
+ 			ret = -EINVAL;
+-		else
++		} else {
+ 			chg->inhibit = val->intval == POWER_SUPPLY_CHARGE_BEHAVIOUR_INHIBIT_CHARGE;
++			chg->force_discharge =
++				val->intval == POWER_SUPPLY_CHARGE_BEHAVIOUR_FORCE_DISCHARGE;
++		}
+ 	} else {
+ 		ret = -EINVAL;
+ 	}
+@@ -476,7 +554,8 @@
+ 	.properties = sm5705_chg_properties,
+ 	.num_properties = ARRAY_SIZE(sm5705_chg_properties),
+ 	.charge_behaviours = BIT(POWER_SUPPLY_CHARGE_BEHAVIOUR_AUTO) |
+-		BIT(POWER_SUPPLY_CHARGE_BEHAVIOUR_INHIBIT_CHARGE),
++		BIT(POWER_SUPPLY_CHARGE_BEHAVIOUR_INHIBIT_CHARGE) |
++		BIT(POWER_SUPPLY_CHARGE_BEHAVIOUR_FORCE_DISCHARGE),
+ 	.usb_types = BIT(POWER_SUPPLY_USB_TYPE_UNKNOWN) | BIT(POWER_SUPPLY_USB_TYPE_SDP) |
+ 		     BIT(POWER_SUPPLY_USB_TYPE_CDP) | BIT(POWER_SUPPLY_USB_TYPE_DCP),
+ 	.get_property = sm5705_chg_get_property,
+@@ -624,6 +703,10 @@
+ 	if (chg->otg_on && sm5705_otg_off_locked(chg))
+ 		dev_err(&chg->client->dev, "cannot confirm USB OTG VBUS off\n");
+ 	sm5705_disable_cleanup(chg);
++	/* A powered-off or sleeping tablet takes its power from VBUS. */
++	chg->force_discharge = false;
++	if (sm5705_set_suspended(chg, false))
++		dev_err(&chg->client->dev, "cannot confirm the buck supply on\n");
+ 	sm5705_update_verified(chg, SM5705_VBUSCNTL, 0x7f, 0);
+ 	chg->safety.blocked = true;
+ 	mutex_unlock(&chg->lock);

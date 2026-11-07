@@ -1,0 +1,35 @@
+#!/bin/sh
+# Run on the tablet with the locally built tabs3-desktop package as argument.
+set -eu
+[ "$(id -u)" = 0 ] || { echo 'Run with sudo on the tablet.' >&2; exit 1; }
+[ "$(tr -d '\000' </proc/device-tree/model)" = 'Samsung Galaxy Tab S3 LTE (SM-T825)' ] || exit 1
+[ "$#" = 1 ] || { echo "Usage: $0 /path/to/tabs3-desktop_VERSION_all.deb" >&2; exit 1; }
+deb=$(realpath "$1")
+[ "$(dpkg-deb -f "$deb" Package)" = tabs3-desktop ] || exit 1
+policy=/usr/sbin/policy-rc.d
+[ ! -e "$policy" ] && [ ! -L "$policy" ] || {
+    echo 'Existing policy-rc.d: install using that policy, then run tabs3-desktop-enable.' >&2
+    exit 1
+}
+backup=/var/lib/tabs3/desktop-backup
+install -d -m 700 "$backup"
+if [ -d /var/lib/iwd ] && [ ! -e "$backup/iwd" ]; then
+    cp -a /var/lib/iwd "$backup/iwd"
+fi
+# Install all dependencies before starting the greeter/network services.
+trap 'rm -f "$policy"' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+printf '#!/bin/sh\nexit 101\n' >"$policy"
+chmod 755 "$policy"
+apt-get install -y --no-install-recommends "$deb"
+# Keep the base distribution on trixie; explicitly select only the bring-up
+# Mesa library family from official backports before starting the desktop.
+apt-get update
+apt-get install -y --no-install-recommends \
+    libegl-mesa0/trixie-backports libgbm1/trixie-backports \
+    libgl1-mesa-dri/trixie-backports libglx-mesa0/trixie-backports \
+    mesa-libgallium/trixie-backports
+rm "$policy"
+trap - EXIT INT TERM
+tabs3-desktop-enable

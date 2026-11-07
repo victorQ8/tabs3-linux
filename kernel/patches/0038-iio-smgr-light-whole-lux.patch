@@ -1,0 +1,43 @@
+From: tabS3 bring-up <noreply@localhost>
+Subject: [PATCH] iio: smgr_light: the firmware reports whole lux
+
+The ambient light samples of the Sensor Manager's PROX_LIGHT sensor hold
+the illuminance in whole lux, not Q16: on the SM-T825's CM3323 the first
+value reads 64 in a room, drops to 0 under a thumb and comes back, while
+the Q16 reading was a constant 0.001 lux. The second value is a raw
+count (about 3100, rising to 4500 in the dark) and is not exposed.
+
+Assisted-by: Claude:claude-fable-5-1
+---
+diff -ruN a/drivers/iio/light/smgr_light.c b/drivers/iio/light/smgr_light.c
+--- a/drivers/iio/light/smgr_light.c	2026-10-14 10:21:27.760098381 +0300
++++ b/drivers/iio/light/smgr_light.c	2026-10-14 10:21:27.781494839 +0300
+@@ -5,10 +5,11 @@
+  * Derived from the Sensor Manager accelerometer driver,
+  * Copyright (c) 2022, Yassine Oudjana <y.oudjana@protonmail.com>
+  *
+- * The Sensor Manager's PROX_LIGHT sensor reports illuminance as Q16 lux.
+- * This driver covers sensor cores whose first data type is the ambient
+- * light sensor (for example a Capella CM3323 with no proximity sensor);
+- * a proximity data type is not handled yet.
++ * The Sensor Manager's PROX_LIGHT sensor reports the illuminance in the
++ * first value of its ambient light samples as whole lux (checked on the
++ * Samsung SM-T825's Capella CM3323: 64 in a room, 0 under a thumb; the
++ * second value is a raw count). This driver covers sensor cores with an
++ * ambient light data type; a proximity data type is not handled yet.
+  */
+ 
+ #include <linux/mod_devicetable.h>
+@@ -37,10 +38,9 @@
+ 		*val = priv->sensor->data_types[0].cur_sample_rate;
+ 		return IIO_VAL_INT;
+ 	case IIO_CHAN_INFO_SCALE:
+-		/* Q16 lux */
++		/* whole lux */
+ 		*val = 1;
+-		*val2 = 16;
+-		return IIO_VAL_FRACTIONAL_LOG2;
++		return IIO_VAL_INT;
+ 	}
+ 
+ 	return -EINVAL;

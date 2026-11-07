@@ -1,0 +1,894 @@
+From: tabS3 bring-up <noreply@localhost>
+Subject: [PATCH] usb: typec: s2mm005: let a hub that charges take over VBUS while the tablet hosts
+
+The Galaxy Tab S3's USB-C port is managed by a Samsung S2MM005, a
+controller that runs the Type-C and Power Delivery state machines in its
+own firmware and reports its state over I2C (16-bit registers) with an
+interrupt on every change. Without a driver the tablet can host a hub
+only from its own boost: when a hub with its own charger asks for a
+power-role swap the controller accepts, but nobody turns the boost off
+in time, the swap fails and the port falls into error recovery.
+
+Add a small driver that reads the controller's function state and
+message flags, logs them, shows them in sysfs (state, version, the
+partner's source capabilities) and keeps the SM5705 charger informed:
+sm5705_partner_supply() turns the boost off when the controller enters
+the source-to-sink transition or reports the partner as the source, so
+the USB host role stays while the partner's VBUS charges the battery
+with the current of its contract, and brings the boost back when the
+tablet is to source again or the partner leaves. While the host role is
+held the charger keeps D+/D- on USB with the MUIC's automatic switching
+off, whoever supplies VBUS: its charger detection leaves the switch open
+for a hub that supplies the port, and the hub never enumerated. The
+charger refuses to boost into a present VBUS unless a partner supplies
+it. Register layout from Samsung's s2mm005 driver.
+
+The USB data role follows the controller's through the role switch in
+the connector's graph: a hub or an adapter is hosted when it attaches,
+or when the system boots with it attached, and the port returns to the
+gadget when it leaves; the drop to the device role waits a second, as
+the chip reports a detach for a few tens of milliseconds while the
+tablet's own VBUS comes on, and a sink attach reported with the policy
+engine still detached is that same blip, not a partner supplying the
+port; with a partner that speaks no PD the chip repeats it every half
+second, so such blips are neither logged nor hurry the poll. The charger
+refuses the boost below 15 %, the floor of its forced discharge. Where
+the board has a SuperSpeed redriver with an enable (a "redriver" supply),
+it is on while a partner is attached.
+
+Assisted-by: Claude:claude-fable-5-1
+---
+diff -ruN a/drivers/power/supply/sm5705_charger.c b/drivers/power/supply/sm5705_charger.c
+--- a/drivers/power/supply/sm5705_charger.c	2026-10-15 10:28:07.327785232 +0300
++++ b/drivers/power/supply/sm5705_charger.c	2026-10-15 12:33:56.063350159 +0300
+@@ -11,6 +11,7 @@
+ #include <linux/module.h>
+ #include <linux/of.h>
+ #include <linux/power_supply.h>
++#include <linux/power/sm5705_charger.h>
+ #include <linux/regulator/driver.h>
+ #include <linux/workqueue.h>
+ #include "sm5705-gts3l-policy.h"
+@@ -92,6 +93,9 @@
+ 	struct regulator_dev *otg;
+ 	bool otg_on;		/* the boost may be running */
+ 	bool otg_wanted;	/* the USB host wants VBUS */
++	bool otg_paused;	/* the partner supplies VBUS: no boost while host */
++	bool muic_held;		/* D+/D- held on USB, automatic switching off */
++	int partner_ua;		/* the partner's contract while it supplies */
+ 	u8 muic_ctrl, muic_mansw1;
+ };
+ 
+@@ -208,11 +212,48 @@
+ 				     SM5705_OTG_500MA);
+ 	ret = sm5705_update_verified(chg, SM5705_FLEDCNTL6, SM5705_FLEDCNTL6_BSTOUT,
+ 				     SM5705_BSTOUT_4500MV);
+-	err = err ?: ret;
+-	ret = sm5705_muic_update(chg, SM5705_MUIC_MANSW1, 0xff, chg->muic_mansw1);
+-	err = err ?: ret;
++	return err ?: ret;
++}
++
++/* Called with lock held. Keep D+/D- on USB with the MUIC's automatic
++ * switching off while the port hosts a device, whoever supplies VBUS:
++ * charger detection would switch them away (it leaves the switch open for
++ * a hub that supplies the port, so the hub never enumerates).
++ */
++static int sm5705_muic_hold_usb_locked(struct sm5705_chg *chg)
++{
++	int val, ret;
++
++	if (chg->muic_held)
++		return 0;
++	val = i2c_smbus_read_byte_data(chg->muic, SM5705_MUIC_CTRL);
++	if (val < 0)
++		return val;
++	chg->muic_ctrl = val;
++	val = i2c_smbus_read_byte_data(chg->muic, SM5705_MUIC_MANSW1);
++	if (val < 0)
++		return val;
++	chg->muic_mansw1 = val;
++	ret = sm5705_muic_update(chg, SM5705_MUIC_MANSW1, 0xff, SM5705_MUIC_MANSW1_USB);
++	if (!ret)
++		ret = sm5705_muic_update(chg, SM5705_MUIC_CTRL, SM5705_MUIC_CTRL_AUTO_SW, 0);
++	if (!ret)
++		chg->muic_held = true;
++	return ret;
++}
++
++/* Called with lock held: the stock idle switching again. */
++static int sm5705_muic_release_locked(struct sm5705_chg *chg)
++{
++	int err, ret;
++
++	if (!chg->muic_held)
++		return 0;
++	err = sm5705_muic_update(chg, SM5705_MUIC_MANSW1, 0xff, chg->muic_mansw1);
+ 	ret = sm5705_muic_update(chg, SM5705_MUIC_CTRL, SM5705_MUIC_CTRL_AUTO_SW,
+ 				 chg->muic_ctrl & SM5705_MUIC_CTRL_AUTO_SW);
++	if (!err && !ret)
++		chg->muic_held = false;
+ 	return err ?: ret;
+ }
+ 
+@@ -236,6 +277,7 @@
+ 			ret, s3, s4, chg->battery_temp);
+ 		chg->otg_wanted = false;
+ 		sm5705_otg_off_locked(chg);
++		sm5705_muic_release_locked(chg);
+ 		return -EIO;
+ 	}
+ 	return 0;
+@@ -340,6 +382,9 @@
+ 		source = 500000;
+ 		if (type == POWER_SUPPLY_USB_TYPE_CDP || type == POWER_SUPPLY_USB_TYPE_DCP)
+ 			source = 1500000;
++		/* A Power Delivery contract reported by the USB-C controller */
++		if (chg->otg_paused && chg->partner_ua >= 500000)
++			source = min(chg->partner_ua, 1500000);
+ 	}
+ 	limits = sm5705_choose_limits(&chg->safety, valid, chg->battery_temp,
+ 			chg->charger_temp, source, chg->user_limit,
+@@ -569,18 +614,55 @@
+  * Charging pauses while the battery feeds the port. Never boost against an
+  * external source already driving VBUS.
+  */
++static struct sm5705_chg *sm5705_instance;
++
++/* Called with lock held: the stock boost sequence. */
++static int sm5705_otg_on_locked(struct sm5705_chg *chg)
++{
++	struct device *dev = &chg->client->dev;
++	int ret;
++
++	ret = sm5705_enable(chg, false);
++	if (ret)
++		return ret;
++	chg->otg_on = true;
++	ret = sm5705_muic_hold_usb_locked(chg);
++	if (!ret)
++		ret = sm5705_update_verified(chg, SM5705_FLEDCNTL6, SM5705_FLEDCNTL6_BSTOUT,
++					     SM5705_BSTOUT_5100MV);
++	if (!ret)
++		ret = sm5705_update_verified(chg, SM5705_CHGCNTL6, SM5705_CHGCNTL6_OTG,
++					     SM5705_OTG_900MA);
++	if (!ret)
++		ret = sm5705_update_verified(chg, SM5705_CNTL, SM5705_CNTL_MODE,
++					     SM5705_MODE_USB_OTG);
++	if (ret) {
++		sm5705_otg_off_locked(chg);
++		return ret;
++	}
++	dev_info(dev, "USB OTG VBUS on: 5.1 V, 900 mA limit, charging paused\n");
++	return 0;
++}
++
+ static int sm5705_otg_enable(struct regulator_dev *rdev)
+ {
+ 	struct sm5705_chg *chg = rdev_get_drvdata(rdev);
+ 	struct device *dev = &chg->client->dev;
+ 	u8 s1, s2, s3;
+-	int ret, val;
++	int ret, percent;
+ 
+ 	mutex_lock(&chg->lock);
+ 	ret = sm5705_chg_status(chg, &s1, &s2, &s3);
+ 	if (ret)
+ 		goto out;
+ 	if (s1 & SM5705_STATUS1_VBUSPOK) {
++		if (chg->otg_paused) {
++			/* The partner supplies the port: host without the boost. */
++			dev_info(dev, "USB OTG: the partner supplies VBUS, no boost\n");
++			chg->otg_wanted = true;
++			ret = sm5705_muic_hold_usb_locked(chg);
++			goto out;
++		}
+ 		dev_warn(dev, "USB OTG refused: VBUS is already present\n");
+ 		ret = -EBUSY;
+ 		goto out;
+@@ -590,47 +672,66 @@
+ 		ret = -ERANGE;
+ 		goto out;
+ 	}
+-	ret = sm5705_enable(chg, false);
+-	if (ret)
+-		goto out;
+-	val = i2c_smbus_read_byte_data(chg->muic, SM5705_MUIC_CTRL);
+-	if (val < 0) {
+-		ret = val;
+-		goto out;
+-	}
+-	chg->muic_ctrl = val;
+-	val = i2c_smbus_read_byte_data(chg->muic, SM5705_MUIC_MANSW1);
+-	if (val < 0) {
+-		ret = val;
++	/* Hosting from the battery stops where the forced discharge stops. */
++	percent = sm5705_battery_percent();
++	if (percent >= 0 && percent < SM5705_DISCHARGE_FLOOR) {
++		dev_warn(dev, "USB OTG refused: battery at %d %%\n", percent);
++		ret = -ERANGE;
+ 		goto out;
+ 	}
+-	chg->muic_mansw1 = val;
+-	chg->otg_on = true;
+ 	chg->otg_wanted = true;
+-	/* Keep D+/D- on USB: charger detection must not switch them away. */
+-	ret = sm5705_muic_update(chg, SM5705_MUIC_MANSW1, 0xff, SM5705_MUIC_MANSW1_USB);
+-	if (!ret)
+-		ret = sm5705_muic_update(chg, SM5705_MUIC_CTRL, SM5705_MUIC_CTRL_AUTO_SW, 0);
+-	if (!ret)
+-		ret = sm5705_update_verified(chg, SM5705_FLEDCNTL6, SM5705_FLEDCNTL6_BSTOUT,
+-					     SM5705_BSTOUT_5100MV);
+-	if (!ret)
+-		ret = sm5705_update_verified(chg, SM5705_CHGCNTL6, SM5705_CHGCNTL6_OTG,
+-					     SM5705_OTG_900MA);
+-	if (!ret)
+-		ret = sm5705_update_verified(chg, SM5705_CNTL, SM5705_CNTL_MODE,
+-					     SM5705_MODE_USB_OTG);
++	ret = sm5705_otg_on_locked(chg);
+ 	if (ret) {
+ 		chg->otg_wanted = false;
+-		sm5705_otg_off_locked(chg);
+-		goto out;
++		sm5705_muic_release_locked(chg);
+ 	}
+-	dev_info(dev, "USB OTG VBUS on: 5.1 V, 900 mA limit, charging paused\n");
+ out:
+ 	mutex_unlock(&chg->lock);
+ 	return ret;
+ }
+ 
++/* The USB-C controller's view of who supplies the port. While a partner
++ * sources VBUS although the USB host role stays (a power-role swap with a
++ * hub that has its own supply), the boost must stay off, D+/D- stay on
++ * USB, the partner's VBUS charges the battery with the current of its
++ * contract; when the partner stops (it detaches, or swaps back) the boost
++ * returns if the USB host still holds the regulator.
++ */
++int sm5705_partner_supply(bool supplies, int max_ua)
++{
++	struct sm5705_chg *chg = READ_ONCE(sm5705_instance);
++	u8 s1 = 0, s2, s3;
++	int ret = 0;
++
++	if (!chg)
++		return -ENODEV;
++	mutex_lock(&chg->lock);
++	chg->partner_ua = supplies ? max_ua : 0;
++	if (chg->otg_paused != supplies) {
++		chg->otg_paused = supplies;
++		if (supplies) {
++			if (chg->otg_on) {
++				ret = sm5705_otg_off_locked(chg);
++				dev_info(&chg->client->dev,
++					 "USB OTG VBUS off: the partner supplies the port%s\n",
++					 ret ? " (not confirmed)" : "");
++			}
++			if (chg->otg_wanted)
++				ret = ret ?: sm5705_muic_hold_usb_locked(chg);
++		} else if (chg->otg_wanted && !chg->otg_on) {
++			if (!sm5705_chg_status(chg, &s1, &s2, &s3) && !(s1 & SM5705_STATUS1_VBUSPOK) &&
++			    sm5705_otg_temp_ok(chg))
++				ret = sm5705_otg_on_locked(chg);
++		} else if (!chg->otg_wanted) {
++			ret = sm5705_muic_release_locked(chg);
++		}
++	}
++	mutex_unlock(&chg->lock);
++	mod_delayed_work(system_wq, &chg->poll, 0);
++	return ret;
++}
++EXPORT_SYMBOL_GPL(sm5705_partner_supply);
++
+ static int sm5705_otg_disable(struct regulator_dev *rdev)
+ {
+ 	struct sm5705_chg *chg = rdev_get_drvdata(rdev);
+@@ -639,6 +740,7 @@
+ 	mutex_lock(&chg->lock);
+ 	chg->otg_wanted = false;
+ 	ret = sm5705_otg_off_locked(chg);
++	ret = ret ?: sm5705_muic_release_locked(chg);
+ 	mutex_unlock(&chg->lock);
+ 	if (ret)
+ 		dev_err(&chg->client->dev, "USB OTG VBUS off: error %d, retrying\n", ret);
+@@ -702,6 +804,7 @@
+ 	chg->otg_wanted = false;
+ 	if (chg->otg_on && sm5705_otg_off_locked(chg))
+ 		dev_err(&chg->client->dev, "cannot confirm USB OTG VBUS off\n");
++	sm5705_muic_release_locked(chg);
+ 	sm5705_disable_cleanup(chg);
+ 	/* A powered-off or sleeping tablet takes its power from VBUS. */
+ 	chg->force_discharge = false;
+@@ -757,6 +860,8 @@
+ 	cfg.drv_data = chg;
+ 	cfg.fwnode = dev_fwnode(dev);
+ 	chg->psy = devm_power_supply_register(dev, &sm5705_chg_desc, &cfg);
++	if (!IS_ERR(chg->psy))
++		WRITE_ONCE(sm5705_instance, chg);
+ 	if (IS_ERR(chg->psy))
+ 		return dev_err_probe(dev, PTR_ERR(chg->psy), "cannot register\n");
+ 
+diff -ruN a/drivers/usb/typec/Kconfig b/drivers/usb/typec/Kconfig
+--- a/drivers/usb/typec/Kconfig	2026-10-15 10:28:07.329632346 +0300
++++ b/drivers/usb/typec/Kconfig	2026-10-15 10:28:07.354807732 +0300
+@@ -46,6 +46,18 @@
+ 
+ if TYPEC
+ 
++config TYPEC_S2MM005
++	tristate "Samsung S2MM005 USB-C controller (Galaxy Tab S3)"
++	depends on I2C
++	help
++	  The S2MM005 runs the Type-C and Power Delivery state machines in
++	  its own firmware. This driver reads what it reports and tells the
++	  SM5705 charger when a partner takes over VBUS, so the tablet
++	  charges from a hub while it stays the USB host.
++
++	  To compile this driver as a module, choose M here: the module
++	  will be called s2mm005.
++
+ source "drivers/usb/typec/tcpm/Kconfig"
+ 
+ source "drivers/usb/typec/ucsi/Kconfig"
+diff -ruN a/drivers/usb/typec/Makefile b/drivers/usb/typec/Makefile
+--- a/drivers/usb/typec/Makefile	2026-10-15 10:28:07.331553166 +0300
++++ b/drivers/usb/typec/Makefile	2026-10-15 10:28:07.354879460 +0300
+@@ -4,6 +4,7 @@
+ typec-$(CONFIG_ACPI)		+= port-mapper.o
+ obj-$(CONFIG_TYPEC)		+= altmodes/
+ obj-$(CONFIG_TYPEC_TCPM)	+= tcpm/
++obj-$(CONFIG_TYPEC_S2MM005)	+= s2mm005.o
+ obj-$(CONFIG_TYPEC_UCSI)	+= ucsi/
+ obj-$(CONFIG_TYPEC_TPS6598X)	+= tipd/
+ obj-$(CONFIG_TYPEC_ANX7411)	+= anx7411.o
+diff -ruN a/drivers/usb/typec/s2mm005.c b/drivers/usb/typec/s2mm005.c
+--- a/drivers/usb/typec/s2mm005.c	1970-01-01 03:00:00.000000000 +0300
++++ b/drivers/usb/typec/s2mm005.c	2026-10-15 15:33:07.242661646 +0300
+@@ -0,0 +1,526 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Samsung S2MM005 USB Type-C and Power Delivery controller, as found in
++ * the Galaxy Tab S3 (SM-T825).
++ *
++ * The chip runs the Type-C and PD state machines in its own firmware and
++ * only reports: a function state word (policy-engine state, CC plug
++ * states, attached, source or sink, host or device), a block of message
++ * flags, the partner's source capabilities, over I2C with 16-bit register
++ * addresses, and an interrupt line on every change. The host has two
++ * duties. The USB data role follows the controller's: host when the
++ * tablet is the downstream-facing port, device otherwise, through the
++ * USB role switch in the connector's graph. And VBUS: when the partner
++ * takes over the supply (a power-role swap with a hub that has its own
++ * charger) the tablet's boost must go off while the USB host role stays,
++ * and it must come back when the tablet is to source again. This driver
++ * does that through the SM5705 charger (sm5705_partner_supply, with the
++ * partner's contract current) and shows the state in sysfs. The register
++ * layout follows Samsung's s2mm005 driver.
++ */
++
++#include <linux/bitops.h>
++#include <linux/delay.h>
++#include <linux/i2c.h>
++#include <linux/interrupt.h>
++#include <linux/jiffies.h>
++#include <linux/module.h>
++#include <linux/mutex.h>
++#include <linux/power/sm5705_charger.h>
++#include <linux/property.h>
++#include <linux/regulator/consumer.h>
++#include <linux/string.h>
++#include <linux/sysfs.h>
++#include <linux/usb/role.h>
++#include <linux/workqueue.h>
++
++#define S2MM005_REG_HW_VERSION	0x0000	/* flash read: boot, main[3] */
++#define S2MM005_REG_SW_VERSION	0x0008	/* flash read: boot, main[3] */
++#define S2MM005_REG_CMD		0x0010
++#define S2MM005_REG_FUNC_STATE	0x0020	/* u32 */
++#define S2MM005_REG_INT_STATUS	0x0030	/* 12 u32: sync, ctrl, data, extd, msg irq ... */
++#define S2MM005_REG_LP_STATE	0x0060	/* u32: low power, water */
++#define S2MM005_REG_SRC_CAP	0x0260	/* partner's Source_Capabilities */
++
++#define S2MM005_CMD_FLASH_READ	0xaa
++#define S2MM005_CMD_INT_CLEAR	0x01
++
++/* FUNC_STATE */
++#define S2MM005_PD_STATE(v)	((v) & 0xff)
++#define S2MM005_CC1(v)		(((v) >> 8) & 7)
++#define S2MM005_CC2(v)		(((v) >> 12) & 7)
++#define S2MM005_ATTACHED	BIT(24)
++#define S2MM005_SOURCE		BIT(25)
++#define S2MM005_DFP		BIT(26)
++#define S2MM005_RP(v)		(((v) >> 27) & 3)
++#define S2MM005_VBUS_CC_SHORT	BIT(29)
++#define S2MM005_VBUS_SBU_SHORT	BIT(30)
++/* The bits that mean something (the rest are response and reset flags) */
++#define S2MM005_FUNC_MASK	(0xff | (7 << 8) | (7 << 12) | S2MM005_ATTACHED | S2MM005_SOURCE | \
++				 S2MM005_DFP | (3 << 27) | S2MM005_VBUS_CC_SHORT | S2MM005_VBUS_SBU_SHORT)
++
++/* Policy-engine states the host must act on */
++#define S2MM005_PE_PRS_SRC_SNK_OFF	52	/* we stop sourcing, the partner takes over */
++#define S2MM005_PE_PRS_SNK_SRC_ON	64	/* we source again */
++
++/* Message flags (INT_STATUS word 4) */
++#define S2MM005_MSG_DR_SWAP	BIT(9)
++#define S2MM005_MSG_PR_SWAP	BIT(10)
++#define S2MM005_MSG_SRC_CAP	BIT(17)
++
++#define S2MM005_POLL_MS		1000
++#define S2MM005_FAST_POLL_MS	40
++#define S2MM005_FAST_SECONDS	3
++#define S2MM005_ROLE_DROP_MS	1000	/* a detach must last this long to end the host role */
++
++struct s2mm005 {
++	struct i2c_client *client;
++	struct mutex lock;
++	struct delayed_work poll;
++	u32 func;
++	u32 lp;
++	u32 msg;
++	u8 hw_version[4];
++	u8 sw_version[4];
++	bool paused;		/* what the charger was told last */
++	int partner_ua;
++	struct usb_role_switch *role_sw;
++	enum usb_role role;	/* what the role switch was told last */
++	struct delayed_work role_drop;
++	struct regulator *redriver;	/* the SuperSpeed redriver's enable, if any */
++	bool redriver_on;
++	bool seen;
++	unsigned long fast_until;
++};
++
++static const char *const s2mm005_pe_names[] = {
++	[0] = "detached", [1] = "source startup", [2] = "source discovery",
++	[3] = "source send capabilities", [4] = "source negotiate",
++	[5] = "source transition supply", [6] = "source ready", [7] = "source disabled",
++	[8] = "source capability response", [9] = "source hard reset",
++	[10] = "source hard reset received", [11] = "source transition to default",
++	[12] = "source give capabilities", [13] = "source get sink capabilities",
++	[14] = "source wait new capabilities", [15] = "sink startup", [16] = "sink discovery",
++	[17] = "sink wait for capabilities", [18] = "sink evaluate capability",
++	[19] = "sink select capability", [20] = "sink transition", [21] = "sink ready",
++	[22] = "sink hard reset", [23] = "sink transition to default",
++	[24] = "sink give capabilities", [25] = "sink get source capabilities",
++	[26] = "cable identity request", [27] = "cable identity acked",
++	[28] = "cable identity naked", [29] = "error recovery",
++};
++
++static const char *s2mm005_pe_name(u8 state)
++{
++	if (state == S2MM005_PE_PRS_SRC_SNK_OFF)
++		return "power-role swap: source to sink, VBUS off";
++	if (state == S2MM005_PE_PRS_SNK_SRC_ON)
++		return "power-role swap: sink to source, VBUS on";
++	if (state < ARRAY_SIZE(s2mm005_pe_names) && s2mm005_pe_names[state])
++		return s2mm005_pe_names[state];
++	return "unknown";
++}
++
++static int s2mm005_read(struct s2mm005 *s, u16 reg, void *buf, u16 len)
++{
++	u8 addr[2] = { reg >> 8, reg & 0xff };
++	struct i2c_msg msgs[2] = {
++		{ .addr = s->client->addr, .flags = 0, .len = 2, .buf = addr },
++		{ .addr = s->client->addr, .flags = I2C_M_RD, .len = len, .buf = buf },
++	};
++	int ret;
++
++	ret = i2c_transfer(s->client->adapter, msgs, 2);
++	if (ret < 0)
++		return ret;
++	return ret == 2 ? 0 : -EIO;
++}
++
++static int s2mm005_write(struct s2mm005 *s, u16 reg, const void *buf, u16 len)
++{
++	u8 data[10];
++	struct i2c_msg msg = { .addr = s->client->addr, .flags = 0, .len = 2 + len, .buf = data };
++	int ret;
++
++	if (len > sizeof(data) - 2)
++		return -EINVAL;
++	data[0] = reg >> 8;
++	data[1] = reg & 0xff;
++	memcpy(data + 2, buf, len);
++	ret = i2c_transfer(s->client->adapter, &msg, 1);
++	if (ret < 0)
++		return ret;
++	return ret == 1 ? 0 : -EIO;
++}
++
++static int s2mm005_read_u32(struct s2mm005 *s, u16 reg, u32 *val)
++{
++	__le32 raw;
++	int ret;
++
++	ret = s2mm005_read(s, reg, &raw, sizeof(raw));
++	if (ret)
++		return ret;
++	*val = le32_to_cpu(raw);
++	return 0;
++}
++
++/* The flash-mode reads of the version fields: a command byte first. */
++static int s2mm005_read_version(struct s2mm005 *s, u16 reg, u8 *out)
++{
++	u8 cmd = S2MM005_CMD_FLASH_READ;
++	int ret;
++
++	ret = s2mm005_write(s, S2MM005_REG_CMD, &cmd, 1);
++	if (ret)
++		return ret;
++	return s2mm005_read(s, reg, out, 4);
++}
++
++/* The current of the partner's 5 V fixed supply, or 0 without one. */
++static int s2mm005_partner_ua(struct s2mm005 *s)
++{
++	__le32 raw[8];
++	unsigned int n, i;
++
++	if (s2mm005_read(s, S2MM005_REG_SRC_CAP, raw, sizeof(raw)))
++		return 0;
++	n = (le32_to_cpu(raw[0]) >> 12) & 7;
++	for (i = 0; i < n && i < 7; i++) {
++		u32 pdo = le32_to_cpu(raw[1 + i]);
++
++		if ((pdo >> 30) == 0 && ((pdo >> 10) & 0x3ff) * 50 == 5000)
++			return (pdo & 0x3ff) * 10000;
++	}
++	return 0;
++}
++
++static int s2mm005_int_clear(struct s2mm005 *s)
++{
++	u8 cmd = S2MM005_CMD_INT_CLEAR;
++
++	return s2mm005_write(s, S2MM005_REG_CMD, &cmd, 1);
++}
++
++/* Called with lock held. */
++static void s2mm005_set_role(struct s2mm005 *s, enum usb_role role)
++{
++	struct device *dev = &s->client->dev;
++	int ret;
++
++	if (!s->role_sw || role == s->role)
++		return;
++	ret = usb_role_switch_set_role(s->role_sw, role);
++	if (ret)
++		dev_warn(dev, "USB role %s failed: %d\n", usb_role_string(role), ret);
++	else
++		dev_info(dev, "USB role %s\n", usb_role_string(role));
++	s->role = role;
++}
++
++/* Called with lock held: the SuperSpeed redriver, on while a partner is attached. */
++static void s2mm005_redriver(struct s2mm005 *s, bool on)
++{
++	int ret;
++
++	if (!s->redriver || on == s->redriver_on)
++		return;
++	ret = on ? regulator_enable(s->redriver) : regulator_disable(s->redriver);
++	if (ret)
++		dev_warn(&s->client->dev, "redriver %s failed: %d\n", on ? "on" : "off", ret);
++	else
++		s->redriver_on = on;
++}
++
++/* The chip reports a detach for a few tens of milliseconds as the tablet's
++ * own VBUS comes on, and a hub that takes over VBUS is a sink and device
++ * until its data-role swap: the drop to the device role and the redriver's
++ * end wait for the state to settle, while the host role is taken at once.
++ */
++static void s2mm005_role_drop(struct work_struct *work)
++{
++	struct s2mm005 *s = container_of(work, struct s2mm005, role_drop.work);
++
++	mutex_lock(&s->lock);
++	if (!(s->func & S2MM005_ATTACHED) || !(s->func & S2MM005_DFP))
++		s2mm005_set_role(s, USB_ROLE_DEVICE);
++	if (!(s->func & S2MM005_ATTACHED))
++		s2mm005_redriver(s, false);
++	mutex_unlock(&s->lock);
++}
++
++/* Called with lock held: read the state, act on the power path. */
++static void s2mm005_update(struct s2mm005 *s, const char *why)
++{
++	struct device *dev = &s->client->dev;
++	__le32 status[12];
++	u32 func, lp, msg = 0;
++	bool attached, source, dfp, pause, blip;
++	u8 pe;
++	int ret, ua;
++
++	ret = s2mm005_read_u32(s, S2MM005_REG_FUNC_STATE, &func);
++	if (!ret)
++		ret = s2mm005_read_u32(s, S2MM005_REG_LP_STATE, &lp);
++	if (!ret && !s2mm005_read(s, S2MM005_REG_INT_STATUS, status, sizeof(status)))
++		msg = le32_to_cpu(status[4]);
++	if (ret) {
++		dev_err_ratelimited(dev, "%s: read failed: %d\n", why, ret);
++		return;
++	}
++	func &= S2MM005_FUNC_MASK;
++	pe = S2MM005_PD_STATE(func);
++	attached = func & S2MM005_ATTACHED;
++	source = func & S2MM005_SOURCE;
++	dfp = func & S2MM005_DFP;
++	/* While the tablet sources, the chip reports a detach or a sink attach
++	 * with its policy engine still detached for a moment as VBUS comes on,
++	 * and every half second with a partner that speaks no PD. Nothing to
++	 * log or to hurry the poll for; the state attribute still shows them.
++	 */
++	blip = pe == 0 && s->role == USB_ROLE_HOST;
++	if ((!s->seen || func != s->func) && !blip) {
++		dev_info(dev, "%s: %s, %s, %s; %s (%u); cc1 %u cc2 %u, rp %u%s%s\n", why,
++			 attached ? "attached" : "detached", source ? "source" : "sink",
++			 dfp ? "host" : "device", s2mm005_pe_name(pe), pe,
++			 S2MM005_CC1(func), S2MM005_CC2(func), S2MM005_RP(func),
++			 func & S2MM005_VBUS_CC_SHORT ? ", VBUS-CC short" : "",
++			 func & S2MM005_VBUS_SBU_SHORT ? ", VBUS-SBU short" : "");
++		s->fast_until = jiffies + S2MM005_FAST_SECONDS * HZ;
++	}
++	if (msg && msg != s->msg)
++		dev_info(dev, "partner messages: 0x%08x%s%s%s\n", msg,
++			 msg & S2MM005_MSG_SRC_CAP ? " source-capabilities" : "",
++			 msg & S2MM005_MSG_PR_SWAP ? " power-role-swap" : "",
++			 msg & S2MM005_MSG_DR_SWAP ? " data-role-swap" : "");
++	if (lp != s->lp && s->seen)
++		dev_info(dev, "low-power state 0x%08x\n", lp);
++	s->func = func;
++	s->lp = lp;
++	s->msg = msg;
++	s->seen = true;
++
++	/* The tablet's boost: off whenever the partner supplies the port. A
++	 * sink attach whose policy engine still says detached is the chip's
++	 * own blip as the tablet's VBUS comes on (a partner that supplies
++	 * reaches "sink wait for capabilities" within 70 ms); acting on it
++	 * cuts the boost under a bus-powered device every half second.
++	 */
++	if (!attached)
++		pause = false;
++	else if (pe == S2MM005_PE_PRS_SRC_SNK_OFF)
++		pause = true;
++	else if (pe == S2MM005_PE_PRS_SNK_SRC_ON)
++		pause = false;
++	else
++		pause = !source && pe != 0;
++	ua = pause ? s2mm005_partner_ua(s) : 0;
++	if (pause != s->paused || ua != s->partner_ua) {
++		ret = sm5705_partner_supply(pause, ua);
++		if (ret && ret != -ENODEV)
++			dev_warn(dev, "charger: %s the boost failed: %d\n",
++				 pause ? "pausing" : "resuming", ret);
++		else if (pause && ua)
++			dev_info(dev, "the partner supplies %d mA\n", ua / 1000);
++		s->paused = pause;
++		s->partner_ua = ua;
++	}
++
++	/* The USB data role follows the controller's. */
++	if (attached)
++		s2mm005_redriver(s, true);
++	if (attached && dfp) {
++		cancel_delayed_work(&s->role_drop);
++		s2mm005_set_role(s, USB_ROLE_HOST);
++	} else if (s->role != USB_ROLE_DEVICE || (!attached && s->redriver_on)) {
++		schedule_delayed_work(&s->role_drop, msecs_to_jiffies(S2MM005_ROLE_DROP_MS));
++	}
++	if (s2mm005_int_clear(s))
++		dev_warn_ratelimited(dev, "interrupt clear failed\n");
++}
++
++static irqreturn_t s2mm005_irq(int irq, void *data)
++{
++	struct s2mm005 *s = data;
++
++	mutex_lock(&s->lock);
++	s2mm005_update(s, "interrupt");
++	mutex_unlock(&s->lock);
++	return IRQ_HANDLED;
++}
++
++static void s2mm005_poll(struct work_struct *work)
++{
++	struct s2mm005 *s = container_of(work, struct s2mm005, poll.work);
++	unsigned long delay = msecs_to_jiffies(S2MM005_POLL_MS);
++
++	mutex_lock(&s->lock);
++	s2mm005_update(s, "poll");
++	if (time_before(jiffies, s->fast_until))
++		delay = msecs_to_jiffies(S2MM005_FAST_POLL_MS);
++	mutex_unlock(&s->lock);
++	schedule_delayed_work(&s->poll, delay);
++}
++
++static ssize_t state_show(struct device *dev, struct device_attribute *attr, char *buf)
++{
++	struct s2mm005 *s = dev_get_drvdata(dev);
++	u32 func;
++
++	mutex_lock(&s->lock);
++	func = s->func;
++	mutex_unlock(&s->lock);
++	return sysfs_emit(buf, "%s %s %s pe=%u cc1=%u cc2=%u rp=%u boost=%s\n",
++			  func & S2MM005_ATTACHED ? "attached" : "detached",
++			  func & S2MM005_SOURCE ? "source" : "sink",
++			  func & S2MM005_DFP ? "host" : "device",
++			  S2MM005_PD_STATE(func), S2MM005_CC1(func), S2MM005_CC2(func),
++			  S2MM005_RP(func), s->paused ? "paused" : "allowed");
++}
++static DEVICE_ATTR_RO(state);
++
++static ssize_t version_show(struct device *dev, struct device_attribute *attr, char *buf)
++{
++	struct s2mm005 *s = dev_get_drvdata(dev);
++
++	return sysfs_emit(buf, "hw boot %u main %02x.%02x.%02x, sw boot %u main %02x.%02x.%02x\n",
++			  s->hw_version[0], s->hw_version[3], s->hw_version[2], s->hw_version[1],
++			  s->sw_version[0], s->sw_version[3], s->sw_version[2], s->sw_version[1]);
++}
++static DEVICE_ATTR_RO(version);
++
++static ssize_t source_capabilities_show(struct device *dev, struct device_attribute *attr,
++					char *buf)
++{
++	struct s2mm005 *s = dev_get_drvdata(dev);
++	__le32 raw[8];
++	u16 header;
++	unsigned int n, i;
++	ssize_t len = 0;
++	int ret;
++
++	mutex_lock(&s->lock);
++	ret = s2mm005_read(s, S2MM005_REG_SRC_CAP, raw, sizeof(raw));
++	mutex_unlock(&s->lock);
++	if (ret)
++		return ret;
++	header = le32_to_cpu(raw[0]) & 0xffff;
++	n = (header >> 12) & 7;
++	if (!header || !n)
++		return sysfs_emit(buf, "none\n");
++	for (i = 0; i < n && i < 7; i++) {
++		u32 pdo = le32_to_cpu(raw[1 + i]);
++
++		if ((pdo >> 30) == 0)
++			len += sysfs_emit_at(buf, len, "fixed %u mV %u mA%s%s\n",
++					     ((pdo >> 10) & 0x3ff) * 50, (pdo & 0x3ff) * 10,
++					     pdo & BIT(29) ? " dual-role-power" : "",
++					     pdo & BIT(25) ? " dual-role-data" : "");
++		else
++			len += sysfs_emit_at(buf, len, "pdo 0x%08x\n", pdo);
++	}
++	return len;
++}
++static DEVICE_ATTR_RO(source_capabilities);
++
++static struct attribute *s2mm005_attrs[] = {
++	&dev_attr_state.attr,
++	&dev_attr_version.attr,
++	&dev_attr_source_capabilities.attr,
++	NULL
++};
++ATTRIBUTE_GROUPS(s2mm005);
++
++static int s2mm005_probe(struct i2c_client *client)
++{
++	struct device *dev = &client->dev;
++	struct fwnode_handle *connector;
++	struct s2mm005 *s;
++	int ret;
++
++	s = devm_kzalloc(dev, sizeof(*s), GFP_KERNEL);
++	if (!s)
++		return -ENOMEM;
++	s->client = client;
++	mutex_init(&s->lock);
++	i2c_set_clientdata(client, s);
++
++	/* The SuperSpeed redriver's enable, where the board has one */
++	s->redriver = devm_regulator_get_optional(dev, "redriver");
++	if (IS_ERR(s->redriver)) {
++		if (PTR_ERR(s->redriver) != -ENODEV)
++			return dev_err_probe(dev, PTR_ERR(s->redriver), "redriver supply\n");
++		s->redriver = NULL;
++	}
++
++	/* The USB role switch behind the connector's high-speed port */
++	connector = device_get_named_child_node(dev, "connector");
++	if (connector) {
++		s->role_sw = fwnode_usb_role_switch_get(connector);
++		fwnode_handle_put(connector);
++		if (IS_ERR(s->role_sw))
++			return dev_err_probe(dev, PTR_ERR(s->role_sw), "no USB role switch\n");
++		if (s->role_sw)
++			s->role = usb_role_switch_get_role(s->role_sw);
++		else
++			dev_warn(dev, "connector without a USB role switch: the role is user space's\n");
++	}
++
++	ret = s2mm005_read_version(s, S2MM005_REG_HW_VERSION, s->hw_version);
++	if (!ret)
++		ret = s2mm005_read_version(s, S2MM005_REG_SW_VERSION, s->sw_version);
++	if (ret)
++		return dev_err_probe(dev, ret, "no answer from the USB-C controller\n");
++	dev_info(dev, "S2MM005 firmware boot %u main %02x.%02x.%02x (hardware boot %u)\n",
++		 s->sw_version[0], s->sw_version[3], s->sw_version[2], s->sw_version[1],
++		 s->hw_version[0]);
++
++	INIT_DELAYED_WORK(&s->poll, s2mm005_poll);
++	INIT_DELAYED_WORK(&s->role_drop, s2mm005_role_drop);
++	mutex_lock(&s->lock);
++	s2mm005_update(s, "probe");
++	mutex_unlock(&s->lock);
++
++	if (client->irq) {
++		ret = devm_request_threaded_irq(dev, client->irq, NULL, s2mm005_irq,
++						IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
++						"s2mm005", s);
++		if (ret)
++			dev_warn(dev, "no interrupt (%d), polling only\n", ret);
++	}
++	schedule_delayed_work(&s->poll, msecs_to_jiffies(S2MM005_POLL_MS));
++	return 0;
++}
++
++static void s2mm005_remove(struct i2c_client *client)
++{
++	struct s2mm005 *s = i2c_get_clientdata(client);
++
++	cancel_delayed_work_sync(&s->poll);
++	cancel_delayed_work_sync(&s->role_drop);
++	if (s->paused)
++		sm5705_partner_supply(false, 0);
++	mutex_lock(&s->lock);
++	s2mm005_redriver(s, false);
++	mutex_unlock(&s->lock);
++	usb_role_switch_put(s->role_sw);
++}
++
++static const struct of_device_id s2mm005_of_match[] = {
++	{ .compatible = "samsung,s2mm005" },
++	{ }
++};
++MODULE_DEVICE_TABLE(of, s2mm005_of_match);
++
++static struct i2c_driver s2mm005_driver = {
++	.driver = {
++		.name = "s2mm005",
++		.of_match_table = s2mm005_of_match,
++		.dev_groups = s2mm005_groups,
++	},
++	.probe = s2mm005_probe,
++	.remove = s2mm005_remove,
++};
++module_i2c_driver(s2mm005_driver);
++
++MODULE_DESCRIPTION("Samsung S2MM005 USB-C controller");
++MODULE_LICENSE("GPL");
+diff -ruN a/include/linux/power/sm5705_charger.h b/include/linux/power/sm5705_charger.h
+--- a/include/linux/power/sm5705_charger.h	1970-01-01 03:00:00.000000000 +0300
++++ b/include/linux/power/sm5705_charger.h	2026-10-15 10:36:21.644413648 +0300
+@@ -0,0 +1,17 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef _LINUX_POWER_SM5705_CHARGER_H
++#define _LINUX_POWER_SM5705_CHARGER_H
++
++#include <linux/types.h>
++
++/* The USB-C controller reports whether a partner supplies the port (and
++ * with how much current, from its Power Delivery contract) while the USB
++ * host role may still be held.
++ */
++#if IS_ENABLED(CONFIG_CHARGER_SM5705)
++int sm5705_partner_supply(bool supplies, int max_ua);
++#else
++static inline int sm5705_partner_supply(bool supplies, int max_ua) { return -ENODEV; }
++#endif
++
++#endif

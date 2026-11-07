@@ -1,0 +1,693 @@
+--- a/include/linux/iio/common/qcom_smgr.h
++++ b/include/linux/iio/common/qcom_smgr.h
+@@ -67,6 +67,8 @@
+ struct smgr_iio_priv
+ {
+ 	struct smgr_sensor *sensor;
++	/* read_avail() range of the sampling frequency: min, step, max */
++	int samp_freq_range[3];
+ };
+ 
+ extern struct iio_buffer_setup_ops smgr_buffer_ops;
+--- a/drivers/iio/accel/smgr_accel.c
++++ b/drivers/iio/accel/smgr_accel.c
+@@ -30,16 +30,10 @@
+ 		*val = priv->sensor->data_types[0].cur_sample_rate;
+ 		return IIO_VAL_INT;
+ 	case IIO_CHAN_INFO_SCALE:
+-		/*
+-		 * TODO: Find out if the scale is standard across devices or
+-		 * find a way to get the correct scale for a device
+-		 *
+-		 * Device reports around 640000 when axis is aligned with
+-		 * gravity, therefore scale is 9.81m/s^2 / 640000.
+-		 */
+-		*val = 0;
+-		*val2 = 15328; /* scale * 10^9 */
+-		return IIO_VAL_INT_PLUS_NANO;
++		/* Q16 m/s^2 (1 g reads 643000 = 9.81 * 65536) */
++		*val = 1;
++		*val2 = 16;
++		return IIO_VAL_FRACTIONAL_LOG2;
+ 	}
+ 
+ 	return -EINVAL;
+@@ -74,15 +68,16 @@
+ 				 long mask)
+ {
+ 	struct smgr_iio_priv *priv = iio_priv(iio_dev);
+-	const int samp_freq_vals[3] = {
+-		1, 1, priv->sensor->data_types[0].max_sample_rate
+-	};
+ 
+ 	switch (mask) {
+ 	case IIO_CHAN_INFO_SAMP_FREQ:
++		priv->samp_freq_range[0] = 1;
++		priv->samp_freq_range[1] = 1;
++		priv->samp_freq_range[2] =
++			priv->sensor->data_types[0].max_sample_rate;
+ 		*type = IIO_VAL_INT;
+-		*vals = samp_freq_vals;
+-		*length = ARRAY_SIZE(samp_freq_vals);
++		*vals = priv->samp_freq_range;
++		*length = ARRAY_SIZE(priv->samp_freq_range);
+ 		return IIO_AVAIL_RANGE;
+ 	}
+ 
+@@ -191,6 +186,7 @@
+ 	priv = iio_priv(iio_dev);
+ 	priv->sensor = *(struct smgr_sensor **)pdev->dev.platform_data;
+ 	priv->sensor->iio_dev = iio_dev;
++	platform_set_drvdata(pdev, iio_dev);
+ 
+ 	iio_dev->name = "qcom-smgr-accel";
+ 	iio_dev->info = &smgr_accel_iio_info;
+--- a/drivers/iio/gyro/Kconfig
++++ b/drivers/iio/gyro/Kconfig
+@@ -179,4 +179,14 @@
+ 	  Say yes here to add support for the InvenSense ITG3200 digital
+ 	  3-axis gyroscope sensor.
+ 
++config IIO_QCOM_SMGR_GYRO
++	tristate "Qualcomm SSC Sensor Manager Gyroscope Sensor"
++	depends on IIO_QCOM_SMGR
++	select IIO_BUFFER
++	select IIO_KFIFO_BUF
++	help
++	  Say yes here to get support for gyroscopes connected to a
++	  Qualcomm Snapdragon Sensor Core and accessed through its
++	  Sensor Manager service.
++
+ endmenu
+--- a/drivers/iio/gyro/Makefile
++++ b/drivers/iio/gyro/Makefile
+@@ -36,3 +36,5 @@
+ 
+ obj-$(CONFIG_IIO_ST_GYRO_I2C_3AXIS) += st_gyro_i2c.o
+ obj-$(CONFIG_IIO_ST_GYRO_SPI_3AXIS) += st_gyro_spi.o
++
++obj-$(CONFIG_IIO_QCOM_SMGR_GYRO) += smgr_gyro.o
+--- /dev/null
++++ b/drivers/iio/gyro/smgr_gyro.c
+@@ -0,0 +1,181 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Qualcomm Sensor Manager gyroscope driver
++ *
++ * Derived from the Sensor Manager accelerometer driver,
++ * Copyright (c) 2022, Yassine Oudjana <y.oudjana@protonmail.com>
++ *
++ * The Sensor Manager reports angular rates as Q16 rad/s in the sensor
++ * core's frame; the first data type of the gyroscope carries them.
++ */
++
++#include <linux/mod_devicetable.h>
++#include <linux/platform_device.h>
++#include <linux/iio/buffer.h>
++#include <linux/iio/common/qcom_smgr.h>
++#include <linux/iio/iio.h>
++#include <linux/iio/kfifo_buf.h>
++
++static int smgr_gyro_read_raw(struct iio_dev *iio_dev,
++			      struct iio_chan_spec const *chan, int *val,
++			      int *val2, long mask)
++{
++	struct smgr_iio_priv *priv = iio_priv(iio_dev);
++	int ret;
++
++	switch (mask) {
++	case IIO_CHAN_INFO_RAW:
++		if (!iio_device_claim_direct(iio_dev))
++			return -EBUSY;
++		ret = smgr_sensor_read(priv->sensor, chan->scan_index, val);
++		iio_device_release_direct(iio_dev);
++		return ret;
++	case IIO_CHAN_INFO_SAMP_FREQ:
++		*val = priv->sensor->data_types[0].cur_sample_rate;
++		return IIO_VAL_INT;
++	case IIO_CHAN_INFO_SCALE:
++		/* Q16 rad/s */
++		*val = 1;
++		*val2 = 16;
++		return IIO_VAL_FRACTIONAL_LOG2;
++	}
++
++	return -EINVAL;
++}
++
++static int smgr_gyro_write_raw(struct iio_dev *iio_dev,
++			       struct iio_chan_spec const *chan, int val,
++			       int val2, long mask)
++{
++	struct smgr_iio_priv *priv = iio_priv(iio_dev);
++
++	switch (mask) {
++	case IIO_CHAN_INFO_SAMP_FREQ:
++		if (val < 1 || val > priv->sensor->data_types[0].max_sample_rate)
++			return -EINVAL;
++		priv->sensor->data_types[0].cur_sample_rate = val;
++
++		/* Send a new buffering request if the buffer is enabled */
++		if (iio_buffer_enabled(iio_dev))
++			return iio_dev->setup_ops->postenable(iio_dev);
++
++		return 0;
++	}
++
++	return -EINVAL;
++}
++
++static int smgr_gyro_read_avail(struct iio_dev *iio_dev,
++				struct iio_chan_spec const *chan,
++				const int **vals, int *type, int *length,
++				long mask)
++{
++	struct smgr_iio_priv *priv = iio_priv(iio_dev);
++
++	switch (mask) {
++	case IIO_CHAN_INFO_SAMP_FREQ:
++		priv->samp_freq_range[0] = 1;
++		priv->samp_freq_range[1] = 1;
++		priv->samp_freq_range[2] =
++			priv->sensor->data_types[0].max_sample_rate;
++		*type = IIO_VAL_INT;
++		*vals = priv->samp_freq_range;
++		*length = ARRAY_SIZE(priv->samp_freq_range);
++		return IIO_AVAIL_RANGE;
++	}
++
++	return -EINVAL;
++}
++
++static const struct iio_info smgr_gyro_iio_info = {
++	.read_raw = smgr_gyro_read_raw,
++	.write_raw = smgr_gyro_write_raw,
++	.read_avail = smgr_gyro_read_avail,
++};
++
++#define SMGR_GYRO_CHANNEL(_axis, _index)				\
++	{								\
++		.type = IIO_ANGL_VEL,					\
++		.modified = true,					\
++		.channel2 = IIO_MOD_##_axis,				\
++		.scan_index = _index,					\
++		.scan_type = {						\
++			.sign = 's',					\
++			.realbits = 32,					\
++			.storagebits = 32,				\
++			.endianness = IIO_LE,				\
++		},							\
++		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),		\
++		.info_mask_shared_by_type = BIT(IIO_CHAN_INFO_SCALE) |	\
++					    BIT(IIO_CHAN_INFO_SAMP_FREQ), \
++		.info_mask_shared_by_type_available =			\
++					    BIT(IIO_CHAN_INFO_SAMP_FREQ), \
++	}
++
++static const struct iio_chan_spec smgr_gyro_iio_channels[] = {
++	SMGR_GYRO_CHANNEL(X, 0),
++	SMGR_GYRO_CHANNEL(Y, 1),
++	SMGR_GYRO_CHANNEL(Z, 2),
++	IIO_CHAN_SOFT_TIMESTAMP(3),
++};
++
++static int smgr_gyro_probe(struct platform_device *pdev)
++{
++	struct iio_dev *iio_dev;
++	struct smgr_iio_priv *priv;
++	int ret;
++
++	iio_dev = devm_iio_device_alloc(&pdev->dev, sizeof(*priv));
++	if (!iio_dev)
++		return -ENOMEM;
++
++	priv = iio_priv(iio_dev);
++	priv->sensor = *(struct smgr_sensor **)pdev->dev.platform_data;
++	priv->sensor->iio_dev = iio_dev;
++	platform_set_drvdata(pdev, iio_dev);
++
++	iio_dev->name = "qcom-smgr-gyro";
++	iio_dev->info = &smgr_gyro_iio_info;
++	iio_dev->channels = smgr_gyro_iio_channels;
++	iio_dev->num_channels = ARRAY_SIZE(smgr_gyro_iio_channels);
++
++	ret = devm_iio_kfifo_buffer_setup(&pdev->dev, iio_dev,
++					  &smgr_buffer_ops);
++	if (ret)
++		return dev_err_probe(&pdev->dev, ret,
++				     "Failed to setup buffer\n");
++
++	ret = devm_iio_device_register(&pdev->dev, iio_dev);
++	if (ret)
++		return dev_err_probe(&pdev->dev, ret,
++				     "Failed to register IIO device\n");
++
++	return 0;
++}
++
++static void smgr_gyro_remove(struct platform_device *pdev)
++{
++	struct iio_dev *iio_dev = platform_get_drvdata(pdev);
++	struct smgr_iio_priv *priv = iio_priv(iio_dev);
++
++	priv->sensor->iio_dev = NULL;
++}
++
++static const struct platform_device_id smgr_gyro_ids[] = {
++	{ .name = "qcom-smgr-gyro" },
++	{ /* sentinel */ }
++};
++MODULE_DEVICE_TABLE(platform, smgr_gyro_ids);
++
++static struct platform_driver smgr_gyro_driver = {
++	.probe = smgr_gyro_probe,
++	.remove = smgr_gyro_remove,
++	.driver	= {
++		.name = "smgr_gyro",
++	},
++	.id_table = smgr_gyro_ids,
++};
++module_platform_driver(smgr_gyro_driver);
++
++MODULE_DESCRIPTION("Qualcomm Sensor Manager gyroscope driver");
++MODULE_LICENSE("GPL");
+--- a/drivers/iio/magnetometer/Kconfig
++++ b/drivers/iio/magnetometer/Kconfig
+@@ -286,4 +286,14 @@
+ 	  To compile this driver as a module, choose M here: the module
+ 	  will be called yamaha-yas.
+ 
++config IIO_QCOM_SMGR_MAG
++	tristate "Qualcomm SSC Sensor Manager Magnetometer Sensor"
++	depends on IIO_QCOM_SMGR
++	select IIO_BUFFER
++	select IIO_KFIFO_BUF
++	help
++	  Say yes here to get support for magnetometers connected to a
++	  Qualcomm Snapdragon Sensor Core and accessed through its
++	  Sensor Manager service.
++
+ endmenu
+--- a/drivers/iio/magnetometer/Makefile
++++ b/drivers/iio/magnetometer/Makefile
+@@ -38,3 +38,5 @@
+ obj-$(CONFIG_TI_TMAG5273)		+= tmag5273.o
+ 
+ obj-$(CONFIG_YAMAHA_YAS530)		+= yamaha-yas530.o
++
++obj-$(CONFIG_IIO_QCOM_SMGR_MAG)		+= smgr_mag.o
+--- /dev/null
++++ b/drivers/iio/magnetometer/smgr_mag.c
+@@ -0,0 +1,181 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Qualcomm Sensor Manager magnetometer driver
++ *
++ * Derived from the Sensor Manager accelerometer driver,
++ * Copyright (c) 2022, Yassine Oudjana <y.oudjana@protonmail.com>
++ *
++ * The Sensor Manager reports the magnetic field as Q16 Gauss in the sensor
++ * core's frame; the first data type of the magnetometer carries it.
++ */
++
++#include <linux/mod_devicetable.h>
++#include <linux/platform_device.h>
++#include <linux/iio/buffer.h>
++#include <linux/iio/common/qcom_smgr.h>
++#include <linux/iio/iio.h>
++#include <linux/iio/kfifo_buf.h>
++
++static int smgr_mag_read_raw(struct iio_dev *iio_dev,
++			     struct iio_chan_spec const *chan, int *val,
++			     int *val2, long mask)
++{
++	struct smgr_iio_priv *priv = iio_priv(iio_dev);
++	int ret;
++
++	switch (mask) {
++	case IIO_CHAN_INFO_RAW:
++		if (!iio_device_claim_direct(iio_dev))
++			return -EBUSY;
++		ret = smgr_sensor_read(priv->sensor, chan->scan_index, val);
++		iio_device_release_direct(iio_dev);
++		return ret;
++	case IIO_CHAN_INFO_SAMP_FREQ:
++		*val = priv->sensor->data_types[0].cur_sample_rate;
++		return IIO_VAL_INT;
++	case IIO_CHAN_INFO_SCALE:
++		/* Q16 Gauss */
++		*val = 1;
++		*val2 = 16;
++		return IIO_VAL_FRACTIONAL_LOG2;
++	}
++
++	return -EINVAL;
++}
++
++static int smgr_mag_write_raw(struct iio_dev *iio_dev,
++			      struct iio_chan_spec const *chan, int val,
++			      int val2, long mask)
++{
++	struct smgr_iio_priv *priv = iio_priv(iio_dev);
++
++	switch (mask) {
++	case IIO_CHAN_INFO_SAMP_FREQ:
++		if (val < 1 || val > priv->sensor->data_types[0].max_sample_rate)
++			return -EINVAL;
++		priv->sensor->data_types[0].cur_sample_rate = val;
++
++		/* Send a new buffering request if the buffer is enabled */
++		if (iio_buffer_enabled(iio_dev))
++			return iio_dev->setup_ops->postenable(iio_dev);
++
++		return 0;
++	}
++
++	return -EINVAL;
++}
++
++static int smgr_mag_read_avail(struct iio_dev *iio_dev,
++			       struct iio_chan_spec const *chan,
++			       const int **vals, int *type, int *length,
++			       long mask)
++{
++	struct smgr_iio_priv *priv = iio_priv(iio_dev);
++
++	switch (mask) {
++	case IIO_CHAN_INFO_SAMP_FREQ:
++		priv->samp_freq_range[0] = 1;
++		priv->samp_freq_range[1] = 1;
++		priv->samp_freq_range[2] =
++			priv->sensor->data_types[0].max_sample_rate;
++		*type = IIO_VAL_INT;
++		*vals = priv->samp_freq_range;
++		*length = ARRAY_SIZE(priv->samp_freq_range);
++		return IIO_AVAIL_RANGE;
++	}
++
++	return -EINVAL;
++}
++
++static const struct iio_info smgr_mag_iio_info = {
++	.read_raw = smgr_mag_read_raw,
++	.write_raw = smgr_mag_write_raw,
++	.read_avail = smgr_mag_read_avail,
++};
++
++#define SMGR_MAG_CHANNEL(_axis, _index)					\
++	{								\
++		.type = IIO_MAGN,					\
++		.modified = true,					\
++		.channel2 = IIO_MOD_##_axis,				\
++		.scan_index = _index,					\
++		.scan_type = {						\
++			.sign = 's',					\
++			.realbits = 32,					\
++			.storagebits = 32,				\
++			.endianness = IIO_LE,				\
++		},							\
++		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),		\
++		.info_mask_shared_by_type = BIT(IIO_CHAN_INFO_SCALE) |	\
++					    BIT(IIO_CHAN_INFO_SAMP_FREQ), \
++		.info_mask_shared_by_type_available =			\
++					    BIT(IIO_CHAN_INFO_SAMP_FREQ), \
++	}
++
++static const struct iio_chan_spec smgr_mag_iio_channels[] = {
++	SMGR_MAG_CHANNEL(X, 0),
++	SMGR_MAG_CHANNEL(Y, 1),
++	SMGR_MAG_CHANNEL(Z, 2),
++	IIO_CHAN_SOFT_TIMESTAMP(3),
++};
++
++static int smgr_mag_probe(struct platform_device *pdev)
++{
++	struct iio_dev *iio_dev;
++	struct smgr_iio_priv *priv;
++	int ret;
++
++	iio_dev = devm_iio_device_alloc(&pdev->dev, sizeof(*priv));
++	if (!iio_dev)
++		return -ENOMEM;
++
++	priv = iio_priv(iio_dev);
++	priv->sensor = *(struct smgr_sensor **)pdev->dev.platform_data;
++	priv->sensor->iio_dev = iio_dev;
++	platform_set_drvdata(pdev, iio_dev);
++
++	iio_dev->name = "qcom-smgr-mag";
++	iio_dev->info = &smgr_mag_iio_info;
++	iio_dev->channels = smgr_mag_iio_channels;
++	iio_dev->num_channels = ARRAY_SIZE(smgr_mag_iio_channels);
++
++	ret = devm_iio_kfifo_buffer_setup(&pdev->dev, iio_dev,
++					  &smgr_buffer_ops);
++	if (ret)
++		return dev_err_probe(&pdev->dev, ret,
++				     "Failed to setup buffer\n");
++
++	ret = devm_iio_device_register(&pdev->dev, iio_dev);
++	if (ret)
++		return dev_err_probe(&pdev->dev, ret,
++				     "Failed to register IIO device\n");
++
++	return 0;
++}
++
++static void smgr_mag_remove(struct platform_device *pdev)
++{
++	struct iio_dev *iio_dev = platform_get_drvdata(pdev);
++	struct smgr_iio_priv *priv = iio_priv(iio_dev);
++
++	priv->sensor->iio_dev = NULL;
++}
++
++static const struct platform_device_id smgr_mag_ids[] = {
++	{ .name = "qcom-smgr-mag" },
++	{ /* sentinel */ }
++};
++MODULE_DEVICE_TABLE(platform, smgr_mag_ids);
++
++static struct platform_driver smgr_mag_driver = {
++	.probe = smgr_mag_probe,
++	.remove = smgr_mag_remove,
++	.driver	= {
++		.name = "smgr_mag",
++	},
++	.id_table = smgr_mag_ids,
++};
++module_platform_driver(smgr_mag_driver);
++
++MODULE_DESCRIPTION("Qualcomm Sensor Manager magnetometer driver");
++MODULE_LICENSE("GPL");
+--- a/drivers/iio/light/Kconfig
++++ b/drivers/iio/light/Kconfig
+@@ -781,4 +781,14 @@
+ 	  To compile this driver as a module, choose M here: the
+ 	  module will be called zopt2201.
+ 
++config IIO_QCOM_SMGR_LIGHT
++	tristate "Qualcomm SSC Sensor Manager Ambient Light Sensor"
++	depends on IIO_QCOM_SMGR
++	select IIO_BUFFER
++	select IIO_KFIFO_BUF
++	help
++	  Say yes here to get support for ambient light sensors connected
++	  to a Qualcomm Snapdragon Sensor Core and accessed through its
++	  Sensor Manager service.
++
+ endmenu
+--- a/drivers/iio/light/Makefile
++++ b/drivers/iio/light/Makefile
+@@ -72,3 +72,5 @@
+ obj-$(CONFIG_VEML6075)		+= veml6075.o
+ obj-$(CONFIG_VL6180)		+= vl6180.o
+ obj-$(CONFIG_ZOPT2201)		+= zopt2201.o
++
++obj-$(CONFIG_IIO_QCOM_SMGR_LIGHT)	+= smgr_light.o
+--- /dev/null
++++ b/drivers/iio/light/smgr_light.c
+@@ -0,0 +1,183 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Qualcomm Sensor Manager ambient light sensor driver
++ *
++ * Derived from the Sensor Manager accelerometer driver,
++ * Copyright (c) 2022, Yassine Oudjana <y.oudjana@protonmail.com>
++ *
++ * The Sensor Manager's PROX_LIGHT sensor reports illuminance as Q16 lux.
++ * This driver covers sensor cores whose first data type is the ambient
++ * light sensor (for example a Capella CM3323 with no proximity sensor);
++ * a proximity data type is not handled yet.
++ */
++
++#include <linux/mod_devicetable.h>
++#include <linux/platform_device.h>
++#include <linux/string.h>
++#include <linux/iio/buffer.h>
++#include <linux/iio/common/qcom_smgr.h>
++#include <linux/iio/iio.h>
++#include <linux/iio/kfifo_buf.h>
++
++static int smgr_light_read_raw(struct iio_dev *iio_dev,
++			       struct iio_chan_spec const *chan, int *val,
++			       int *val2, long mask)
++{
++	struct smgr_iio_priv *priv = iio_priv(iio_dev);
++	int ret;
++
++	switch (mask) {
++	case IIO_CHAN_INFO_RAW:
++		if (!iio_device_claim_direct(iio_dev))
++			return -EBUSY;
++		ret = smgr_sensor_read(priv->sensor, chan->scan_index, val);
++		iio_device_release_direct(iio_dev);
++		return ret;
++	case IIO_CHAN_INFO_SAMP_FREQ:
++		*val = priv->sensor->data_types[0].cur_sample_rate;
++		return IIO_VAL_INT;
++	case IIO_CHAN_INFO_SCALE:
++		/* Q16 lux */
++		*val = 1;
++		*val2 = 16;
++		return IIO_VAL_FRACTIONAL_LOG2;
++	}
++
++	return -EINVAL;
++}
++
++static int smgr_light_write_raw(struct iio_dev *iio_dev,
++				struct iio_chan_spec const *chan, int val,
++				int val2, long mask)
++{
++	struct smgr_iio_priv *priv = iio_priv(iio_dev);
++
++	switch (mask) {
++	case IIO_CHAN_INFO_SAMP_FREQ:
++		if (val < 1 || val > priv->sensor->data_types[0].max_sample_rate)
++			return -EINVAL;
++		priv->sensor->data_types[0].cur_sample_rate = val;
++
++		/* Send a new buffering request if the buffer is enabled */
++		if (iio_buffer_enabled(iio_dev))
++			return iio_dev->setup_ops->postenable(iio_dev);
++
++		return 0;
++	}
++
++	return -EINVAL;
++}
++
++static int smgr_light_read_avail(struct iio_dev *iio_dev,
++				 struct iio_chan_spec const *chan,
++				 const int **vals, int *type, int *length,
++				 long mask)
++{
++	struct smgr_iio_priv *priv = iio_priv(iio_dev);
++
++	switch (mask) {
++	case IIO_CHAN_INFO_SAMP_FREQ:
++		priv->samp_freq_range[0] = 1;
++		priv->samp_freq_range[1] = 1;
++		priv->samp_freq_range[2] =
++			priv->sensor->data_types[0].max_sample_rate;
++		*type = IIO_VAL_INT;
++		*vals = priv->samp_freq_range;
++		*length = ARRAY_SIZE(priv->samp_freq_range);
++		return IIO_AVAIL_RANGE;
++	}
++
++	return -EINVAL;
++}
++
++static const struct iio_info smgr_light_iio_info = {
++	.read_raw = smgr_light_read_raw,
++	.write_raw = smgr_light_write_raw,
++	.read_avail = smgr_light_read_avail,
++};
++
++static const struct iio_chan_spec smgr_light_iio_channels[] = {
++	{
++		.type = IIO_LIGHT,
++		.scan_index = 0,
++		.scan_type = {
++			.sign = 'u',
++			.realbits = 32,
++			.storagebits = 32,
++			.endianness = IIO_LE,
++		},
++		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) |
++				      BIT(IIO_CHAN_INFO_SCALE) |
++				      BIT(IIO_CHAN_INFO_SAMP_FREQ),
++		.info_mask_separate_available = BIT(IIO_CHAN_INFO_SAMP_FREQ),
++	},
++	IIO_CHAN_SOFT_TIMESTAMP(1),
++};
++
++static int smgr_light_probe(struct platform_device *pdev)
++{
++	struct iio_dev *iio_dev;
++	struct smgr_iio_priv *priv;
++	struct smgr_sensor *sensor;
++	int ret;
++
++	sensor = *(struct smgr_sensor **)pdev->dev.platform_data;
++	if (!sensor->data_type_count || !sensor->data_types[0].name ||
++	    !strstr(sensor->data_types[0].name, "ALS"))
++		return dev_err_probe(&pdev->dev, -ENODEV,
++				     "first data type is not an ambient light sensor\n");
++
++	iio_dev = devm_iio_device_alloc(&pdev->dev, sizeof(*priv));
++	if (!iio_dev)
++		return -ENOMEM;
++
++	priv = iio_priv(iio_dev);
++	priv->sensor = sensor;
++	priv->sensor->iio_dev = iio_dev;
++	platform_set_drvdata(pdev, iio_dev);
++
++	iio_dev->name = "qcom-smgr-light";
++	iio_dev->info = &smgr_light_iio_info;
++	iio_dev->channels = smgr_light_iio_channels;
++	iio_dev->num_channels = ARRAY_SIZE(smgr_light_iio_channels);
++
++	ret = devm_iio_kfifo_buffer_setup(&pdev->dev, iio_dev,
++					  &smgr_buffer_ops);
++	if (ret)
++		return dev_err_probe(&pdev->dev, ret,
++				     "Failed to setup buffer\n");
++
++	ret = devm_iio_device_register(&pdev->dev, iio_dev);
++	if (ret)
++		return dev_err_probe(&pdev->dev, ret,
++				     "Failed to register IIO device\n");
++
++	return 0;
++}
++
++static void smgr_light_remove(struct platform_device *pdev)
++{
++	struct iio_dev *iio_dev = platform_get_drvdata(pdev);
++	struct smgr_iio_priv *priv = iio_priv(iio_dev);
++
++	priv->sensor->iio_dev = NULL;
++}
++
++static const struct platform_device_id smgr_light_ids[] = {
++	{ .name = "qcom-smgr-prox-light" },
++	{ /* sentinel */ }
++};
++MODULE_DEVICE_TABLE(platform, smgr_light_ids);
++
++static struct platform_driver smgr_light_driver = {
++	.probe = smgr_light_probe,
++	.remove = smgr_light_remove,
++	.driver	= {
++		.name = "smgr_light",
++	},
++	.id_table = smgr_light_ids,
++};
++module_platform_driver(smgr_light_driver);
++
++MODULE_DESCRIPTION("Qualcomm Sensor Manager ambient light sensor driver");
++MODULE_LICENSE("GPL");

@@ -1,0 +1,57 @@
+{
+ "schema_version": 1,
+ "recorded_utc": "2026-10-13T05:14:24+00:00",
+ "installed": {
+  "linux-tabs3": "6.18.56-46",
+  "tabs3-base": "0.1.12",
+  "tabs3-desktop": "0.1.9",
+  "boot_partition": "package 46 combined image, flushed readback verified",
+  "recovery": "unchanged (package 29)"
+ },
+ "previous": "6.18.56-44",
+ "card": "Samsung EVO Plus 128 GB microSDXC (CID name GD4QT, manufacturer 0x1b, OEM SM), one exFAT partition",
+ "path": [
+  "package 44: card detected on GPIO 95; UHS-I initialisation failed at the first 4-bit transfer after the 1.8 V switch",
+  "same boot: UHS cleared through /sys/kernel/debug/mmc1/caps; High Speed initialisation worked after one stuck insertion",
+  "package 45 (no-1-8-v, kernel otherwise unchanged): card detected at boot in High Speed",
+  "package 46 (patch 0019, power cycle and rescan a present card that did not initialise): card detected at boot; hot insertions retested"
+ ],
+ "checks": {
+  "uhs_i_package_44": {
+   "after_cmd11": "commands answered; 1-bit SCR, SD status and switch status reads worked",
+   "failing_command": "CMD6 0x80fffff3 (select SDR104), 4-bit, 400 kHz, 64-byte block",
+   "registers": "Present 0x03f80206 (read active, DAT[3:0] high), Int stat 0, Host ctl2 0x0008 (1.8 V), vendor spec 0x00018a9c (I/O pad switch in 1.8 V mode)",
+   "result": "Timeout waiting for hardware interrupt; error -110 whilst initialising SD card"
+  },
+  "four_bit_at_3v3": {
+   "cmd6_status_50mhz": "ok, 0.9 ms",
+   "cmd6_status_400khz": "ok, 1.8 ms",
+   "block_reads_400khz": "16 KiB at 182 kB/s"
+  },
+  "high_speed": {
+   "ios": "50 MHz, 4-bit, SD high-speed timing, 3.30 V signalling",
+   "raw_read_mb_s": [
+    23.3,
+    21.6
+   ],
+   "read_only_mount": "exFAT, 120 GB, 5,009 files listed, no errors",
+   "udisks": "Removable, HintAuto true, HintSystem false"
+  },
+  "hot_insertions": {
+   "before_patch_0019": "2 of 4 stuck: every ACMD41 busy for more than 2 s ('Card stuck being busy!'); successful ones ready after 0.38 s",
+   "controller_reprobe_after_a_stuck_insertion": "initialised in 0.41 s",
+   "package_46": [
+    "insertion 1: initialised on the first attempt",
+    "insertion 2: stuck on the first attempt and both retries; needed a reinsertion",
+    "insertion 3: stuck on the first attempt, initialised on retry 1"
+   ],
+   "supplies_after_removal": "L13 and L21 disabled in the PMIC (SPMI view); pull-down register 0x48 = 0x80 on both"
+  },
+  "boot_check": "all PASS on packages 45 and 46; the same 14 known error messages as package 44"
+ },
+ "not_done": [
+  "write test (the card holds the owner's files)",
+  "UHS-I at 1.8 V",
+  "cause of the stuck hot insertions"
+ ]
+}

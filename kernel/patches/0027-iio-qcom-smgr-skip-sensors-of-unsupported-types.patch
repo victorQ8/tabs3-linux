@@ -1,0 +1,86 @@
+Subject: [PATCH] iio: qcom_smgr: skip sensors of unsupported types
+
+The Sensor Manager on the SM-T825's SLPI reports sensor types the driver
+does not know. They become SNS_SMGR_SENSOR_TYPE_UNKNOWN, which has no
+platform device name, so smgr_register_sensor() registered a device named
+NULL and the kernel crashed; with panic=30 the tablet reset 30 s later.
+
+Skip sensors of unsupported types, and skip a sensor whose info request
+fails instead of failing the whole probe. Log every reported sensor and its
+data types. Also set the default sample rate of each data type rather than
+only the first, and check the sensor array allocation.
+
+Assisted-by: Claude:claude-opus-5-5
+
+--- a/drivers/iio/common/qcom_smgr/smgr.c
++++ b/drivers/iio/common/qcom_smgr/smgr.c
+@@ -51,7 +51,12 @@
+ static int smgr_register_sensor(struct smgr *smgr, struct smgr_sensor *sensor)
+ {
+ 	struct platform_device *pdev;
+-	const char *name = smgr_sensor_type_platform_names[sensor->type];
++	const char *name = NULL;
++
++	if (sensor->type < ARRAY_SIZE(smgr_sensor_type_platform_names))
++		name = smgr_sensor_type_platform_names[sensor->type];
++	if (!name)
++		return 0;
+ 
+ 	pdev = platform_device_register_data(smgr->dev, name, sensor->id,
+ 					     &sensor, sizeof(sensor));
+@@ -103,14 +108,21 @@
+ 		return -EREMOTEIO;
+ 	}
+ 
+-	*sensors = devm_kzalloc(smgr->dev,
+-				sizeof(struct smgr_sensor) * resp.item_len,
+-				GFP_KERNEL);
++	*sensors = devm_kcalloc(smgr->dev, resp.item_len,
++				sizeof(struct smgr_sensor), GFP_KERNEL);
++	if (!*sensors)
++		return -ENOMEM;
+ 
+ 	for (i = 0; i < resp.item_len; ++i) {
+ 		(*sensors)[i].id = resp.items[i].id;
+ 		(*sensors)[i].type =
+ 			sns_smgr_sensor_type_from_str(resp.items[i].type);
++		dev_info(smgr->dev, "sensor 0x%02x: %.*s%s\n", resp.items[i].id,
++			 (int)min_t(size_t, resp.items[i].type_len,
++				    sizeof(resp.items[i].type)),
++			 resp.items[i].type,
++			 (*sensors)[i].type == SNS_SMGR_SENSOR_TYPE_UNKNOWN ?
++				" (not supported)" : "");
+ 	}
+ 
+ 	return resp.item_len;
+@@ -348,20 +360,23 @@
+ 
+ 	/* Get primary and secondary sensors from each sensor ID */
+ 	for (i = 0; i < smgr->sensor_count; i++) {
++		if (smgr->sensors[i].type == SNS_SMGR_SENSOR_TYPE_UNKNOWN)
++			continue;
++
+ 		ret = smgr_request_single_sensor_info(smgr, &smgr->sensors[i]);
+ 		if (ret < 0) {
+-			dev_err(smgr->dev,
+-				"Failed to get sensors from ID 0x%02x: %pe\n",
+-				smgr->sensors[i].id, ERR_PTR(ret));
+-			return ret;
++			dev_warn(smgr->dev,
++				 "Failed to get sensors from ID 0x%02x: %pe\n",
++				 smgr->sensors[i].id, ERR_PTR(ret));
++			continue;
+ 		}
+ 
+ 		for (j = 0; j < smgr->sensors[i].data_type_count; j++) {
+ 			/* Default to maximum sample rate */
+-			smgr->sensors[i].data_types->cur_sample_rate =
+-				smgr->sensors[i].data_types->max_sample_rate;
++			smgr->sensors[i].data_types[j].cur_sample_rate =
++				smgr->sensors[i].data_types[j].max_sample_rate;
+ 
+-			dev_dbg(smgr->dev, "0x%02x,%d: %s %s\n",
++			dev_info(smgr->dev, "0x%02x,%d: %s %s\n",
+ 				smgr->sensors[i].id, j,
+ 				smgr->sensors[i].data_types[j].vendor,
+ 				smgr->sensors[i].data_types[j].name);

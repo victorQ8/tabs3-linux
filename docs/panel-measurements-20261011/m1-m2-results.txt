@@ -1,0 +1,407 @@
+STATIC_VERIFY_START
+BEFORE_RAW_DISPLAY_ON_BEGIN
+15 b0 5a
+ok 4
+24 d8 01 1
+33 (1 bytes)
+15 b0 d0
+ok 4
+24 d1 01 1
+1d (1 bytes)
+15 b0 51
+ok 4
+24 d1 01 1
+06 (1 bytes)
+15 b0 d9
+ok 4
+24 d1 01 1
+08 (1 bytes)
+15 b0 70
+ok 4
+24 d2 01 1
+08 (1 bytes)
+15 b0 67
+ok 4
+24 d2 01 1
+1b (1 bytes)
+15 b0 36
+ok 4
+24 d2 01 1
+12 (1 bytes)
+15 b0 4d
+ok 4
+24 d2 01 1
+05 (1 bytes)
+15 b0 49
+ok 4
+24 d2 01 1
+7f (1 bytes)
+06 0a 1
+00 (1 bytes)
+06 0e 1
+80 (1 bytes)
+06 0f 1
+00 (1 bytes)
+BEFORE_RAW_DISPLAY_ON_END
+15 b0 67
+ok 4
+24 d2 01 1
+1b (1 bytes)
+15 b0 36
+ok 4
+24 d2 01 1
+12 (1 bytes)
+15 b0 4d
+ok 4
+24 d2 01 1
+05 (1 bytes)
+05 29
+ok 4
+FRAME_INITIAL_ON_BEGIN
+Frame completion: kickoffs=1 pp0=1 pp1=1
+FRAME_INITIAL_ON_END
+M1_BASELINE_BEGIN
+15 b0 5a
+ok 4
+24 d8 01 1
+33 (1 bytes)
+15 b0 d0
+ok 4
+24 d1 01 1
+1d (1 bytes)
+15 b0 51
+ok 4
+24 d1 01 1
+06 (1 bytes)
+15 b0 d9
+ok 4
+24 d1 01 1
+08 (1 bytes)
+15 b0 70
+ok 4
+24 d2 01 1
+08 (1 bytes)
+15 b0 67
+ok 4
+24 d2 01 1
+1b (1 bytes)
+15 b0 36
+ok 4
+24 d2 01 1
+12 (1 bytes)
+15 b0 4d
+ok 4
+24 d2 01 1
+05 (1 bytes)
+15 b0 49
+ok 4
+24 d2 01 1
+7f (1 bytes)
+06 0a 1
+04 (1 bytes)
+06 0e 1
+80 (1 bytes)
+06 0f 1
+80 (1 bytes)
+M1_BASELINE_END
+15 b0 67
+ok 4
+24 d2 01 1
+1b (1 bytes)
+15 b0 36
+ok 4
+24 d2 01 1
+12 (1 bytes)
+15 b0 4d
+ok 4
+24 d2 01 1
+05 (1 bytes)
+M1_COMPRESSION_ZERO
+15 b0 d9
+ok 4
+39 b1 00
+ok 8
+FRAME_COMP_ZERO_BEGIN
+Frame completion: kickoffs=1 pp0=1 pp1=1
+FRAME_COMP_ZERO_END
+M1_AFTER_COMP_ZERO_BEGIN
+15 b0 5a
+ok 4
+24 d8 01 1
+33 (1 bytes)
+15 b0 d0
+ok 4
+24 d1 01 1
+1d (1 bytes)
+15 b0 51
+ok 4
+24 d1 01 1
+06 (1 bytes)
+15 b0 d9
+ok 4
+24 d1 01 1
+00 (1 bytes)
+15 b0 70
+ok 4
+24 d2 01 1
+08 (1 bytes)
+15 b0 67
+ok 4
+24 d2 01 1
+1b (1 bytes)
+15 b0 36
+ok 4
+24 d2 01 1
+12 (1 bytes)
+15 b0 4d
+ok 4
+24 d2 01 1
+05 (1 bytes)
+15 b0 49
+ok 4
+24 d2 01 1
+7f (1 bytes)
+06 0a 1
+04 (1 bytes)
+06 0e 1
+80 (1 bytes)
+06 0f 1
+80 (1 bytes)
+M1_AFTER_COMP_ZERO_END
+M1_COMPRESSION_EIGHT
+15 b0 d9
+ok 4
+39 b1 08
+ok 8
+15 b0 51
+ok 4
+39 b1 06
+ok 8
+FRAME_COMP_EIGHT_BEGIN
+Frame completion: kickoffs=1 pp0=1 pp1=1
+FRAME_COMP_EIGHT_END
+M1_AFTER_COMP_EIGHT_BEGIN
+15 b0 5a
+ok 4
+24 d8 01 1
+33 (1 bytes)
+15 b0 d0
+ok 4
+24 d1 01 1
+1d (1 bytes)
+15 b0 51
+ok 4
+24 d1 01 1
+06 (1 bytes)
+15 b0 d9
+ok 4
+24 d1 01 1
+08 (1 bytes)
+15 b0 70
+ok 4
+24 d2 01 1
+08 (1 bytes)
+15 b0 67
+ok 4
+24 d2 01 1
+1b (1 bytes)
+15 b0 36
+ok 4
+24 d2 01 1
+12 (1 bytes)
+15 b0 4d
+ok 4
+24 d2 01 1
+05 (1 bytes)
+15 b0 49
+ok 4
+24 d2 01 1
+7f (1 bytes)
+06 0a 1
+04 (1 bytes)
+06 0e 1
+80 (1 bytes)
+06 0f 1
+80 (1 bytes)
+M1_AFTER_COMP_EIGHT_END
+M1_END
+M2_BASELINE_SETUP
+15 b0 4d
+ok 4
+39 b2 05
+ok 8
+15 b0 49
+ok 4
+39 b2 7f
+ok 8
+15 b0 36
+ok 4
+39 b2 12
+ok 8
+15 b0 67
+ok 4
+39 b2 1b
+ok 8
+15 b0 35
+ok 4
+39 b2 01
+ok 8
+FRAME_M2_BASELINE_BEGIN
+Frame completion: kickoffs=1 pp0=1 pp1=1
+FRAME_M2_BASELINE_END
+M2_BASELINE_BEGIN
+15 b0 5a
+ok 4
+24 d8 01 1
+33 (1 bytes)
+15 b0 d0
+ok 4
+24 d1 01 1
+1d (1 bytes)
+15 b0 51
+ok 4
+24 d1 01 1
+06 (1 bytes)
+15 b0 d9
+ok 4
+24 d1 01 1
+08 (1 bytes)
+15 b0 70
+ok 4
+24 d2 01 1
+08 (1 bytes)
+15 b0 67
+ok 4
+24 d2 01 1
+1b (1 bytes)
+15 b0 36
+ok 4
+24 d2 01 1
+12 (1 bytes)
+15 b0 4d
+ok 4
+24 d2 01 1
+05 (1 bytes)
+15 b0 49
+ok 4
+24 d2 01 1
+7f (1 bytes)
+06 0a 1
+04 (1 bytes)
+06 0e 1
+80 (1 bytes)
+06 0f 1
+80 (1 bytes)
+M2_BASELINE_END
+M2_RAW_OFF_ON
+05 28
+ok 4
+05 29
+ok 4
+M2_AFTER_ON_BEFORE_FRAME_BEGIN
+15 b0 5a
+ok 4
+24 d8 01 1
+33 (1 bytes)
+15 b0 d0
+ok 4
+24 d1 01 1
+1d (1 bytes)
+15 b0 51
+ok 4
+24 d1 01 1
+06 (1 bytes)
+15 b0 d9
+ok 4
+24 d1 01 1
+08 (1 bytes)
+15 b0 70
+ok 4
+24 d2 01 1
+08 (1 bytes)
+15 b0 67
+ok 4
+24 d2 01 1
+1b (1 bytes)
+15 b0 36
+ok 4
+24 d2 01 1
+12 (1 bytes)
+15 b0 4d
+ok 4
+24 d2 01 1
+05 (1 bytes)
+15 b0 49
+ok 4
+24 d2 01 1
+7f (1 bytes)
+06 0a 1
+04 (1 bytes)
+06 0e 1
+80 (1 bytes)
+06 0f 1
+80 (1 bytes)
+M2_AFTER_ON_BEFORE_FRAME_END
+FRAME_M2_AFTER_ON_BEGIN
+Frame completion: kickoffs=1 pp0=1 pp1=1
+FRAME_M2_AFTER_ON_END
+M2_AFTER_ON_AFTER_FRAME_BEGIN
+15 b0 5a
+ok 4
+24 d8 01 1
+33 (1 bytes)
+15 b0 d0
+ok 4
+24 d1 01 1
+1d (1 bytes)
+15 b0 51
+ok 4
+24 d1 01 1
+06 (1 bytes)
+15 b0 d9
+ok 4
+24 d1 01 1
+08 (1 bytes)
+15 b0 70
+ok 4
+24 d2 01 1
+08 (1 bytes)
+15 b0 67
+ok 4
+24 d2 01 1
+1b (1 bytes)
+15 b0 36
+ok 4
+24 d2 01 1
+12 (1 bytes)
+15 b0 4d
+ok 4
+24 d2 01 1
+05 (1 bytes)
+15 b0 49
+ok 4
+24 d2 01 1
+7f (1 bytes)
+06 0a 1
+04 (1 bytes)
+06 0e 1
+80 (1 bytes)
+06 0f 1
+80 (1 bytes)
+M2_AFTER_ON_AFTER_FRAME_END
+M2_END
+RESTORE 15 b0 d9: ok 4
+RESTORE 39 b1 08: ok 8
+RESTORE 15 b0 51: ok 4
+RESTORE 39 b1 06: ok 8
+RESTORE 15 b0 4d: ok 4
+RESTORE 39 b2 05: ok 8
+RESTORE 15 b0 49: ok 4
+RESTORE 39 b2 7f: ok 8
+RESTORE 15 b0 36: ok 4
+RESTORE 39 b2 12: ok 8
+RESTORE 15 b0 67: ok 4
+RESTORE 39 b2 1b: ok 8
+RESTORE 15 b0 35: ok 4
+RESTORE 39 b2 01: ok 8
+RESTORE 05 28: ok 4

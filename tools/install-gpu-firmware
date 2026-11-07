@@ -1,0 +1,43 @@
+#!/bin/sh
+# Run on the SM-T825 as root. Copy its own signed Adreno ZAP firmware;
+# no vendor blobs are shipped in this repository.
+set -eu
+[ "$(id -u)" = 0 ] || { echo 'Run with sudo on the tablet.' >&2; exit 1; }
+model=$(tr -d '\000' </proc/device-tree/model)
+[ "$model" = 'Samsung Galaxy Tab S3 LTE (SM-T825)' ] || exit 1
+partition=/dev/mmcblk0p40
+grep -qx PARTNAME=apnhlos /sys/class/block/mmcblk0p40/uevent
+parent=/usr/lib/firmware/qcom/msm8996/samsung
+dest=$parent/gts3llte
+files='a530_zap.mdt a530_zap.b00 a530_zap.b01 a530_zap.b02'
+if [ -d "$dest" ]; then
+    for f in $files; do
+        [ -s "$dest/$f" ] || { echo "Incomplete existing firmware: $dest/$f" >&2; exit 1; }
+    done
+    echo 'GPU ZAP firmware already installed.'
+    exit 0
+fi
+mountdir=$(mktemp -d /run/tabs3-gpu-firmware.XXXXXX)
+stage=
+mounted=0
+cleanup() {
+    [ "$mounted" = 0 ] || umount "$mountdir"
+    rmdir "$mountdir"
+    [ -z "$stage" ] || rm -rf "$stage"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+mount -t vfat -o ro,nosuid,nodev,noexec "$partition" "$mountdir"
+mounted=1
+mkdir -p "$parent"
+stage=$(mktemp -d "$parent/.gts3llte.XXXXXX")
+for f in $files; do
+    [ -s "$mountdir/image/$f" ] || { echo "Missing $f in apnhlos" >&2; exit 1; }
+    install -m 644 "$mountdir/image/$f" "$stage/$f"
+    cmp "$mountdir/image/$f" "$stage/$f"
+done
+chmod 755 "$stage"
+mv "$stage" "$dest"
+stage=
+for f in $files; do sha256sum "$dest/$f"; done

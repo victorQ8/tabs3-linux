@@ -1,0 +1,47 @@
+# tracer: nop
+#
+# entries-in-buffer/entries-written: 35/35   #P:4
+#
+#                                _-----=> irqs-off/BH-disabled
+#                               / _----=> need-resched
+#                              | / _---=> hardirq/softirq
+#                              || / _--=> preempt-depth
+#                              ||| / _-=> migrate-disable
+#                              |||| /     delay
+#           TASK-PID     CPU#  |||||  TIMESTAMP  FUNCTION
+#              | |         |   |||||     |         |
+              sh-665     [001] ...1.   134.592208: tracing_mark_write: READ_D2_67
+              sh-665     [003] ...1.   134.624850: tracing_mark_write: READ_D2_6d
+              sh-665     [001] ...1.   134.659554: tracing_mark_write: READ_D2_36
+              sh-665     [002] ...1.   134.694770: tracing_mark_write: READ_D2_4d
+              sh-665     [003] ...1.   134.726376: tracing_mark_write: READ_D2_49
+              sh-665     [001] ...1.   135.780096: tracing_mark_write: READ_D2_67
+              sh-665     [001] ...1.   135.810073: tracing_mark_write: READ_D2_6d
+              sh-665     [000] ...1.   135.839080: tracing_mark_write: READ_D2_36
+              sh-665     [003] ...1.   135.872626: tracing_mark_write: READ_D2_4d
+              sh-665     [001] ...1.   135.909229: tracing_mark_write: READ_D2_49
+              sh-665     [002] ...1.   136.969449: tracing_mark_write: READ_D2_67
+              sh-665     [001] ...1.   137.010062: tracing_mark_write: READ_D2_6d
+              sh-665     [000] ...1.   137.039842: tracing_mark_write: READ_D2_36
+              sh-665     [003] ...1.   137.073760: tracing_mark_write: READ_D2_4d
+              sh-665     [001] ...1.   137.109630: tracing_mark_write: READ_D2_49
+              sh-665     [003] ...1.   138.171698: tracing_mark_write: READ_D2_67
+              sh-665     [003] ...1.   138.208560: tracing_mark_write: READ_D2_6d
+              sh-665     [003] ...1.   138.241606: tracing_mark_write: READ_D2_36
+              sh-665     [003] ...1.   138.274776: tracing_mark_write: READ_D2_4d
+              sh-665     [001] ...1.   138.308255: tracing_mark_write: READ_D2_49
+              sh-665     [003] ...1.   139.369973: tracing_mark_write: READ_D2_67
+              sh-665     [000] ...1.   139.407352: tracing_mark_write: READ_D2_6d
+              sh-665     [001] ...1.   139.441031: tracing_mark_write: READ_D2_36
+              sh-665     [001] ...1.   139.472026: tracing_mark_write: READ_D2_4d
+              sh-665     [003] ...1.   139.504866: tracing_mark_write: READ_D2_49
+              sh-665     [003] ...1.   140.564796: tracing_mark_write: READ_D2_67
+              sh-665     [003] ...1.   140.596905: tracing_mark_write: READ_D2_6d
+              sh-665     [003] ...1.   140.629092: tracing_mark_write: READ_D2_36
+              sh-665     [001] ...1.   140.662735: tracing_mark_write: READ_D2_4d
+              sh-665     [003] ...1.   140.693957: tracing_mark_write: READ_D2_49
+              sh-665     [000] ...1.   141.752459: tracing_mark_write: READ_D2_67
+              sh-665     [003] ...1.   141.785759: tracing_mark_write: READ_D2_6d
+              sh-665     [001] ...1.   141.822495: tracing_mark_write: READ_D2_36
+              sh-665     [000] ...1.   141.852205: tracing_mark_write: READ_D2_4d
+              sh-665     [001] ...1.   141.886735: tracing_mark_write: READ_D2_49

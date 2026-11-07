@@ -1,0 +1,383 @@
+{
+  "recorded_utc": "2026-10-11T09:31:39.223859+00:00",
+  "device": "SM-T825 LTE rev05",
+  "previous_report": "docs/panel-lifecycle-measurements-20261011.json",
+  "summary": [
+    "LP long writes work on a settled, static panel; ACL readback followed both LP and HS changes.",
+    "A bright-content retained-supply wake failed with correct drive/link register values; a fresh frame did not recover it.",
+    "Deferring continuous DSI clocks until after reset release and TCON_RDY corrected two boots with the fixup disabled. Both physical observations and register readbacks passed.",
+    "Cutting panel power and repeating initialization recovered bright content. Package 27 uses this full lifecycle and removes the timer fixup and retained-supply blanking interface.",
+    "Fresh package-27 recovery showed correct colours; the filesystem button, five touch targets and controlled Power/touch wake passed.",
+    "An immediate off/on exposed a powered-host race in package 27. Package 28 rearms LP11 on every bridge pre-enable; three immediate cycles retained all eight expected register values, with no frame kickoffs during readback."
+  ],
+  "LP_write_test": {
+    "kernel_package": "6.19.5-25",
+    "method": "KD_GRAPHICS, paused screen daemon, zero frame kickoffs; B0/B2 plus update key, interleaved known D8 controls",
+    "ACL_D2_36_sequence": [
+      "12",
+      "10",
+      "12",
+      "10",
+      "12"
+    ],
+    "write_modes": [
+      "baseline",
+      "LP off",
+      "LP on",
+      "HS off",
+      "HS on"
+    ],
+    "conclusion": "No blanket LP-write failure on a settled panel."
+  },
+  "bright_retained_supply_wake": {
+    "kernel_package": "6.19.5-25",
+    "before": "User: Correct colours and steady",
+    "sequence": "bl_power 4, 1 second, bl_power 0",
+    "after": "User: Nothing appeared",
+    "after_one_fresh_frame": "User: Still black",
+    "registers": {
+      "D1[d0]": "1d",
+      "D1[51]": "06",
+      "D1[d9]": "08",
+      "D2[70]": "08",
+      "D2[67]": "1b",
+      "D2[36]": "12",
+      "D2[4d]": "05",
+      "D2[49]": "7f",
+      "DCS0a": "04",
+      "DCS0e": "80",
+      "DCS0f": "80",
+      "GPIO121_CTL": "00000001",
+      "GPIO121_INOUT": "00000000"
+    },
+    "conclusion": "The measured settings were retained despite visible wake failure; lost ACL/ELVSS alone does not explain it."
+  },
+  "clock_order_experiment": {
+    "patch": "0028",
+    "boot_image": "package-25 image, uname build #10",
+    "modules": "linux-tabs3 6.19.5-26; same kernel release/config, no MODVERSIONS",
+    "changes": "Defer clock force on both hosts until the first panel command; that command follows TCON_RDY. Added timestamped checkpoints. Other panel initialization unchanged.",
+    "controls": "fixup=0, screen daemon masked, no manual fixup",
+    "first_boot_log_seconds": {
+      "dsi0_clock_deferred": 7.689982,
+      "dsi1_clock_deferred": 7.713812,
+      "reset_release": 7.809751,
+      "TCON_ready": 7.87088,
+      "dsi1_clock_started": 7.873212,
+      "dsi0_clock_started": 7.873277
+    },
+    "controller_lane_ctrl": {
+      "before_first_command": "00000000",
+      "after": "10000000"
+    },
+    "first_user_observation": "this is better ! even the loading console text was perfect from the begining ! not generish then good",
+    "repeat_user_observation": "Yes, correct from the start",
+    "readback_both_boots": {
+      "D1[d0]": "1d",
+      "D1[51]": "06",
+      "D1[d9]": "08",
+      "D2[70]": "08",
+      "D2[67]": "1b",
+      "D2[36]": "12",
+      "D2[4d]": "05",
+      "D2[49]": "7f"
+    },
+    "comparison": "The same addresses were 1d/02/e5/08/0f/10/00/99 on two earlier fixup-disabled package-25 boots.",
+    "limits": "No oscilloscope measurement or internal DDI latch decoding. The controlled software clock ordering is a demonstrated corrective cause, not proof of an exact undocumented electrical mechanism."
+  },
+  "full_power_cycle": {
+    "method": "fb0/blank 4 then 0, keep_vdd=0 on test modules; real unchanged recovery image",
+    "GPIO46_supply_INOUT": [
+      "00000003",
+      "00000000",
+      "00000003"
+    ],
+    "GPIO143_reset_INOUT": [
+      "00000003",
+      "00000000",
+      "00000003"
+    ],
+    "user": "Yes, correct and steady"
+  },
+  "package27": {
+    "kernel_package": "6.19.5-27",
+    "kernel_build": 12,
+    "base_package": "0.1.6",
+    "driver_changes": [
+      "SM-T825 clock deferral automatic",
+      "No delayed compression fixup",
+      "Single driver sequence lock",
+      "TCON timeout fails preparation",
+      "HS tear/display-off followed by reset low, supply off and 25 ms wait",
+      "Remove the failing raw DCS backlight power interface; userspace uses DRM/fbdev blanking"
+    ],
+    "recovery_changes": [
+      "No 15-second startup delay",
+      "Decorative LVGL containers do not intercept button taps",
+      "Wake gesture drained and consumed through release",
+      "Filesystem result preserves exit bitmask",
+      "Final initramfs explicitly sets initial framebuffer blank state"
+    ],
+    "physical_checks": {
+      "fresh_recovery": "Correct display; filesystem check works",
+      "five_point_touch": {
+        "targets": [
+          [
+            128,
+            128
+          ],
+          [
+            1919,
+            128
+          ],
+          [
+            1024,
+            768
+          ],
+          [
+            128,
+            1407
+          ],
+          [
+            1919,
+            1407
+          ]
+        ],
+        "measured": [
+          [
+            93,
+            141
+          ],
+          [
+            1932,
+            129
+          ],
+          [
+            1035,
+            783
+          ],
+          [
+            146,
+            1402
+          ],
+          [
+            1910,
+            1402
+          ]
+        ],
+        "all_pass": true,
+        "limit": "Coarse targeting and orientation, not stylus precision or multi-touch."
+      },
+      "controlled_wake": "Wakes; no check runs",
+      "controlled_wake_log": "Only Screen off requested / Screen on requested added; filesystem action count unchanged at 2",
+      "initial_wake_trial": "User reported stable wake with no extra check, but the log included another action; repeated under explicit one-tap/no-more-input instructions to remove ambiguity.",
+      "Power_hold_return_to_Debian": "User: Yes, Debian console is clear"
+    }
+  },
+  "validation": {
+    "host_test_methods": 10,
+    "recovery_hit_test_targets": 16,
+    "ARM64_initramfs_SSH": "passed under QEMU",
+    "builds": "kernel/modules/UI passed; no compiler warnings",
+    "known_build_warning": "depmod initramfs lacks modules.builtin.modinfo; pre-existing packaging metadata warning"
+  },
+  "remaining_limits": [
+    "Fixed calibrated 360-nit brightness; lower gamma/AID levels and temperature-based panel voltage settings unimplemented.",
+    "GPIO121 error-line/ESD recovery unimplemented; pull-down-low is not proof of a trip.",
+    "System suspend and long endurance unqualified.",
+    "DPU logs disabled-encoder / -EWOULDBLOCK wait during full wake; no visible failure accompanied it. Review upstream ordering separately.",
+    "Occasional pixel-clock RCG warnings also occurred before this change.",
+    "Charging thermal/charger-detection work remains a functional test, not a full-charge or thermal-soak qualification."
+  ],
+  "committed_evidence": {
+    "lp-write.txt": {
+      "path": "docs/panel-measurements-20261011/home-lp-write.txt",
+      "sha256": "0cb23c38a60b726b8e8237f4e444b4b2c818e30235a91ad249c016ce5a8bd305"
+    },
+    "lp-write.trace": {
+      "path": "docs/panel-measurements-20261011/home-lp-write.trace",
+      "sha256": "2b812ac1901f96b3a7270b77dd52389a75f1bd689181e1914c8120eee4dbd3a0"
+    },
+    "bright-wake-snapshot.txt": {
+      "path": "docs/panel-measurements-20261011/home-bright-wake-snapshot.txt",
+      "sha256": "26248d12054a8b07b2c027ca1812449faa5a8193d8de674cc52fe2f89b4953da"
+    },
+    "bright-wake.trace": {
+      "path": "docs/panel-measurements-20261011/home-bright-wake.trace",
+      "sha256": "0bb4957acf3b8f5e0651867b03384c735f39312aab55c0ad6e20c88c29e2e3f7"
+    },
+    "lp11-boot.txt": {
+      "path": "docs/panel-measurements-20261011/home-lp11-boot.txt",
+      "sha256": "9d20a35a3cb042be9409ee440a7cadabdd9e33cf239355448d95fea0d0b38de0"
+    },
+    "lp11-readback.txt": {
+      "path": "docs/panel-measurements-20261011/home-lp11-readback.txt",
+      "sha256": "c666d57d93844fc5a172781f6566fe79e741b259843fdaebbb93815b5d3250b5"
+    },
+    "lp11-readback.trace": {
+      "path": "docs/panel-measurements-20261011/home-lp11-readback.trace",
+      "sha256": "9d4c88f07d435373b2208d0a233f460600af1c6ef48cc0f9fcf8f00e1af485c9"
+    },
+    "lp11-repeat-readback.txt": {
+      "path": "docs/panel-measurements-20261011/home-lp11-repeat-readback.txt",
+      "sha256": "c666d57d93844fc5a172781f6566fe79e741b259843fdaebbb93815b5d3250b5"
+    },
+    "full-cycle.txt": {
+      "path": "docs/panel-measurements-20261011/home-full-cycle.txt",
+      "sha256": "dd0cd0260d2278abbc7141d898e8be13c0b158f67b1cff2c0a20889026b633db"
+    },
+    "full-cycle-dmesg.txt": {
+      "path": "docs/panel-measurements-20261011/home-full-cycle-dmesg.txt",
+      "sha256": "b6b7beea92dc4db44ded775edf45b26c58458d0487b706989478f24b5867f5eb"
+    },
+    "recovery27-five-point.txt": {
+      "path": "docs/panel-measurements-20261011/home-recovery27-five-point.txt",
+      "sha256": "381c44233fe6348a7c51ac59c1339a6bd229fa577842cf4a59df2145930ca7f6"
+    },
+    "recovery27-wake-control.txt": {
+      "path": "docs/panel-measurements-20261011/home-recovery27-wake-control.txt",
+      "sha256": "66ed7431c56c1b32a91d6e034bf340852622aee943e9cdf7351f60e3040e9f50"
+    },
+    "rapid-cycle27.txt": {
+      "path": "docs/panel-measurements-20261011/home-rapid-cycle27.txt",
+      "sha256": "69d71e7cad3dd6698da1f5fcf12c88d566b0b42031ccd9b93b312692d6474d01"
+    },
+    "rapid-cycle28-1.trace": {
+      "path": "docs/panel-measurements-20261011/home-rapid-cycle28-1.trace",
+      "sha256": "b7757d09292e5888f8f03705e07a537125eb7136df46f4c7b7bee5409ead3a6c"
+    },
+    "rapid-cycle28-2.trace": {
+      "path": "docs/panel-measurements-20261011/home-rapid-cycle28-2.trace",
+      "sha256": "dc664d127a881f537787674e66784e2e42c3bef84d3223f776cbe8193f8650dd"
+    },
+    "rapid-cycle28-3.trace": {
+      "path": "docs/panel-measurements-20261011/home-rapid-cycle28-3.trace",
+      "sha256": "c8f8288e80b04dd381bebb4b0e82d71f79c4be2250760d8c98422842fbc020a9"
+    },
+    "rapid-cycles28-clock-log.txt": {
+      "path": "docs/panel-measurements-20261011/home-rapid-cycles28-clock-log.txt",
+      "sha256": "45c893b4af2f9e217640c5f1eb5e86f4ab1914acba86a48ecefe94beeb25fd27"
+    },
+    "rapid-cycles28.txt": {
+      "path": "docs/panel-measurements-20261011/home-rapid-cycles28.txt",
+      "sha256": "45af1ddb0a48d73ebb2725b945dd1844c1c13df398af074a568c27270cca8f39"
+    },
+    "final-debian28.txt": {
+      "path": "docs/panel-measurements-20261011/home-final-debian28.txt",
+      "sha256": "0060f4db83b8f85706ddf5dce9fe0fcecd535e3c2291c39c81d209015acc1beb"
+    },
+    "final-health28.txt": {
+      "path": "docs/panel-measurements-20261011/home-final-health28.txt",
+      "sha256": "6b380f0a1e6bdbfb8e54d52f65f8f3282bb36eeb85d4e70101705423e2bd903a"
+    },
+    "recovery28-before-exit.txt": {
+      "path": "docs/panel-measurements-20261011/home-recovery28-before-exit.txt",
+      "sha256": "e6b545a1a9a3b27fa1515946160c6878928b59ae6cb518fa67672de855008758"
+    },
+    "recovery28-visual-baseline.txt": {
+      "path": "docs/panel-measurements-20261011/home-recovery28-visual-baseline.txt",
+      "sha256": "98570e773c44593e3f5c25d666467507e2041e2b7b8317f1c4b86ffbb14d1fef"
+    },
+    "recovery28-visual-startup.txt": {
+      "path": "docs/panel-measurements-20261011/home-recovery28-visual-startup.txt",
+      "sha256": "e923a1ce1b92440dbba138e2029a2700ef2a32e4780953a032109a2bcd87efdb"
+    },
+    "recovery28-visual-pass.txt": {
+      "path": "docs/panel-measurements-20261011/home-recovery28-visual-pass.txt",
+      "sha256": "0980a33dfdeda07bd1c460e7324b4facbac6abdbf5f486bddea8b79843c77e34"
+    },
+    "debian28-after-visual-pass.txt": {
+      "path": "docs/panel-measurements-20261011/home-debian28-after-visual-pass.txt",
+      "sha256": "258ae8d1b3fe5974c53396c6c178344e00dc78e275c887893478baa3151298a0"
+    }
+  },
+  "private_evidence_directory": "private/panel-home-validation-20261011",
+  "install_record": "private/kernel28-install.json",
+  "final_image_validation": "Both package-28 partitions flushed and hash-verified, recovery build #13 booted, three immediate panel cycles passed readback, and remote recovery exit returned to Debian build #13 with no failed services. A subsequent fresh package-28 recovery boot passed physical colour and stable Power/touch wake observation; the user clarified the filesystem check was a separate intentional tap after waking.",
+  "rapid_wake_regression": {
+    "affected_kernel_package": "6.19.5-27",
+    "trigger": "fbdev blank 4 immediately followed by 0, before the 200 ms DSI host runtime autosuspend",
+    "wrong_readbacks": {
+      "D1[51]": "02",
+      "D1[d9]": "e5",
+      "D2[67]": "0f",
+      "D2[36]": "10",
+      "D2[4d]": "00",
+      "D2[49]": "99"
+    },
+    "cause": "Powered hosts skip dsi_ctrl_config, leaving continuous clocks enabled during the next reset sequence.",
+    "correction": "Patch 0030 calls begin_lp11_init for both DSI hosts on every bridge pre-enable, before panel preparation, including already-powered hosts."
+  },
+  "package28": {
+    "kernel_package": "6.19.5-28",
+    "kernel_build": 13,
+    "base_package": "0.1.6",
+    "rapid_cycles": {
+      "count": 3,
+      "readback_each": {
+        "D1[d0]": "1d",
+        "D1[51]": "06",
+        "D1[d9]": "08",
+        "D2[70]": "08",
+        "D2[67]": "1b",
+        "D2[36]": "12",
+        "D2[4d]": "05",
+        "D2[49]": "7f"
+      },
+      "known_D8_5a_controls_per_cycle": 8,
+      "all_controls": "33",
+      "frame_kickoffs_during_readback": 0,
+      "clock_log": "Both powered hosts rearmed at lane_ctrl=00000000 before reset release; both start at 10000000 after TCON_RDY.",
+      "test_setup": "Recovery UI paused during off/on and readback, one framebuffer write after wake, then UI resumed. Earlier attempts stopped because tracefs/debugfs were not mounted; only the complete three-cycle run is counted."
+    },
+    "physical_checks": {
+      "prior_validation": "The unchanged recovery UI passed filesystem-button, five-point touch, consumed-wake-gesture and Power-hold checks on package 27. User confirmation of clear Debian corresponds to that preceding boot; live package-28 recovery was still running when it arrived.",
+      "earlier_attempt": "No reply received to the final package-28 colour/Power/touch observation before returning to Debian. Do not count this as an additional physical pass.",
+      "status": "Passed on a fresh package-28 recovery boot: correct colours, steady picture and stable Power/touch wake.",
+      "user_observation": "Correct colours; stable wake; no check runs",
+      "user_clarification": "my mistake i clicked check system after it wakup",
+      "action_log": "Screen off requested; Screen on requested; Recovery action: Check filesystem",
+      "interpretation": "User confirmed the check was a separate intentional tap after wake. The log contains an action, so it is not an unchanged-action-count test. This validates visible startup/wake; the earlier package-27 controlled no-extra-tap trial verified gesture consumption."
+    },
+    "final_Debian": {
+      "kernel_build": 13,
+      "kernel_package": "6.19.5-28",
+      "base_package": "0.1.6",
+      "screen_service": "enabled, active",
+      "framebuffer_blank": 0,
+      "failed_systemd_units": 0,
+      "root": "/dev/mapper/tabs3root, ext4, rw",
+      "clock_startup": "Both clocks deferred through reset release and TCON_RDY; no timed fixup",
+      "battery_percent": 65,
+      "battery_temp_c": 22.3,
+      "charger_board_temp_c": 26.8,
+      "battery_current_uA": 33691,
+      "charger_health": "Good",
+      "USB_type": "SDP",
+      "input_current_limit_uA": 500000,
+      "charge_behaviour": "auto",
+      "automatic_source_limit": true
+    },
+    "post_visual_return": {
+      "kernel_package": "6.19.5-28",
+      "kernel_build": 13,
+      "base_package": "0.1.6",
+      "screen_service": "active",
+      "failed_systemd_units": 0,
+      "framebuffer_blank": 0,
+      "battery_percent": 67,
+      "battery_temp_c": 21.7,
+      "charger_board_temp_c": 26.3,
+      "health": "Good",
+      "input_current_limit_uA": 500000,
+      "USB_type": "SDP",
+      "charge_behaviour": "auto",
+      "net_battery_current_uA": -257812,
+      "sampling_note": "Sample taken immediately after boot; net battery current is negative despite charging enabled. This is not a new steady-state charging test."
+    }
+  },
+  "implementation_commits": {
+    "charging": "ff11054",
+    "display_and_recovery": "415a09c"
+  }
+}

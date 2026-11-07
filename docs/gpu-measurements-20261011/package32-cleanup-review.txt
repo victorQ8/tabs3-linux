@@ -1,0 +1,13 @@
+before-stop
+Total:     4197 objects, 1933180928 bytes
+Active:      20 objects,  13082624 bytes
+Resident:  4078 objects, 1930604544 bytes
+Purgeable: 2161 objects, 745775104 bytes
+Purged:       0 objects,         0 bytes
+after-stop
+Total:     4197 objects, 1933180928 bytes
+Active:      20 objects,  13082624 bytes
+Resident:  4078 objects, 1930604544 bytes
+Purgeable: 2161 objects, 745775104 bytes
+Purged:       0 objects,         0 bytes
+multi-user.target

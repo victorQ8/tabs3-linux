@@ -1,0 +1,55 @@
+{
+  "source": "SM-T825 apnhlos partition /dev/mmcblk0p40, mounted read-only",
+  "stock_pas_id": 13,
+  "destination": "/lib/firmware/qcom/msm8996/samsung/gts3llte",
+  "files": {
+    "a530_zap.b00": {
+      "size": 148,
+      "sha256": "1f384b70d68863407d66f2ba328b9b7729ab149b43bbb5d5f7da9e21f9221de2"
+    },
+    "a530_zap.b01": {
+      "size": 6536,
+      "sha256": "5a2b9a7c72fe23f4250c0aa286911f953e9dc51339ca8b3b0d731e174bbce061"
+    },
+    "a530_zap.b02": {
+      "size": 4900,
+      "sha256": "bef98d709227d3a45d046439c1dc6a7af5ce607df6ba960f99417fb569f5700f"
+    },
+    "a530_zap.mdt": {
+      "size": 6684,
+      "sha256": "a9d8f5b77cce02c5811737c0bd7b78fb0f38376aea9698f08bd32be83cdcd999"
+    }
+  },
+  "program_headers": [
+    {
+      "type": 0,
+      "offset": 0,
+      "vaddr": 0,
+      "paddr": 0,
+      "filesz": 148,
+      "memsz": 0,
+      "flags": 117440512,
+      "align": 0
+    },
+    {
+      "type": 0,
+      "offset": 4096,
+      "vaddr": 28672,
+      "paddr": 28672,
+      "filesz": 6536,
+      "memsz": 8192,
+      "flags": 35651584,
+      "align": 4096
+    },
+    {
+      "type": 1,
+      "offset": 12288,
+      "vaddr": 20480,
+      "paddr": 20480,
+      "filesz": 4900,
+      "memsz": 4900,
+      "flags": 134217735,
+      "align": 1048576
+    }
+  ]
+}

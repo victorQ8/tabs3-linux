@@ -1,0 +1,6 @@
+#!/bin/sh
+# Compile the system dconf database so upgraded defaults take effect.
+set -e
+if [ "$1" = configure ] && command -v dconf >/dev/null; then
+    dconf update
+fi

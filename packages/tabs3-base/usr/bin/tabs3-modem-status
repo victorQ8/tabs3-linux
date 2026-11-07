@@ -1,0 +1,20 @@
+#!/bin/sh
+# SM-T825 modem status over QMI (QRTR): power, SIM, registration, operator
+# and signal. Prints no IMEI, IMSI or ICCID. Run with sudo.
+q() { timeout 15 qmicli -d qrtr://0 "$@" 2>&1; }
+state=$(cat /sys/bus/platform/drivers/qcom-q6v5-mss/*/remoteproc/remoteproc*/state 2>/dev/null)
+echo "Modem processor: ${state:-not found}"
+[ "$state" = running ] || exit 1
+q --dms-get-operating-mode | sed -n "s/^[[:space:]]*Mode: /Operating mode: /p"
+q --uim-get-card-status | sed -n "s/^[[:space:]]*Card state: /SIM card: /p; s/^[[:space:]]*PIN1 state: /SIM PIN1: /p" | head -2
+q --nas-get-serving-system | awk '
+    /Radio interfaces:/ { radio = 1; next }
+    radio && /\[[0-9]+\]:/ { sub(/^[[:space:]]*\[[0-9]+\]: /, ""); print "Radio: " $0; next }
+    { radio = 0 }
+    /Registration state:/ { sub(/^[[:space:]]*Registration state: /, ""); print "Registration: " $0 }
+    /^[[:space:]]*Status:/ { sub(/^[[:space:]]*Status: /, ""); print "Service: " $0 }
+    /Roaming status:/ { sub(/^[[:space:]]*Roaming status: /, ""); print "Roaming: " $0 }
+    /^[[:space:]]*MCC:/ && !net { sub(/^[[:space:]]*/, ""); printf "Network: %s ", $0 }
+    /^[[:space:]]*MNC:/ && !net { sub(/^[[:space:]]*/, ""); print $0; net = 1 }
+    /^[[:space:]]*Description:/ { sub(/^[[:space:]]*Description: /, ""); print "Operator: " $0 }'
+q --nas-get-signal-info | sed -n '2,$s/^[[:space:]]*/Signal: /p'

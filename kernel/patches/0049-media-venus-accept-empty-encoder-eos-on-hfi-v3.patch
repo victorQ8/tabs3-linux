@@ -1,0 +1,36 @@
+Subject: [PATCH] media: venus: accept an empty EOS buffer on HFI v3 encoding
+From: Vladimir Lypak <vladimir.lypak@gmail.com>
+Origin: https://github.com/lineage-on-mainline/android_kernel_xiaomi_msm8953/commit/1c6674b9e45d573ff12fcdfe45d9a9e13c8ec650
+
+Adapted from the encoder and packetizer portions of the community patch.
+The decoder portion is omitted: local 0033 already supplies a mapped EOS
+buffer and must remain intact. SM-T825 firmware rejects 0xdeadb000 at
+encoder drain with HFI error 0x1001. A zero-address, zero-length EOS follows
+the HFI-v3 convention; nonempty buffers still require an address.
+
+Signed-off-by: Vladimir Lypak <vladimir.lypak@gmail.com>
+
+--- a/drivers/media/platform/qcom/venus/hfi_cmds.c
++++ b/drivers/media/platform/qcom/venus/hfi_cmds.c
+@@ -288,7 +288,7 @@
+ 		struct hfi_session_empty_buffer_uncompressed_plane0_pkt *pkt,
+ 		void *cookie, struct hfi_frame_data *in_frame)
+ {
+-	if (!cookie || !in_frame->device_addr)
++	if (!cookie || (!in_frame->device_addr && in_frame->alloc_len))
+ 		return -EINVAL;
+ 
+ 	pkt->shdr.hdr.size = sizeof(*pkt);
+--- a/drivers/media/platform/qcom/venus/venc.c
++++ b/drivers/media/platform/qcom/venus/venc.c
+@@ -547,7 +547,10 @@
+ 
+ 		fdata.buffer_type = HFI_BUFFER_INPUT;
+ 		fdata.flags |= HFI_BUFFERFLAG_EOS;
+-		fdata.device_addr = 0xdeadb000;
++		if (IS_V3(inst->core))
++			fdata.device_addr = 0;
++		else
++			fdata.device_addr = 0xdeadb000;
+ 
+ 		ret = hfi_session_process_buf(inst, &fdata);

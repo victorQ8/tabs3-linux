@@ -1,0 +1,7 @@
+#!/bin/bash
+# SSH to the tabS3 recovery (or diagnostic) initramfs over USB with the
+# project key. Its host key is generated at every boot, so none is stored.
+ROOT=$(cd "$(dirname "$0")/.." && pwd)
+exec ssh -i "$ROOT/private/id_ed25519" -o IdentitiesOnly=yes -o BatchMode=yes \
+  -o ConnectTimeout=4 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+  -o LogLevel=ERROR root@172.16.42.2 "$@"

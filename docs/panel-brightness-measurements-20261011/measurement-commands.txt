@@ -1,0 +1,63 @@
+Historical commands for package 29. Ran as root inside panel-static-run
+(KD_GRAPHICS), with tabs3-screen stopped and a still framebuffer image.
+Do not issue DDI reads while frames are streaming.
+
+set -eu
+b=/sys/class/backlight/ams968hh01
+cmd=/sys/kernel/debug/ams968hh01/cmd
+t=/sys/kernel/tracing/instances/brightness29
+mkdir "$t"
+cleanup() {
+ rc=$?
+ echo 86 > "$b/brightness" || true
+ echo 0 > /sys/class/graphics/fb0/blank || true
+ echo 0 > "$t/tracing_on"
+ cat "$t/trace" >/tmp/brightness29.trace
+ echo 0 > "$t/events/enable"
+ rmdir "$t"
+ exit "$rc"
+}
+trap cleanup EXIT
+cat /tmp/recovery-panel.raw > /dev/fb0
+sleep 2
+echo 0 > "$t/tracing_on"
+for e in dpu_enc_kickoff dpu_enc_frame_done_timeout dpu_enc_phys_cmd_pdone_timeout; do echo 1 > "$t/events/dpu/$e/enable"; done
+echo 1 > "$t/tracing_on"
+read_reg() {
+ if grep -q 'dpu_enc_kickoff:' "$t/trace"; then echo 'ABORT: unexpected frame'; exit 2; fi
+ echo "READ_D2_$1" > "$t/trace_marker"
+ printf '15 b0 5a\n' > "$cmd"
+ printf '24 d8 01 1\n' > "$cmd"
+ test "$(cat "$cmd")" = '33 (1 bytes)'
+ printf '15 b0 %s\n' "$1" > "$cmd"
+ printf '24 d2 01 1\n' > "$cmd"
+ echo "D2[$1]=$(cat "$cmd")"
+ test "$(cat "$cmd")" = "$2 (1 bytes)"
+}
+for spec in '0 19 81' '17 1c 81' '51 21 85' '86 21 85' '142 1f 85' '193 1e 85' '255 1b 85'; do
+ set -- $spec
+ echo "LEVEL $1"
+ echo "$1" > "$b/brightness"
+ test "$(cat "$b/actual_brightness")" = "$1"
+ sleep 1
+ read_reg 67 "$2"
+ read_reg 6d "$3"
+ read_reg 36 12
+ read_reg 4d 05
+ read_reg 49 7f
+ echo "CURRENT_UA=$(cat /sys/class/power_supply/sm5705-battery/current_now)"
+done
+echo 0 > "$t/tracing_on"
+echo OFF_STATE_CHANGE
+echo 4 > /sys/class/graphics/fb0/blank
+test "$(cat "$b/actual_brightness")" = 0
+echo 51 > "$b/brightness"
+test "$(cat "$b/actual_brightness")" = 0
+echo 0 > /sys/class/graphics/fb0/blank
+test "$(cat "$b/actual_brightness")" = 51
+echo RAPID_WAKE_RETAINS_LEVEL_142
+echo 142 > "$b/brightness"
+echo 4 > /sys/class/graphics/fb0/blank
+echo 0 > /sys/class/graphics/fb0/blank
+test "$(cat "$b/actual_brightness")" = 142
+echo PASS

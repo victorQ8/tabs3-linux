@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-15T10:00:00+00:00",
+  "installed": {
+    "linux-tabs3": "6.18.56-72 (modules installed over Wi-Fi, boot partition written from recovery at 12:53 local, readback verified)",
+    "boot_partition": "package 72 combined image, sha256 12e9541453f7b3b90423df22e94e92dd8c051cb5db64ea7b86dc91df04ea6e49 (private/images/package72/)",
+    "tabs3-base": "0.1.30 (tabs3-usb-host documents the automatic role)",
+    "tabs3-dashboard": "0.1.8 (Codex's work in progress)"
+  },
+  "previous": "6.18.56-71",
+  "change": "patch 0042 (third version): the s2mm005 driver sets the USB role switch from the controller's data role (host when the tablet is the downstream-facing port, device otherwise) through a usb-c-connector node under usbpd@33 whose high-speed port is wired to a port under the dwc3 node (usbpd.dtsi); the SM5705 charger refuses the boost below 15 %, the floor of its forced discharge",
+  "why": "on package 71 a reboot with the hub attached charged the tablet but left the USB role at the boot default, so the hub's ports were dead until tabs3-usb-host host; a 24/7 server with a hub must come back hosting by itself",
+  "path": [
+    "12:43: hub out, PC cable in: no USB link, because the PC cable had arrived while the port's data switch was held for the hub (the role was still host): the MUIC's detection read Unknown and its switch stayed open (CTRL 0x1e, MANSW1 0x00) after host mode ended; routing D+/D- by hand (MANSW1 0x24, manual switching) brought the gadget up at once",
+    "12:45: the one-time fastboot entry showed on the panel but not on the PC, and fell into the recovery after its timeout, equally invisible: the hand-set switch had been restored to automatic at shutdown with no new detection; the owner re-plugged the PC cable and both came back (the MUIC detects on VBUS)",
+    "12:49: Debian 71 from disk, fastboot armed, package 72 booted from RAM (SSH after 24 s): with the PC the role stayed device, gadget configured, charger online at 500 mA with the USB type SDP, no role-switch warning from the driver",
+    "12:51 to 12:53: boot partition written from recovery, Debian 72 from disk at 12:53, driver probed at 7.6 s, role device with the PC",
+    "12:54:00: PC cable out; 12:54:05 hub in (dmesg 160.55 s): the controller attached as sink and device (the hub sourced at once), 'the partner supplies 3000 mA' at +165 ms, sink ready at +250 ms, data-role swap at +670 ms, 'USB role host' 4 ms later, the charger 'USB OTG: the partner supplies VBUS, no boost' at +830 ms, the hub (14cd:8601, 4 ports) found at +1.3 s and its billboard device at +1.8 s; charger online, Charging, input limit 1500000, +1.0 to +1.1 A; no command run",
+    "12:54:25: the keeper put the forced descent back (94 %)",
+    "12:54:48: reboot with the hub attached: probe at 8.7 s into attached, sink, host; 'USB role host' at 8.73 s; the charger 'the partner supplies VBUS, no boost' at 9.0 s; the hub found at 9.4 s; charger online and Charging at the 1.5 A limit; no command run"
+  ],
+  "unknown": [
+    "the hub's USB-A ports with other devices (only the hub's own billboard device has been seen)",
+    "the Ethernet adapter on package 72 (expected: hosted as it attaches, from the boost, without a command)",
+    "a release of the MUIC hold while a source is already present leaves the data switch open until the next cable detection: the charger could re-run the detection then (not needed by the driver's own ordering, which drops to device as a partner leaves)"
+  ],
+  "pending_on_hardware": []
+}

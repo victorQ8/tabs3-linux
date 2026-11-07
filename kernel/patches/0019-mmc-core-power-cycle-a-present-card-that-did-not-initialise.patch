@@ -1,0 +1,98 @@
+Subject: [PATCH] mmc: core: power cycle a present card that did not initialise
+
+On the SM-T825, a Samsung EVO Plus microSD card failed two of four hot
+insertions: it answered every ACMD41 as busy for longer than the 2 s the
+core waits. The card detect line does not change again, so the card stays
+undetected until it is reinserted, although a power cycle (reprobing the
+controller) initialises the same card in 0.4 s, as cold boots and the
+other insertions do. The cause is not known; the core powers the card
+200 ms after the card detect edge, possibly while it is still being
+pushed in.
+
+When a removable card is present but no bus attached, power it off and
+scan again a second later, at most twice per insertion. The count resets
+when a card attaches or the slot is empty. Non-removable devices are
+unaffected, and polled hosts keep their one-second interval.
+
+Assisted-by: Claude:claude-opus-5-5
+
+--- a/drivers/mmc/core/core.c
++++ b/drivers/mmc/core/core.c
+@@ -52,6 +52,9 @@
+ 
+ static const unsigned freqs[] = { 400000, 300000, 200000, 100000 };
+ 
++/* Power cycles for a removable card that is present but did not initialise */
++#define MMC_RESCAN_RETRIES	2
++
+ /*
+  * Enabling software CRCs on the data blocks can be a significant (30%)
+  * performance cost, and for other reasons may not always be desired.
+@@ -2252,6 +2255,7 @@
+ {
+ 	struct mmc_host *host =
+ 		container_of(work, struct mmc_host, detect.work);
++	bool retry = false;
+ 	int i;
+ 
+ 	if (host->rescan_disable)
+@@ -2276,12 +2280,15 @@
+ 	host->detect_change = 0;
+ 
+ 	/* if there still is a card present, stop here */
+-	if (host->bus_ops != NULL)
++	if (host->bus_ops != NULL) {
++		host->rescan_retries = 0;
+ 		goto out;
++	}
+ 
+ 	mmc_claim_host(host);
+ 	if (mmc_card_is_removable(host) && host->ops->get_cd &&
+ 			host->ops->get_cd(host) == 0) {
++		host->rescan_retries = 0;
+ 		mmc_power_off(host);
+ 		mmc_release_host(host);
+ 		goto out;
+@@ -2324,6 +2331,23 @@
+ 			mmc_hostname(host));
+ 
+ 	/*
++	 * A removable card that is present but did not initialise gets a few
++	 * more power cycles: a card can stay busy until it loses power, and
++	 * the card detect line does not change again.
++	 */
++	if (!host->bus_ops && mmc_card_is_removable(host) && host->ops->get_cd &&
++	    host->ops->get_cd(host) > 0 &&
++	    host->rescan_retries < MMC_RESCAN_RETRIES) {
++		host->rescan_retries++;
++		pr_info("%s: card did not initialise, power cycling it (retry %u of %u)\n",
++			mmc_hostname(host), host->rescan_retries,
++			MMC_RESCAN_RETRIES);
++		retry = true;
++	} else if (host->bus_ops) {
++		host->rescan_retries = 0;
++	}
++
++	/*
+ 	 * Ignore the command timeout errors observed during
+ 	 * the card init as those are excepted.
+ 	 */
+@@ -2331,7 +2355,7 @@
+ 	mmc_release_host(host);
+ 
+  out:
+-	if (host->caps & MMC_CAP_NEEDS_POLL)
++	if (retry || host->caps & MMC_CAP_NEEDS_POLL)
+ 		mmc_schedule_delayed_work(&host->detect, HZ);
+ }
+ 
+--- a/include/linux/mmc/host.h
++++ b/include/linux/mmc/host.h
+@@ -505,6 +505,7 @@
+ 
+ 	int			rescan_disable;	/* disable card detection */
+ 	int			rescan_entered;	/* used with nonremovable devices */
++	unsigned int		rescan_retries;	/* power cycles for a card that failed */
+ 
+ 	bool			can_retune;	/* re-tuning can be used */
+ 	bool			retune_now;	/* do re-tuning at next req */

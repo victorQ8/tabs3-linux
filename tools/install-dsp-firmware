@@ -1,0 +1,37 @@
+#!/bin/sh
+# Run on the SM-T825 as root. Copy its own signed audio DSP (ADSP), modem
+# boot authenticator (MBA) and modem firmware from the stock modem
+# partition; no vendor blobs are shipped in this repository.
+set -eu
+[ "$(id -u)" = 0 ] || { echo 'Run with sudo on the tablet.' >&2; exit 1; }
+model=$(tr -d '\000' </proc/device-tree/model)
+[ "$model" = 'Samsung Galaxy Tab S3 LTE (SM-T825)' ] || exit 1
+partition=$(readlink -f /dev/disk/by-partlabel/modem)
+grep -qx PARTNAME=modem "/sys/class/block/${partition##*/}/uevent"
+dest=/usr/lib/firmware/qcom/msm8996/samsung/gts3llte
+mountdir=$(mktemp -d /run/tabs3-dsp-firmware.XXXXXX)
+stage=
+mounted=0
+cleanup() {
+    [ "$mounted" = 0 ] || umount "$mountdir"
+    rmdir "$mountdir"
+    [ -z "$stage" ] || rm -rf "$stage"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+mount -t vfat -o ro,nosuid,nodev,noexec "$partition" "$mountdir"
+mounted=1
+mkdir -p "$dest"
+stage=$(mktemp -d "$dest/.dsp.XXXXXX")
+image=$mountdir/image
+for f in "$image"/adsp.mdt "$image"/adsp.b[0-9][0-9] "$image"/mba.mbn \
+         "$image"/modem.mdt "$image"/modem.b[0-9][0-9]; do
+    [ -s "$f" ] || { echo "Missing $f in the modem partition" >&2; exit 1; }
+    install -m 644 "$f" "$stage/${f##*/}"
+    cmp "$f" "$stage/${f##*/}"
+done
+for f in "$stage"/*; do mv -f "$f" "$dest/${f##*/}"; done
+rmdir "$stage"
+stage=
+for f in "$dest"/adsp.* "$dest"/mba.mbn "$dest"/modem.*; do sha256sum "$f"; done

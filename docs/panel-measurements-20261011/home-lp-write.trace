@@ -1,0 +1,56 @@
+# tracer: nop
+#
+# entries-in-buffer/entries-written: 44/44   #P:4
+#
+#                                _-----=> irqs-off/BH-disabled
+#                               / _----=> need-resched
+#                              | / _---=> hardirq/softirq
+#                              || / _--=> preempt-depth
+#                              ||| / _-=> migrate-disable
+#                              |||| /     delay
+#           TASK-PID     CPU#  |||||  TIMESTAMP  FUNCTION
+#              | |         |   |||||     |         |
+              sh-542     [002] ...1.   577.420824: tracing_mark_write: STATIC_VERIFY_START
+              sh-542     [002] ...1.   580.428039: tracing_mark_write: LP_WRITE_BASELINE
+              sh-542     [002] ...1.   580.437564: tracing_mark_write: SEND 15 b0 5a
+              sh-542     [002] ...1.   580.455202: tracing_mark_write: SEND 24 d8 01 1
+              sh-542     [001] ...1.   580.473381: tracing_mark_write: SEND 15 b0 36
+              sh-542     [002] ...1.   580.492367: tracing_mark_write: SEND 24 d2 01 1
+              sh-542     [000] ...1.   580.501633: tracing_mark_write: WRITE_lp_10
+              sh-542     [000] ...1.   580.510076: tracing_mark_write: SEND lp 15 b0 36
+              sh-542     [001] ...1.   580.525083: tracing_mark_write: SEND lp 39 b2 10
+              sh-542     [001] ...1.   580.539697: tracing_mark_write: SEND lp 15 b0 35
+              sh-542     [000] ...1.   580.553654: tracing_mark_write: SEND lp 39 b2 01
+              sh-542     [000] ...1.   580.566895: tracing_mark_write: SEND 15 b0 5b
+              sh-542     [001] ...1.   580.582496: tracing_mark_write: SEND 24 d8 01 1
+              sh-542     [001] ...1.   580.597625: tracing_mark_write: SEND 15 b0 36
+              sh-542     [000] ...1.   580.612260: tracing_mark_write: SEND 24 d2 01 1
+              sh-542     [000] ...1.   580.619606: tracing_mark_write: WRITE_lp_12
+              sh-542     [001] ...1.   580.628114: tracing_mark_write: SEND lp 15 b0 36
+              sh-542     [000] ...1.   580.642176: tracing_mark_write: SEND lp 39 b2 12
+              sh-542     [000] ...1.   580.656098: tracing_mark_write: SEND lp 15 b0 35
+              sh-542     [001] ...1.   580.670466: tracing_mark_write: SEND lp 39 b2 01
+              sh-542     [000] ...1.   580.684936: tracing_mark_write: SEND 15 b0 5b
+              sh-542     [001] ...1.   580.703021: tracing_mark_write: SEND 24 d8 01 1
+              sh-542     [001] ...1.   580.719919: tracing_mark_write: SEND 15 b0 36
+              sh-542     [001] ...1.   580.738665: tracing_mark_write: SEND 24 d2 01 1
+              sh-542     [000] ...1.   580.746622: tracing_mark_write: WRITE_hs_10
+              sh-542     [000] ...1.   580.755207: tracing_mark_write: SEND 15 b0 36
+              sh-542     [001] ...1.   580.770214: tracing_mark_write: SEND 39 b2 10
+              sh-542     [002] ...1.   580.787964: tracing_mark_write: SEND 15 b0 35
+              sh-542     [001] ...1.   580.810329: tracing_mark_write: SEND 39 b2 01
+              sh-542     [002] ...1.   580.826908: tracing_mark_write: SEND 15 b0 5b
+              sh-542     [001] ...1.   580.845614: tracing_mark_write: SEND 24 d8 01 1
+              sh-542     [001] ...1.   580.862092: tracing_mark_write: SEND 15 b0 36
+              sh-542     [002] ...1.   580.879588: tracing_mark_write: SEND 24 d2 01 1
+              sh-542     [001] ...1.   580.889336: tracing_mark_write: WRITE_hs_12
+              sh-542     [001] ...1.   580.897497: tracing_mark_write: SEND 15 b0 36
+              sh-542     [002] ...1.   580.914450: tracing_mark_write: SEND 39 b2 12
+              sh-542     [001] ...1.   580.936222: tracing_mark_write: SEND 15 b0 35
+              sh-542     [002] ...1.   580.952042: tracing_mark_write: SEND 39 b2 01
+              sh-542     [001] ...1.   580.973857: tracing_mark_write: SEND 15 b0 5b
+              sh-542     [002] ...1.   580.991283: tracing_mark_write: SEND 24 d8 01 1
+              sh-542     [001] ...1.   581.011168: tracing_mark_write: SEND 15 b0 36
+              sh-542     [002] ...1.   581.028475: tracing_mark_write: SEND 24 d2 01 1
+              sh-542     [000] ...1.   581.036861: tracing_mark_write: END
+              sh-542     [000] ...1.   581.037196: tracing_mark_write: CLEANUP_ACL_ON

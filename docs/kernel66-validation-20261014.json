@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-14T18:50:00+00:00",
+  "installed": {
+    "linux-tabs3": "6.18.56-66 (modules installed, boot partition written from recovery at 21:21 local, readback verified)",
+    "tabs3-base": "0.1.26 (contrast autofocus in tabs3_camera and tabs3-snapshot)",
+    "tabs3-dashboard": "0.1.5",
+    "boot_partition": "package 66 combined image, sha256 54089f8c6ef18c3757591a32e9e51d9db7d8ff58578ca5361cb3af1714821708 (private/images/package66/)",
+    "recovery": "unchanged"
+  },
+  "previous": "6.18.56-65",
+  "change": "device tree only (kernel, modules and patches unchanged; the at24 driver was already built in): the rear camera's DW9807 actuator moved from 0x18 to 0x0c on BLSP2 I2C1, and its EEPROM block described as a read-only atmel,24c64 at 0x58",
+  "finding": "the stock tree's qcom,actuator@18 and its slave address 0x18 are the 8-bit write address (as 0x34 and 0x20 were for the sensors): i2cdetect on bus 5 answered at 0x0c and 0x58 while 0x18 was only the driver's reservation; a direct read of the DW9807 at 0x0c gave STATUS 0x00 and CTL 0x00 (awake, idle), and 16-bit reads of 0x58 gave a section map (0x0001, 0x08af, 0x0900, 0x091f, 0x0a00, 0x10ff, 0x1200, 0x1fff) consistent with an 8 KB part",
+  "path": [
+    "21:05: package 66 built from the warm cache (DTB-only change, image size identical to package 65), guard passed",
+    "21:12: RAM boot through recovery's software fastboot (SSH after 22 s): dw9807 5-000c probed without an I2C error (packages 62 to 65: 'I2C write STATUS address fail ret = -6'), lens entity with focus_absolute 0 to 1023; at24 5-0058 '8192 byte 24c64 EEPROM, read-only'",
+    "sharpness of rear 1048x780 snapshots with the lens held at a position (edge variance of the grey picture): 0: 215.8, 250: 214.1, 500: 538.0, 750: 238.3, 1023: 222.7; the lens moves and the folded cover's flap and a laptop's speaker grille come into focus near 500",
+    "21:21: boot partition written from recovery (flash-boot, readback verified), Debian back on package 66; from disk the same probe and the same peak (0: 215.7, 500: 538.3, 1023: 222.8); dashboard and screen services active",
+    "tabs3-base 0.1.26: autofocus sweep from the command line found 544 then 512 (edge variance 636 and 635; 0: 184, 256: 192, 384: 312, 448: 517, 480: 604, 512: 633, 544: 636, 576: 604, 640: 485, 768: 290, 1023: 249), the picture in focus; 14.8 s and 17.4 s with a libcamera build loading all four cores meanwhile",
+    "the EEPROM reads 0xff through at24 and directly while the DW9807 is powered down by its driver (runtime suspend after probe); with the lens device held open it reads its map, 1908 non-0xff bytes and the module name W13QSJI00NM"
+  ],
+  "side_effect": "a snapshot of the rear camera resets the media links the dashboard's front camera sampler had set up; one sampler capture timed out ('VFE sof timeout' in the kernel log) during the focus tests and the sampler now sets its pipeline up again after any failed capture (tabs3-base 0.1.26)",
+  "unknown": [
+    "the EEPROM's layout beyond the section map and the module name (AF, AWB and shading calibration presumably); nothing uses it yet",
+    "the actuator's working range for scenes at a distance (the mount's cover keeps everything within a few centimetres of the lens)"
+  ],
+  "pending_on_hardware": []
+}

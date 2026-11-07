@@ -1,0 +1,311 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/* Audio DSP, WCD9335 codec on SLIMbus and the sound card. */
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
+#include <dt-bindings/sound/qcom,q6afe.h>
+#include <dt-bindings/sound/qcom,q6asm.h>
+#include <dt-bindings/sound/qcom,wcd9335.h>
+
+/* Audio DSP. Stock: PAS ID 1, SMD edge "lpass", APR over SMD. */
+&adsp_pil {
+	firmware-name = "qcom/msm8996/samsung/gts3llte/adsp.mdt";
+	status = "okay";
+};
+
+/*
+ * WCD9335 codec on the ADSP's SLIMbus, as on the APQ8096 DB820c but with
+ * this tablet's stock reset (TLMM 74, high = running) and interrupt
+ * (TLMM 79, active high; there is no second line) and the same 9.6 MHz
+ * MCLK from RPM div_clk1 on PM8994 GPIO 15. All supplies are PM8994 S4.
+ * The four speaker amplifiers (RT5508) are fed by primary TDM; see below.
+ */
+/ {
+	div1_mclk: divclk1 {
+		compatible = "gpio-gate-clock";
+		pinctrl-0 = <&audio_mclk>;
+		pinctrl-names = "default";
+		clocks = <&rpmcc RPM_SMD_DIV_CLK1>;
+		#clock-cells = <0>;
+		enable-gpios = <&pm8994_gpios 15 GPIO_ACTIVE_HIGH>;
+	};
+};
+
+&slim_msm {
+	status = "okay";
+
+	slim@1 {
+		reg = <1>;
+		#address-cells = <2>;
+		#size-cells = <0>;
+
+		tasha_ifd: tas-ifd@0,0 {
+			compatible = "slim217,1a0";
+			reg = <0 0>;
+		};
+
+		wcd9335: codec@1,0 {
+			compatible = "slim217,1a0";
+			reg = <1 0>;
+
+			clock-names = "mclk", "slimbus";
+			clocks = <&div1_mclk>,
+				 <&rpmcc RPM_SMD_BB_CLK1>;
+			interrupt-parent = <&tlmm>;
+			interrupts = <79 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "intr1";
+			interrupt-controller;
+			#interrupt-cells = <1>;
+
+			pinctrl-0 = <&codec_reset_default &codec_irq_default>;
+			pinctrl-names = "default";
+
+			reset-gpios = <&tlmm 74 GPIO_ACTIVE_LOW>;
+			slim-ifc-dev = <&tasha_ifd>;
+
+			#sound-dai-cells = <1>;
+
+			vdd-buck-supply = <&vreg_s4a_1p8>;
+			vdd-buck-sido-supply = <&vreg_s4a_1p8>;
+			vdd-tx-supply = <&vreg_s4a_1p8>;
+			vdd-rx-supply = <&vreg_s4a_1p8>;
+			vdd-io-supply = <&vreg_s4a_1p8>;
+		};
+	};
+};
+
+&q6asmdai {
+	dai@0 {
+		reg = <MSM_FRONTEND_DAI_MULTIMEDIA1>;
+	};
+
+	dai@1 {
+		reg = <MSM_FRONTEND_DAI_MULTIMEDIA2>;
+	};
+
+	dai@2 {
+		reg = <MSM_FRONTEND_DAI_MULTIMEDIA3>;
+	};
+};
+
+/* Stock mic wiring: main AMIC3 (bias 1), headset AMIC2 (bias 2),
+ * sub AMIC4 (bias 3), third AMIC1 (bias 4). As in stock, each mic bias
+ * also needs MCLK: without it the codec's decimators stay unclocked and
+ * capture returns only zeros.
+ */
+&sound {
+	compatible = "qcom,apq8096-sndcard";
+	model = "SM-T825";
+	audio-routing = "RX_BIAS", "MCLK",
+			"MIC BIAS1", "MCLK",
+			"MIC BIAS2", "MCLK",
+			"MIC BIAS3", "MCLK",
+			"MIC BIAS4", "MCLK",
+			"AMIC1", "MIC BIAS4",
+			"AMIC2", "MIC BIAS2",
+			"AMIC3", "MIC BIAS1",
+			"AMIC4", "MIC BIAS3";
+
+	mm1-dai-link {
+		link-name = "MultiMedia1";
+		cpu {
+			sound-dai = <&q6asmdai MSM_FRONTEND_DAI_MULTIMEDIA1>;
+		};
+	};
+
+	mm2-dai-link {
+		link-name = "MultiMedia2";
+		cpu {
+			sound-dai = <&q6asmdai MSM_FRONTEND_DAI_MULTIMEDIA2>;
+		};
+	};
+
+	mm3-dai-link {
+		link-name = "MultiMedia3";
+		cpu {
+			sound-dai = <&q6asmdai MSM_FRONTEND_DAI_MULTIMEDIA3>;
+		};
+	};
+
+	slim-dai-link {
+		link-name = "SLIM Playback";
+		cpu {
+			sound-dai = <&q6afedai SLIMBUS_6_RX>;
+		};
+
+		platform {
+			sound-dai = <&q6routing>;
+		};
+
+		codec {
+			sound-dai = <&wcd9335 AIF4_PB>;
+		};
+	};
+
+	slimcap-dai-link {
+		link-name = "SLIM Capture";
+		cpu {
+			sound-dai = <&q6afedai SLIMBUS_0_TX>;
+		};
+
+		platform {
+			sound-dai = <&q6routing>;
+		};
+
+		codec {
+			sound-dai = <&wcd9335 AIF1_CAP>;
+		};
+	};
+};
+
+&pm8994_gpios {
+	/* stock: output, special function 1, no pull, low drive, VIN S4 */
+	audio_mclk: audio-mclk-state {
+		pins = "gpio15";
+		function = PMIC_GPIO_FUNC_FUNC1;
+		output-enable;
+		bias-disable;
+		qcom,drive-strength = <PMIC_GPIO_STRENGTH_LOW>;
+		power-source = <PM8994_GPIO_S4>;
+	};
+};
+
+&tlmm {
+	codec_reset_default: codec-reset-default-state {
+		pins = "gpio74";
+		function = "gpio";
+		drive-strength = <16>;
+		bias-disable;
+		output-high;
+	};
+
+	codec_irq_default: codec-irq-default-state {
+		pins = "gpio79";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-pull-down;
+		input-enable;
+	};
+
+	/* Stock: bit clock 65, frame sync 66, data from the amps 67, to them 68 */
+	pri_tdm_default: pri-tdm-default-state {
+		clk-sync-pins {
+			pins = "gpio65", "gpio66";
+			function = "pri_mi2s";
+			drive-strength = <8>;
+			bias-disable;
+		};
+
+		data-pins {
+			pins = "gpio67", "gpio68";
+			function = "pri_mi2s";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+	};
+
+	/* Stock "qcom,i2s-sw-en" (board revision 05 on): held high */
+	spk_i2s_sw_default: spk-i2s-sw-default-state {
+		pins = "gpio63";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-pull-up;
+		output-high;
+	};
+};
+
+/*
+ * Speaker amplifiers: four Richtek RT5508 on BLSP1 I2C3 at 0x34-0x37. Stock
+ * runs the bus at 400 kHz on GPIO 47/48 with 2 mA drive and external
+ * pull-ups. Stock names them UR, UL, LR and LL and puts each in TDM mode
+ * with these channel and slot selections; data out (stock: 0x36) stays off.
+ */
+&blsp1_i2c3 {
+	clock-frequency = <400000>;
+	status = "okay";
+
+	speaker_ur: amplifier@34 {
+		compatible = "richtek,rt5508";
+		reg = <0x34>;
+		#sound-dai-cells = <0>;
+		sound-name-prefix = "Speaker UR";
+		richtek,tdm-mode;
+		richtek,channel = <2>;
+		richtek,tdm-dac-slot = <1>;
+		richtek,tdm-adc-slot = <1>;
+	};
+
+	speaker_ul: amplifier@35 {
+		compatible = "richtek,rt5508";
+		reg = <0x35>;
+		#sound-dai-cells = <0>;
+		sound-name-prefix = "Speaker UL";
+		richtek,tdm-mode;
+		richtek,channel = <2>;
+		richtek,tdm-dac-slot = <0>;
+		richtek,tdm-adc-slot = <0>;
+	};
+
+	speaker_lr: amplifier@36 {
+		compatible = "richtek,rt5508";
+		reg = <0x36>;
+		#sound-dai-cells = <0>;
+		sound-name-prefix = "Speaker LR";
+		richtek,tdm-mode;
+		richtek,channel = <0>;
+		richtek,tdm-dac-slot = <1>;
+		richtek,tdm-adc-slot = <1>;
+	};
+
+	speaker_ll: amplifier@37 {
+		compatible = "richtek,rt5508";
+		reg = <0x37>;
+		#sound-dai-cells = <0>;
+		sound-name-prefix = "Speaker LL";
+		richtek,tdm-mode;
+		richtek,channel = <0>;
+		richtek,tdm-dac-slot = <0>;
+		richtek,tdm-adc-slot = <0>;
+	};
+};
+
+/*
+ * Primary TDM as stock configures it: the SoC drives a 3.072 MHz bit clock
+ * (four 16-bit slots at 48 kHz) and a long, inverted frame sync from an
+ * internal source, data one bit clock after the sync, MSB aligned.
+ */
+&q6afedai {
+	dai@24 {
+		reg = <PRIMARY_TDM_RX_0>;
+		qcom,tdm-sync-mode = <1>;
+		qcom,tdm-sync-src = <1>;
+		qcom,tdm-data-out = <0>;
+		qcom,tdm-invert-sync = <1>;
+		qcom,tdm-data-delay = <1>;
+		qcom,tdm-data-align = <0>;
+	};
+};
+
+&sound {
+	pinctrl-0 = <&pri_tdm_default &spk_i2s_sw_default>;
+	pinctrl-names = "default";
+
+	speaker-dai-link {
+		link-name = "Speakers";
+		cpu {
+			sound-dai = <&q6afedai PRIMARY_TDM_RX_0>;
+		};
+
+		platform {
+			sound-dai = <&q6routing>;
+		};
+
+		codec {
+			sound-dai = <&speaker_ll>, <&speaker_ul>, <&speaker_lr>, <&speaker_ur>;
+		};
+	};
+};
+
+&blsp1_i2c3_default {
+	drive-strength = <2>;
+};

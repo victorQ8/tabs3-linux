@@ -1,0 +1,49 @@
+From 0ec120f6ed0c9d610aa1d38c99a34192fd632c18 Mon Sep 17 00:00:00 2001
+From: dexq8 <dexq8@proton.me>
+Date: Mon, 12 Oct 2026 16:18:14 +0300
+Subject: [PATCH] drm/msm/dpu: enable split display on the MSM8996 CTL_0 and
+ CTL_1
+
+The MSM8996 catalogue marks no CTL as split-display capable, so
+_dpu_rm_reserve_ctls() finds no CTL for a topology that needs one and
+returns -ENAVAIL: a bonded (dual-link) DSI panel cannot be driven by DPU
+on this SoC.
+
+Mark CTL_0 and CTL_1 with DPU_CTL_SPLIT_DISPLAY, as the catalogues of
+the following generations (MSM8998, SDM630, SDM660, SDM845) do.
+
+Fixes: daf9a92daeb8 ("drm/msm/dpu: Add support for MSM8996")
+Assisted-by: Claude:claude-opus-5-5
+---
+
+Notes:
+    Testing: runtime-tested on 6.19.5 (msm8996-mainline community patches) with a
+    dual-DSI command-mode panel (Samsung AMS968HH01 on the Galaxy Tab S3): without
+    this change DPU cannot reserve CTLs for the bonded DSI topology. On v7.3-rc7
+    build-tested only (arm64, W=1).
+
+ drivers/gpu/drm/msm/disp/dpu1/catalog/dpu_1_7_msm8996.h | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/catalog/dpu_1_7_msm8996.h b/drivers/gpu/drm/msm/disp/dpu1/catalog/dpu_1_7_msm8996.h
+index 67910a2f688..6118695c110 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/catalog/dpu_1_7_msm8996.h
++++ b/drivers/gpu/drm/msm/disp/dpu1/catalog/dpu_1_7_msm8996.h
+@@ -43,9 +43,11 @@ static const struct dpu_ctl_cfg msm8996_ctl[] = {
+ 	{
+ 		.name = "ctl_0", .id = CTL_0,
+ 		.base = 0x1000, .len = 0x64,
++		.features = BIT(DPU_CTL_SPLIT_DISPLAY),
+ 	}, {
+ 		.name = "ctl_1", .id = CTL_1,
+ 		.base = 0x1200, .len = 0x64,
++		.features = BIT(DPU_CTL_SPLIT_DISPLAY),
+ 	}, {
+ 		.name = "ctl_2", .id = CTL_2,
+ 		.base = 0x1400, .len = 0x64,
+
+base-commit: 24a19b953e2a3d0ea5a8c4951a0ab8f32720c907
+prerequisite-patch-id: 2da9c8bae64730101265a5c55198287e1668add4
+-- 
+2.55.0
+

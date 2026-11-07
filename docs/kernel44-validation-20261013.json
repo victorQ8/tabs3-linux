@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-13T03:51:37+00:00",
+  "installed": {
+    "linux-tabs3": "6.18.56-44",
+    "tabs3-base": "0.1.9",
+    "tabs3-desktop": "0.1.9",
+    "boot_partition": "package 44 combined image, written from the RAM-booted 6.18 system, readback verified",
+    "recovery": "unchanged (package 29)"
+  },
+  "previous": "6.19.5-43",
+  "path": [
+    "2026-10-12: install from 6.19.5 stopped at depmod (running kernel's modules removed); a reboot left 6.19.5 with only 6.18 modules and no USB or Wi-Fi network",
+    "2026-10-13: owner forced a restart holding Volume Down; lk2nd fastboot on USB",
+    "fastboot boot of the package-44 Debian image: SSH after 11 s on 6.18.56-gts3l1",
+    "checks from RAM passed; boot partition written and tabs3-base 0.1.9 installed",
+    "normal reboot from disk: SSH after 22 s; checks passed again"
+  ],
+  "checks": {
+    "dsi_clocks_hz": {
+      "dsi0pll": 148866500,
+      "byte": 111649875,
+      "same_as_package_41": true
+    },
+    "panel": "both DSI hosts bound, DSI-1 connected and enabled, backlight 78 applied, no DSI errors",
+    "boot_check": "all PASS; 4 known clk-rcg2 update_config warnings on the disk boot, none on the RAM boot",
+    "audio": "headphone path running with HPHL/HPHR PAs on; microphone ADC3 -65.4 dBFS room noise; known CMD_CLOSE (0x10bcd) timeout after capture",
+    "gpu_shared_vma_check": "mapping kept; 20 GEM objects before and after",
+    "temperature_sensors": "14 zones, idle 36-39 C, cpufreq and GPU devfreq cooling present",
+    "modem": "MPSS running, SIM absent",
+    "wifi": "up",
+    "usb_role": "device",
+    "new_kernel_message": "PDR: service lookup for avs/audio failed: -6 (no pd-mapper); SLIMbus starts through the SSR fallback and the WCD9335 probes"
+  },
+  "pending_on_hardware": [
+    "owner's visual check of the panel",
+    "microSD card",
+    "USB Ethernet adapter",
+    "button presses",
+    "headphone listening",
+    "SIM"
+  ]
+}

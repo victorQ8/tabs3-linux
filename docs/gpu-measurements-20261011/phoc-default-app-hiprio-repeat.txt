@@ -1,0 +1,43 @@
+phoc_mode=default
+()
+phoc_pid=12183
+tabs3-phase-cairo-19986-before uptime=2416.80
+101
+tabs3-phase-cairo-19986-open uptime=2420.35
+101
+tabs3-phase-cairo-19986-scroll uptime=2421.60
+101
+tabs3-phase-cairo-19986-osk uptime=2422.85
+101
+tabs3-phase-cairo-19986-close uptime=2425.21
+101
+tabs3-phase-ngl-521-before uptime=2425.35
+101
+tabs3-phase-ngl-521-open uptime=2428.58
+101
+tabs3-phase-ngl-521-scroll uptime=2430.02
+101
+tabs3-phase-ngl-521-osk uptime=2431.31
+101
+tabs3-phase-ngl-521-close uptime=2433.64
+101
+tabs3-phase-cairo-17837-before uptime=2433.77
+101
+tabs3-phase-cairo-17837-open uptime=2436.99
+101
+tabs3-phase-cairo-17837-scroll uptime=2438.21
+101
+tabs3-phase-cairo-17837-osk uptime=2439.50
+101
+tabs3-phase-cairo-17837-close uptime=2441.88
+101
+tabs3-phase-ngl-24444-before uptime=2442.02
+101
+tabs3-phase-ngl-24444-open uptime=2445.23
+101
+tabs3-phase-ngl-24444-scroll uptime=2446.56
+101
+tabs3-phase-ngl-24444-osk uptime=2447.88
+101
+tabs3-phase-ngl-24444-close uptime=2450.26
+101

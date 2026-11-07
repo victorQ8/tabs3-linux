@@ -1,0 +1,20 @@
+---
+kernel: 6.19.5-gts3l1
+module: msm
+time: 1791716894.486910681
+comm: phoc
+cmdline: /usr/bin/phoc -v -S -C /etc/phosh/phoc.ini -E bash -lc 'exec gnome-session --disable-acceleration-check --session=phosh'
+revision: 530 (5.3.0.2)
+fault-info:
+  - ttbr0=0000000109be0000
+  - iova=000000000a830600
+  - dir=READ
+  - type=TRANSLATION
+  - source=
+pgtable-fault-info:
+  - ttbr0: 0000000000000000
+  - asid: 0
+  - ptes: 0000000000000000 0000000000000000 0000000000000000 0000000000000000
+rbbm-status: 0xef009fc3
+
+Mesa 26.1.6-1~bpo13+1, fresh boot: translation fault reproduced.

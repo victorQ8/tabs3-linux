@@ -1,0 +1,22 @@
+[Unit]
+Description=Shut down safely when the Tab S3 battery reserve is exhausted
+ConditionPathExists=/sys/firmware/devicetree/base/compatible
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/tabs3-power-guard --enforce
+RuntimeDirectory=tabs3-power-guard
+RuntimeDirectoryMode=0700
+RuntimeDirectoryPreserve=yes
+TimeoutStartSec=15
+MemoryMax=32M
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+PrivateTmp=yes
+RestrictAddressFamilies=AF_UNIX
+CapabilityBoundingSet=

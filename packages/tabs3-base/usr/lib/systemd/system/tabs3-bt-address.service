@@ -1,0 +1,13 @@
+[Unit]
+Description=Configure the Tab S3 LTE Bluetooth address from EFS
+After=local-fs.target systemd-udev-trigger.service
+Before=bluetooth.service
+ConditionPathExists=/sys/firmware/devicetree/base/compatible
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/tabs3-bt-address
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

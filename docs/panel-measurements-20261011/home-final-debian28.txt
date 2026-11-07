@@ -1,0 +1,12 @@
+Linux tabs3 6.19.5-gts3l1 #13 SMP PREEMPT 2026-10-10 00:00:00 UTC aarch64 GNU/Linux
+console=tty0 rdinit=/init clk_ignore_unused pd_ignore_unused loglevel=8 ignore_loglevel panic=30 tabs3.mode=installed msm.prefer_mdp5=0 tabs3.root_uuid=d175936c-f57f-4e9c-9ac9-26aa0659feee tabs3.root_extend=system
+linux-tabs3	6.19.5-28
+tabs3-base	0.1.6
+active
+/dev/mapper/tabs3root ext4 rw,noatime
+NAME=tabS3
+VERSION=0.1.6
+BASE=debian-trixie
+DEVICE=gts3llte
+STATUS=experimental-hardware-bringup
+0

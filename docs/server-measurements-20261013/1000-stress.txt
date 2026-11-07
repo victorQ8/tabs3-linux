@@ -1,0 +1,14 @@
+stress-ng: info:  [1741] setting to a 10 mins run per stressor
+stress-ng: info:  [1741] dispatching hogs: 4 cpu, 1 vm
+stress-ng: info:  [1741] note: /proc/sys/kernel/sched_autogroup_enabled is 1 and this can impact scheduling throughput for processes not attached to a tty. Setting this to 0 may improve performance metrics
+stress-ng: info:  [1741] note: boost is disabled and this may impact top performance; setting /sys/devices/system/cpu/cpufreq/boost to 1 may improve performance.
+stress-ng: info:  [1746] vm: using 256M per stressor instance (total 256M of 2.68G available memory)
+stress-ng: metrc: [1741] stressor       bogo ops real time  usr time  sys time   bogo ops/s     bogo ops/s
+stress-ng: metrc: [1741]                           (secs)    (secs)    (secs)   (real time) (usr+sys time)
+stress-ng: metrc: [1741] cpu              714157    599.99   1789.82      6.16      1190.28         397.64
+stress-ng: metrc: [1741] vm              4401050    600.02    441.78      1.81      7334.82        9921.50
+stress-ng: info:  [1741] skipped: 0
+stress-ng: info:  [1741] passed: 5: cpu (4) vm (1)
+stress-ng: info:  [1741] failed: 0
+stress-ng: info:  [1741] metrics untrustworthy: 0
+stress-ng: info:  [1741] successful run completed in 10 mins

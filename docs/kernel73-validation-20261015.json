@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-15T11:15:00Z",
+  "status": "RAM-boot qualification in progress; not flashed",
+  "candidate": "linux-tabs3 6.18.56-73, kernel build #18",
+  "previous": "linux-tabs3 6.18.56-72, kernel build #17",
+  "change": "0043 serializes the A5xx ring write-pointer snapshot and MMIO update in a5xx_flush and update_wptr. Acceleration, preemption, priority levels, clocks, device trees and USB-C changes remain enabled/unchanged.",
+  "causality": "The host test deterministically reproduces a stale WPTR overwrite in the old functions and excludes it in the patched functions, including ring wrap. This is consistent with the package-70 opcode-zero fault, but the historical tablet crash has not been causally reproduced on demand. A passing soak is not proof that all GPU hangs are fixed.",
+  "build_checks": {
+    "host_tests": "124 passed, including audio/HUD command validation and socket lifecycle",
+    "image_ids": "package 72 and 73 Android v0 image checksums verified",
+    "device_trees": "package 72 and 73 appended DTBs are byte-identical",
+    "command_line": "package 72 and 73 command lines are identical",
+    "ram_image_sha256": "ff5a98de0c6a1f2af30b1c09db2a56d6f380207255c4f624d96eb94c4cc8fe8d",
+    "combined_image_sha256": "2589a9e1f7c4c932f92d386644c06d4793e4776ffe9163a4ebaabda34ed26185"
+  },
+  "baseline": {
+    "boot_id": "57fcf07c-fda0-4353-b8d3-492f53c6c35f",
+    "workload": "Ozone idle menu, including its existing 120-second black screensaver; briefly woken near the end",
+    "sampled_seconds": 1320,
+    "elapsed_including_stop_seconds": 1323,
+    "peak_temperature_c": 54.3,
+    "gpu_faults": 0,
+    "renderer": "FD530, OpenGL ES 3.1, Mesa 26.1.6-1~bpo13+1",
+    "cleanup": "dashboard and screen service active; GPU resident memory returned to 20 objects / 13082624 bytes",
+    "evidence": "private/gaming-checks/gpu-baseline-soak.jsonl"
+  },
+  "candidate_ram_boot": {
+    "boot_id": "ce8402c2-5d18-4efa-9905-97e0782b0daf",
+    "boot_partition_sha256_before_and_after": "20ccf684f8375bdcac8e60722eca1586de1993e6eb3a50ce1e3ff5d4e80685c3",
+    "usb": "direct PC cable: SSH returned, charger online",
+    "shared_vm": "mapping retained after one client's close; all test BOs freed, 20 objects before and after",
+    "initial_render": "original NES diagnostic visibly complete, 60.12 FPS, FD530 OpenGL ES 3.1",
+    "soak": "Incomplete: gaming service stopped cleanly at 13:57:36 local before the 1800-second target. Monitor ended after 1247 seconds, peak 55.2 C, no recorded GPU fault. This is not a completed 30-minute pass. Tablet remained running on the same boot and reachable over Wi-Fi.",
+    "warnings": "Four pixel-clock RCG warnings, initial DPU event overflow/kickoff timeout/reset failure; q6asm audio close timeouts at gaming startup. No claim that these are fixed by this GPU patch. Display and audio paths need separate qualification."
+  },
+  "rollback": "Package 72 kernel package and both boot images preserved on host in artifacts/ and private/images/package72/. Its boot partition remains installed during RAM testing.",
+  "pending_on_hardware": [
+    "complete the candidate accelerated soak",
+    "repeat launch/exit and check GPU-memory reclamation and restoration of AMOLED services",
+    "persistent boot validation if candidate qualifies",
+    "Xbox reconnect and rumble (physical A/B and D-pad response already confirmed)",
+    "intermittent volume-HUD capture redraw issue; later 12-frame check passed, root cause still unconfirmed (owner confirmed audible tone after the audio fix)"
+  ]
+}

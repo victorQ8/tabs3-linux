@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-15T17:45:00+00:00",
+  "installed": {
+    "linux-tabs3": "6.18.56-80 (modules installed over USB at 20:23, boot partition written from recovery at 20:31 local, readback verified)",
+    "boot_partition": "package 80 combined image, sha256 4a7a0913a6b3e4066b49addb806fead3a3e0a993de218a09fbc3705c3e92012e (private/images/package80/)",
+    "tabs3-base": "0.1.31 (the USB networking gadget is USB 2 only)",
+    "tabs3-dashboard": "0.1.9 (Codex)"
+  },
+  "previous": "6.18.56-78",
+  "change": "patch 0044 v2: the flash LED registered with LED_DEV_CAP_FLASH (flash_brightness, flash_strobe, flash_timeout); patch 0045: the charger routes D+/D- to USB by hand while a USB host (SDP or CDP) supplies VBUS outside the host role, and gives the switch back (automatic, lines open) when VBUS goes, as Samsung's MUIC driver does; tabs3-base 0.1.31: the gadget's max_speed is high-speed",
+  "why": "after a hub session a PC plugged in next never saw the tablet (12:43 and 20:18 today): first because the MUIC was left in automatic switching, which leaves D+/D- open for a PC (stock always switches by hand on a USB attach), then, once the lines were routed, because the gadget, which tries USB 3 first since package 77, stayed in the USB 3 Rx.Detect state after the host session and never fell back to USB 2",
+  "path": [
+    "20:18: PC cable in after the hub: role device, MUIC detected an SDP, automatic switching with MANSW1 0x24, the gadget not attached; manual switching by hand (CTRL 0x1a) brought the gadget up at once",
+    "Samsung's MUIC code (VPS_TYPE_SCATTERED, SM5705): on a USB attach set_switch_mode(MANUAL) then com_to_usb_ap; on detach set_switch_mode(AUTO) then com_to_open",
+    "20:24: package 80 booted from RAM with the PC cable: 'USB host attached: D+/D- to USB' at 2.3 s, gadget configured, the LED's flash controls present (1200 mA, 800 ms at most)",
+    "20:31: boot partition written from recovery, Debian 80 from disk, routing at 1.5 s",
+    "20:34:05: one flash pulse at 600 mA for 400 ms: operation mode 6 (flash boost) during the pulse, FLED1CNTL1 flash, FLED1CNTL2 timer code 3, FLED1CNTL3 current code 12; afterwards mode 5 and the LED off, charging on the PC; the owner's sight of it not yet confirmed",
+    "20:34:27 to 20:34:55: PC out (switch automatic, lines open), hub in (host, the tablet sourcing; the hub did not take over with its charger), hub out (role device a second later), PC in: 'USB host attached: D+/D- to USB' at once, but the PC saw no connect: the controller ran (DCTL run/stop 1) at DCFG SuperSpeed with its USB 3 link in Rx.Detect; soft disconnect and connect, the MUIC switched again by hand, and the redriver turned off (driver unbound) changed nothing",
+    "20:40:20: the gadget rebound with max_speed high-speed: link On, configured, the PC registered the USB network within a second",
+    "20:41: tabs3-base 0.1.31 installed (max_speed high-speed before the UDC binds, tested); reboot: gadget high-speed, configured, routing at 1.9 s, the PC's network 7 s after the restart",
+    "20:42:56 to 20:43:14: PC out, hub in for eight seconds (host, the tablet sourcing again), hub out, PC in: the PC found the tablet at 20:43:14.15 and registered the network at 20:43:14.30, with no command"
+  ],
+  "unknown": [
+    "the hub's hand-over with its charger failed in all three tries tonight (20:11, 20:34, 20:43): the tablet sourced it from the battery; earlier today it took over at the first try; the charger's connection at the hub to be checked",
+    "USB 3 itself: no USB 3 partner tried yet (the OTG adapter and the hub are USB 2)"
+  ],
+  "pending_on_hardware": [
+    "the owner's look at a flash pulse",
+    "SuperSpeed with a USB 3 device",
+    "the hub with its charger taking over again"
+  ]
+}

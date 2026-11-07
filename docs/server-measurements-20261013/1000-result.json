@@ -1,0 +1,8 @@
+{
+  "boot_id": "329acf56-1db6-4d65-a12f-32c0f5cb094d",
+  "reason": "completed",
+  "exit_code": 0,
+  "elapsed_s": 603.3,
+  "sample_count": 117,
+  "kernel": "Linux tabs3 6.18.56-gts3l1 #13 SMP PREEMPT 2026-10-10 00:00:00 UTC aarch64 GNU/Linux"
+}

@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-15T12:25:00+00:00",
+  "installed": {
+    "linux-tabs3": "6.18.56-76 (modules installed over Wi-Fi at 15:20, boot partition written from recovery at 15:24 local, readback verified)",
+    "boot_partition": "package 76 combined image, sha256 eeaa6dc60f81e190656bf650fd8f3479eb9b7c5329fc485ea43aedb5f499fc3d (private/images/package76/)",
+    "tabs3-base": "0.1.30",
+    "tabs3-dashboard": "0.1.9 (Codex: the keeper's descent is named on the panel)",
+    "tabs3-gaming": "0.1.1 (Codex)"
+  },
+  "previous": "6.18.56-73 (Codex's GPU fix, patch 0043, on top of package 72's driver)",
+  "change": "patch 0042, versions 4 to 6, after the automatic USB role of package 72 met the chip's blips: (74) the drop to the device role waits a second, because the chip reports a detach for a few tens of milliseconds as the tablet's own VBUS comes on; (75) a sink attach reported with the policy engine still detached is that same blip and does not pause the boost; (76) such blips are neither logged nor hurry the poll. Codex's 0043 (A5xx ring write-pointer locking) is in the tree since package 73",
+  "why": "on package 72 and 73 a hub or an adapter plugged in looped four times a second: attach, USB role host, boost on, the chip's detach blip, role device, boost off, re-attach (48 cycles at 14:00); the port only worked once the driver was unbound",
+  "path": [
+    "14:00 (package 73, the driver of 72): hub and Ethernet adapter both looped as above; unbinding the driver stopped it with the role left at host, and the adapter came up (RTL8156, carrier, an address)",
+    "15:07: package 74 booted from RAM with the PC cable (role device, gadget configured, SDP at 500 mA), written to the boot partition from recovery at 15:09, Debian from disk",
+    "15:10: hub in on package 74: the role held (no drop), but the boost toggled 22 times in 12 s: after each blip the chip reported 'attached, sink, device' with its policy engine still detached, the driver paused the boost for a partner that was not supplying, and the hub's upstream port lost its power before it could source; on the twelfth try the hub delivered, then contract (5 V 3 A), data-role swap and enumeration within 0.5 s, charging at the 1.5 A limit",
+    "15:14: Ethernet adapter on package 74: the same bogus sink attach cut the boost every half second and the adapter was reset each time (device numbers 8, 9, ...); unbound, it was up with an address in 4 s",
+    "15:16: package 75 installed over Wi-Fi and the driver reloaded with the adapter attached: role and boost held, the adapter kept its address; the chip itself cycles every 460 ms with a partner that speaks no PD (source send capabilities 3, wait new capabilities 14, detached 0, a sink attach at 0, back to 3), harmless to the data path but ten log lines a second",
+    "15:19: adapter out: role device a second after the detach, boost off; hub in with its charger undisturbed: it sourced at once (source capabilities, 3000 mA, sink ready), data-role swap 410 ms later, USB role host 4 ms after that, 'the partner supplies VBUS, no boost', the hub found at +960 ms; charging at 1.5 A",
+    "15:20: package 76 installed over Wi-Fi, the driver reloaded with the hub attached (probe into sink host, 3000 mA, role host kept); 15:21 hub out, PC cable in, boot partition written from recovery, Debian from disk at 15:24 (build #21, role device with the PC, charger online, keeper and dashboard active)",
+    "15:24: hub in on package 76 from disk: sourced on attach (3000 mA), data-role swap +420 ms, USB role host +4 ms, the hub found +1.2 s, charging at 1.5 A; 15:25 reboot with the hub attached: probe at 8.47 s into sink host, USB role host at 8.48 s, 'the partner supplies VBUS, no boost' at 8.7 s, the hub found at 9.1 s with its 4 ports, charger online and Charging at the 1.5 A limit, keeper and dashboard active; no command at any point"
+  ],
+  "unknown": [
+    "why the chip cycles every half second while the tablet sources to a partner without PD: a dual-role port's Try.SNK seeing the tablet's own VBUS is the guess; the stock driver may tell the chip about VBUS (nothing of the kind in the register notes yet)",
+    "the hub's first-try hand-over depends on its charger side being settled: first try at 12:54 and 15:19, twelve tries over 12 s at 15:10 right after cable moves"
+  ],
+  "pending_on_hardware": []
+}

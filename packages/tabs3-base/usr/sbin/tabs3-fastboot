@@ -1,0 +1,16 @@
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+set -eu
+. /usr/lib/tabs3/fastboot-request.sh
+case "${1:-enter}" in
+    status|cancel) tabs3_fastboot_request "$1" ;;
+    enter)
+        tabs3_fastboot_request arm
+        sync
+        if ! systemctl reboot --reboot-argument=recovery; then
+            tabs3_fastboot_request cancel
+            exit 1
+        fi
+        ;;
+    *) echo 'Usage: tabs3-fastboot [enter|status|cancel]' >&2; exit 1 ;;
+esac

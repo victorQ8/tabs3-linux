@@ -1,0 +1,83 @@
+Subject: [PATCH] power: supply: sm5705: keep system input during battery inhibit
+
+Distinguish a valid but unclassified VBUS source from MUIC read errors.
+The former permits conservative 500 mA input; errors remain fail-closed.
+The board policy keeps system input available during thermal/manual charge
+inhibit, while hardware faults retain the minimum-input fallback.
+
+--- a/drivers/power/supply/sm5705_charger.c
++++ b/drivers/power/supply/sm5705_charger.c
+@@ -84,12 +84,12 @@
+ 	return ret;
+ }
+ 
+-static enum power_supply_usb_type sm5705_chg_usb_type(struct sm5705_chg *chg)
++static int sm5705_chg_usb_type(struct sm5705_chg *chg)
+ {
+ 	int devt1 = i2c_smbus_read_byte_data(chg->muic, SM5705_MUIC_DEVT1);
+ 
+ 	if (devt1 < 0)
+-		return POWER_SUPPLY_USB_TYPE_UNKNOWN;
++		return devt1;
+ 	if (devt1 & SM5705_MUIC_DEVT1_DCP)
+ 		return POWER_SUPPLY_USB_TYPE_DCP;
+ 	if (devt1 & SM5705_MUIC_DEVT1_CDP)
+@@ -138,8 +138,9 @@
+ 	return ret ? ret : (check & mask) == value ? 0 : -EIO;
+ }
+ 
+-/* Called with lock held. Unknown ports, invalid sensors, charger faults or
+- * failed register operations inhibit charging through the separate GPIO.
++/* Called with lock held. Battery charge and system input are independent:
++ * a thermal inhibit leaves the buck supply available. Control/read faults
++ * still disable charging and fall back to the minimum input limit.
+  */
+ static int sm5705_apply_policy(struct sm5705_chg *chg)
+ {
+@@ -152,15 +153,26 @@
+ 	t1 = sm5705_read_temperature(chg->battery_therm, false, &chg->battery_temp);
+ 	t2 = sm5705_read_temperature(chg->charger_therm, true, &chg->charger_temp);
+ 	chg->temp_valid = !t1 && !t2;
+-	valid = !ret && chg->temp_valid &&
+-		!(s1 & SM5705_STATUS1_VBUSOVP) &&
+-		!(s2 & (SM5705_STATUS2_BATOVP | SM5705_STATUS2_NOBAT | SM5705_STATUS2_WDTMROFF)) &&
+-		!(s3 & (SM5705_STATUS3_THEMSHDN | SM5705_STATUS3_PRETMROFF | SM5705_STATUS3_FASTTMROFF));
+-	if (!ret && (s1 & SM5705_STATUS1_VBUSPOK)) {
++	if (ret)
++		goto fail;
++	if ((s1 & SM5705_STATUS1_VBUSOVP) ||
++	    (s2 & (SM5705_STATUS2_BATOVP | SM5705_STATUS2_NOBAT | SM5705_STATUS2_WDTMROFF)) ||
++	    (s3 & (SM5705_STATUS3_THEMSHDN | SM5705_STATUS3_PRETMROFF | SM5705_STATUS3_FASTTMROFF))) {
++		ret = -EIO;
++		goto fail;
++	}
++	valid = chg->temp_valid;
++	if (s1 & SM5705_STATUS1_VBUSPOK) {
+ 		type = sm5705_chg_usb_type(chg);
+-		if (type == POWER_SUPPLY_USB_TYPE_SDP)
+-			source = 500000;
+-		else if (type == POWER_SUPPLY_USB_TYPE_CDP || type == POWER_SUPPLY_USB_TYPE_DCP)
++		if (type < 0) {
++			ret = type;
++			goto fail;
++		}
++		/* Valid VBUS with an unclassified source gets only 500 mA.
++		 * A failed MUIC read is an error, never this fallback.
++		 */
++		source = 500000;
++		if (type == POWER_SUPPLY_USB_TYPE_CDP || type == POWER_SUPPLY_USB_TYPE_DCP)
+ 			source = 1500000;
+ 	}
+ 	limits = sm5705_choose_limits(&chg->safety, valid, chg->battery_temp,
+@@ -266,7 +278,10 @@
+ 			val->intval = POWER_SUPPLY_HEALTH_GOOD;
+ 		return 0;
+ 	case POWER_SUPPLY_PROP_USB_TYPE:
+-		val->intval = sm5705_chg_usb_type(chg);
++		ret = sm5705_chg_usb_type(chg);
++		if (ret < 0)
++			return ret;
++		val->intval = ret;
+ 		return 0;
+ 	case POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT:
+ 		ret = sm5705_chg_read(chg, SM5705_VBUSCNTL, &reg);

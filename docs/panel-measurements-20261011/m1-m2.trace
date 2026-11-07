@@ -1,0 +1,623 @@
+# tracer: nop
+#
+# entries-in-buffer/entries-written: 611/611   #P:4
+#
+#                                _-----=> irqs-off/BH-disabled
+#                               / _----=> need-resched
+#                              | / _---=> hardirq/softirq
+#                              || / _--=> preempt-depth
+#                              ||| / _-=> migrate-disable
+#                              |||| /     delay
+#           TASK-PID     CPU#  |||||  TIMESTAMP  FUNCTION
+#              | |         |   |||||     |         |
+              sh-1470    [000] ...1.  1498.215391: tracing_mark_write: STATIC_VERIFY_START
+              sh-1470    [003] ...1.  1501.228351: tracing_mark_write: BEFORE_RAW_DISPLAY_ON_BEGIN
+              sh-1470    [001] ...1.  1501.241837: tracing_mark_write: SEND 15 b0 5a
+              sh-1470    [001] d....  1501.242362: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x5a
+              sh-1470    [001] d..1.  1501.242772: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1501.262368: tracing_mark_write: SEND 24 d8 01 1
+              sh-1470    [001] d....  1501.263137: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd8 b1=0x1
+              sh-1470    [001] d..1.  1501.263718: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1501.283563: tracing_mark_write: SEND 15 b0 d0
+              sh-1470    [001] d....  1501.284057: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0xd0
+              sh-1470    [001] d..1.  1501.284356: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1501.304618: tracing_mark_write: SEND 24 d1 01 1
+              sh-1470    [001] d....  1501.305077: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd1 b1=0x1
+              sh-1470    [001] d..1.  1501.305495: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1501.323303: tracing_mark_write: SEND 15 b0 51
+              sh-1470    [001] d....  1501.323516: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x51
+              sh-1470    [001] d..1.  1501.323745: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1501.344991: tracing_mark_write: SEND 24 d1 01 1
+              sh-1470    [001] d....  1501.345197: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd1 b1=0x1
+              sh-1470    [001] d..1.  1501.345623: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1501.365850: tracing_mark_write: SEND 15 b0 d9
+              sh-1470    [001] d....  1501.366216: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0xd9
+              sh-1470    [001] d..1.  1501.366612: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1501.383502: tracing_mark_write: SEND 24 d1 01 1
+              sh-1470    [001] d....  1501.383720: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd1 b1=0x1
+              sh-1470    [001] d..1.  1501.384146: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [000] ...1.  1501.401304: tracing_mark_write: SEND 15 b0 70
+              sh-1470    [000] d....  1501.401633: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x70
+              sh-1470    [000] d..1.  1501.401860: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [002] ...1.  1501.423427: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [002] d....  1501.423777: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [002] d..1.  1501.424203: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [000] ...1.  1501.444992: tracing_mark_write: SEND 15 b0 67
+              sh-1470    [000] d....  1501.445609: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x67
+              sh-1470    [000] d..1.  1501.445863: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [003] ...1.  1501.464936: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [003] d....  1501.465316: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [003] d..1.  1501.465736: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [003] ...1.  1501.484052: tracing_mark_write: SEND 15 b0 36
+              sh-1470    [003] d....  1501.484437: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x36
+              sh-1470    [003] d..1.  1501.484730: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1501.505267: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [001] d....  1501.505707: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [001] d..1.  1501.506209: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [002] ...1.  1501.529273: tracing_mark_write: SEND 15 b0 4d
+              sh-1470    [002] d....  1501.529640: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x4d
+              sh-1470    [002] d..1.  1501.529937: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1501.554711: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [001] d....  1501.555160: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [001] d..1.  1501.555603: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [002] ...1.  1501.574043: tracing_mark_write: SEND 15 b0 49
+              sh-1470    [002] d....  1501.574228: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x49
+              sh-1470    [002] d..1.  1501.574706: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1501.601275: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [001] d....  1501.601670: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [001] d..1.  1501.602116: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1501.621849: tracing_mark_write: SEND 06 0a 1
+              sh-1470    [001] d....  1501.622082: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x6 flags=0x0 len=1 b0=0xa b1=0x1
+              sh-1470    [001] d..1.  1501.622436: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1501.645484: tracing_mark_write: SEND 06 0e 1
+              sh-1470    [001] d....  1501.645861: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x6 flags=0x0 len=1 b0=0xe b1=0x1
+              sh-1470    [001] d..1.  1501.646342: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1501.666135: tracing_mark_write: SEND 06 0f 1
+              sh-1470    [001] d....  1501.666364: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x6 flags=0x0 len=1 b0=0xf b1=0x1
+              sh-1470    [001] d..1.  1501.666734: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [003] ...1.  1501.673373: tracing_mark_write: BEFORE_RAW_DISPLAY_ON_END
+              sh-1470    [001] ...1.  1501.689340: tracing_mark_write: SEND 15 b0 67
+              sh-1470    [001] d....  1501.689570: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x67
+              sh-1470    [001] d..1.  1501.689807: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [000] ...1.  1501.707915: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [000] d....  1501.708262: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [000] d..1.  1501.708670: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [003] ...1.  1501.728333: tracing_mark_write: SEND 15 b0 36
+              sh-1470    [003] d....  1501.728800: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x36
+              sh-1470    [003] d..1.  1501.729120: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [000] ...1.  1501.753629: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [000] d....  1501.753968: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [000] d..1.  1501.754333: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [003] ...1.  1501.775966: tracing_mark_write: SEND 15 b0 4d
+              sh-1470    [003] d....  1501.776436: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x4d
+              sh-1470    [003] d..1.  1501.776752: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1501.799019: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [001] d....  1501.799232: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [001] d..1.  1501.799531: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1501.817938: tracing_mark_write: SEND 05 29
+              sh-1470    [001] d....  1501.818160: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x5 flags=0x0 len=1 b0=0x29 b1=0xbd
+              sh-1470    [001] d..1.  1501.818536: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [003] ...1.  1501.868289: tracing_mark_write: FRAME_INITIAL_ON_BEGIN
+     kworker/0:1-11      [000] .....  1501.902688: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.  1501.930208: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] dNh2.  1501.930252: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+              sh-1470    [003] ...1.  1502.951148: tracing_mark_write: FRAME_INITIAL_ON_END
+              sh-1470    [003] ...1.  1502.951684: tracing_mark_write: M1_BASELINE_BEGIN
+              sh-1470    [002] ...1.  1502.968304: tracing_mark_write: SEND 15 b0 5a
+              sh-1470    [002] d....  1502.968763: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x5a
+              sh-1470    [002] d..1.  1502.969056: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [003] ...1.  1502.991670: tracing_mark_write: SEND 24 d8 01 1
+              sh-1470    [003] d....  1502.991908: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd8 b1=0x1
+              sh-1470    [003] d..1.  1502.992393: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [003] ...1.  1503.016536: tracing_mark_write: SEND 15 b0 d0
+              sh-1470    [003] d....  1503.016986: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0xd0
+              sh-1470    [003] d..1.  1503.017312: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [002] ...1.  1503.037760: tracing_mark_write: SEND 24 d1 01 1
+              sh-1470    [002] d....  1503.038212: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd1 b1=0x1
+              sh-1470    [002] d..1.  1503.039067: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [000] ...1.  1503.063621: tracing_mark_write: SEND 15 b0 51
+              sh-1470    [000] d....  1503.063995: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x51
+              sh-1470    [000] d..1.  1503.064265: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [000] ...1.  1503.089349: tracing_mark_write: SEND 24 d1 01 1
+              sh-1470    [000] d....  1503.089714: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd1 b1=0x1
+              sh-1470    [000] d..1.  1503.090141: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [000] ...1.  1503.111889: tracing_mark_write: SEND 15 b0 d9
+              sh-1470    [000] d....  1503.112357: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0xd9
+              sh-1470    [000] d..1.  1503.112592: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1503.136974: tracing_mark_write: SEND 24 d1 01 1
+              sh-1470    [001] d....  1503.137431: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd1 b1=0x1
+              sh-1470    [001] d..1.  1503.137949: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [002] ...1.  1503.158031: tracing_mark_write: SEND 15 b0 70
+              sh-1470    [002] d....  1503.158578: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x70
+              sh-1470    [002] d..1.  1503.158853: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [000] ...1.  1503.180084: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [000] d....  1503.180643: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [000] d..1.  1503.181015: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [002] ...1.  1503.201070: tracing_mark_write: SEND 15 b0 67
+              sh-1470    [002] d....  1503.201248: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x67
+              sh-1470    [002] d..1.  1503.201450: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [002] ...1.  1503.230232: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [002] d....  1503.230653: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [002] d..1.  1503.231022: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [002] ...1.  1503.252576: tracing_mark_write: SEND 15 b0 36
+              sh-1470    [002] d....  1503.252818: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x36
+              sh-1470    [002] d..1.  1503.253029: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [002] ...1.  1503.273122: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [002] d....  1503.273359: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [002] d..1.  1503.273658: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [002] ...1.  1503.293329: tracing_mark_write: SEND 15 b0 4d
+              sh-1470    [002] d....  1503.293568: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x4d
+              sh-1470    [002] d..1.  1503.293782: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1503.322129: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [001] d....  1503.322602: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [003] d..1.  1503.323194: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1503.347533: tracing_mark_write: SEND 15 b0 49
+              sh-1470    [001] d....  1503.347996: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x49
+              sh-1470    [001] d..1.  1503.348337: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1503.368364: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [001] d....  1503.368593: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [001] d..1.  1503.368909: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1503.389032: tracing_mark_write: SEND 06 0a 1
+              sh-1470    [001] d....  1503.389263: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x6 flags=0x0 len=1 b0=0xa b1=0x1
+              sh-1470    [001] d..1.  1503.389574: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1503.411962: tracing_mark_write: SEND 06 0e 1
+              sh-1470    [001] d....  1503.412207: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x6 flags=0x0 len=1 b0=0xe b1=0x1
+              sh-1470    [001] d..1.  1503.412544: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [000] ...1.  1503.434953: tracing_mark_write: SEND 06 0f 1
+              sh-1470    [000] d....  1503.435425: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x6 flags=0x0 len=1 b0=0xf b1=0x1
+              sh-1470    [000] d..1.  1503.435846: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1503.445511: tracing_mark_write: M1_BASELINE_END
+              sh-1470    [001] ...1.  1503.463844: tracing_mark_write: SEND 15 b0 67
+              sh-1470    [001] d....  1503.464221: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x67
+              sh-1470    [001] d..1.  1503.464555: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [000] ...1.  1503.484660: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [000] d....  1503.484919: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [000] d..1.  1503.485266: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [003] ...1.  1503.506266: tracing_mark_write: SEND 15 b0 36
+              sh-1470    [003] d....  1503.506633: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x36
+              sh-1470    [003] d..1.  1503.506919: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [003] ...1.  1503.529144: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [003] d....  1503.529526: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [003] d..1.  1503.529981: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [003] ...1.  1503.558415: tracing_mark_write: SEND 15 b0 4d
+              sh-1470    [003] d....  1503.558809: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x4d
+              sh-1470    [003] d..1.  1503.559133: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1503.584784: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [001] d....  1503.585027: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [001] d..1.  1503.585563: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [003] ...1.  1503.592367: tracing_mark_write: M1_COMPRESSION_ZERO
+              sh-1470    [003] ...1.  1503.608177: tracing_mark_write: SEND 15 b0 d9
+              sh-1470    [003] d....  1503.608408: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0xd9
+              sh-1470    [003] d..1.  1503.608638: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1503.629413: tracing_mark_write: SEND 39 b1 00
+              sh-1470    [001] d....  1503.629652: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb1 b1=0x0
+              sh-1470    [001] d..1.  1503.629946: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+              sh-1470    [001] ...1.  1503.687983: tracing_mark_write: FRAME_COMP_ZERO_BEGIN
+     kworker/2:0-900     [002] .....  1503.700718: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.  1503.728447: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.  1503.728472: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+              sh-1470    [001] ...1.  1504.777548: tracing_mark_write: FRAME_COMP_ZERO_END
+              sh-1470    [001] ...1.  1504.778149: tracing_mark_write: M1_AFTER_COMP_ZERO_BEGIN
+              sh-1470    [001] ...1.  1504.799190: tracing_mark_write: SEND 15 b0 5a
+              sh-1470    [001] d....  1504.799711: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x5a
+              sh-1470    [001] d..1.  1504.800091: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1504.823347: tracing_mark_write: SEND 24 d8 01 1
+              sh-1470    [001] d....  1504.823578: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd8 b1=0x1
+              sh-1470    [001] d..1.  1504.824088: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [000] ...1.  1504.848259: tracing_mark_write: SEND 15 b0 d0
+              sh-1470    [000] d....  1504.848621: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0xd0
+              sh-1470    [000] d..1.  1504.848858: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1504.871788: tracing_mark_write: SEND 24 d1 01 1
+              sh-1470    [001] d....  1504.872009: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd1 b1=0x1
+              sh-1470    [001] d..1.  1504.872508: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1504.895811: tracing_mark_write: SEND 15 b0 51
+              sh-1470    [001] d....  1504.896053: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x51
+              sh-1470    [001] d..1.  1504.896305: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1504.921923: tracing_mark_write: SEND 24 d1 01 1
+              sh-1470    [001] d....  1504.922146: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd1 b1=0x1
+              sh-1470    [001] d..1.  1504.922725: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1504.952261: tracing_mark_write: SEND 15 b0 d9
+              sh-1470    [001] d....  1504.952467: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0xd9
+              sh-1470    [001] d..1.  1504.952784: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1504.973740: tracing_mark_write: SEND 24 d1 01 1
+              sh-1470    [001] d....  1504.973950: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd1 b1=0x1
+              sh-1470    [001] d..1.  1504.974495: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1505.000056: tracing_mark_write: SEND 15 b0 70
+              sh-1470    [001] d....  1505.000261: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x70
+              sh-1470    [001] d..1.  1505.000540: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1505.030512: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [001] d....  1505.031000: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [001] d..1.  1505.031466: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1505.059690: tracing_mark_write: SEND 15 b0 67
+              sh-1470    [001] d....  1505.060156: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x67
+              sh-1470    [001] d..1.  1505.060511: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1505.090176: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [001] d....  1505.090815: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [001] d..1.  1505.091327: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1505.114188: tracing_mark_write: SEND 15 b0 36
+              sh-1470    [001] d....  1505.114486: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x36
+              sh-1470    [001] d..1.  1505.114789: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [000] ...1.  1505.138543: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [000] d....  1505.138939: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [000] d..1.  1505.139350: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1505.170708: tracing_mark_write: SEND 15 b0 4d
+              sh-1470    [001] d....  1505.171212: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x4d
+              sh-1470    [001] d..1.  1505.171554: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [002] ...1.  1505.196167: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [002] d....  1505.196356: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [002] d..1.  1505.196603: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [003] ...1.  1505.219143: tracing_mark_write: SEND 15 b0 49
+              sh-1470    [003] d....  1505.219329: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x49
+              sh-1470    [003] d..1.  1505.219541: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [002] ...1.  1505.248079: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [002] d....  1505.248325: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [002] d..1.  1505.248829: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1505.275745: tracing_mark_write: SEND 06 0a 1
+              sh-1470    [001] d....  1505.276135: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x6 flags=0x0 len=1 b0=0xa b1=0x1
+              sh-1470    [001] d..1.  1505.276561: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1505.299199: tracing_mark_write: SEND 06 0e 1
+              sh-1470    [001] d....  1505.299429: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x6 flags=0x0 len=1 b0=0xe b1=0x1
+              sh-1470    [001] d..1.  1505.299848: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1505.322657: tracing_mark_write: SEND 06 0f 1
+              sh-1470    [001] d....  1505.322896: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x6 flags=0x0 len=1 b0=0xf b1=0x1
+              sh-1470    [001] d..1.  1505.323325: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [003] ...1.  1505.330421: tracing_mark_write: M1_AFTER_COMP_ZERO_END
+              sh-1470    [003] ...1.  1505.330784: tracing_mark_write: M1_COMPRESSION_EIGHT
+              sh-1470    [001] ...1.  1505.354096: tracing_mark_write: SEND 15 b0 d9
+              sh-1470    [001] d....  1505.354305: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0xd9
+              sh-1470    [001] d..1.  1505.354635: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1505.377987: tracing_mark_write: SEND 39 b1 08
+              sh-1470    [001] d....  1505.378213: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb1 b1=0x8
+              sh-1470    [001] d..1.  1505.378625: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+              sh-1470    [001] ...1.  1505.402436: tracing_mark_write: SEND 15 b0 51
+              sh-1470    [001] d....  1505.402864: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x51
+              sh-1470    [001] d..1.  1505.403153: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [000] ...1.  1505.429283: tracing_mark_write: SEND 39 b1 06
+              sh-1470    [000] d....  1505.429602: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb1 b1=0x6
+              sh-1470    [000] d..1.  1505.429854: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+              sh-1470    [001] ...1.  1505.509973: tracing_mark_write: FRAME_COMP_EIGHT_BEGIN
+     kworker/3:0-806     [003] .....  1505.532565: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.  1505.560305: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.  1505.560329: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+              sh-1470    [000] ...1.  1506.610065: tracing_mark_write: FRAME_COMP_EIGHT_END
+              sh-1470    [000] ...1.  1506.610731: tracing_mark_write: M1_AFTER_COMP_EIGHT_BEGIN
+              sh-1470    [001] ...1.  1506.635371: tracing_mark_write: SEND 15 b0 5a
+              sh-1470    [001] d....  1506.635884: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x5a
+              sh-1470    [001] d..1.  1506.636340: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [000] ...1.  1506.667137: tracing_mark_write: SEND 24 d8 01 1
+              sh-1470    [000] d....  1506.667631: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd8 b1=0x1
+              sh-1470    [000] d..1.  1506.668102: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [000] ...1.  1506.699739: tracing_mark_write: SEND 15 b0 d0
+              sh-1470    [000] d....  1506.700196: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0xd0
+              sh-1470    [000] d..1.  1506.700472: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1506.734053: tracing_mark_write: SEND 24 d1 01 1
+              sh-1470    [001] d....  1506.734322: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd1 b1=0x1
+              sh-1470    [001] d..1.  1506.734740: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1506.760427: tracing_mark_write: SEND 15 b0 51
+              sh-1470    [001] d....  1506.760627: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x51
+              sh-1470    [001] d..1.  1506.760888: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [000] ...1.  1506.786996: tracing_mark_write: SEND 24 d1 01 1
+              sh-1470    [000] d....  1506.787406: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd1 b1=0x1
+              sh-1470    [000] d..1.  1506.787828: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [000] ...1.  1506.818164: tracing_mark_write: SEND 15 b0 d9
+              sh-1470    [000] d....  1506.818884: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0xd9
+              sh-1470    [000] d..1.  1506.819134: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [000] ...1.  1506.850653: tracing_mark_write: SEND 24 d1 01 1
+              sh-1470    [000] d....  1506.851126: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd1 b1=0x1
+              sh-1470    [000] d..1.  1506.851703: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1506.887439: tracing_mark_write: SEND 15 b0 70
+              sh-1470    [001] d....  1506.887916: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x70
+              sh-1470    [001] d..1.  1506.888289: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [003] ...1.  1506.921504: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [003] d....  1506.921707: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [003] d..1.  1506.922028: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [002] ...1.  1506.949061: tracing_mark_write: SEND 15 b0 67
+              sh-1470    [002] d....  1506.949312: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x67
+              sh-1470    [002] d..1.  1506.949528: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1506.984827: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [001] d....  1506.985331: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [001] d..1.  1506.985846: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1507.013841: tracing_mark_write: SEND 15 b0 36
+              sh-1470    [001] d....  1507.014068: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x36
+              sh-1470    [001] d..1.  1507.014494: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1507.043693: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [001] d....  1507.043905: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [001] d..1.  1507.044412: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1507.072351: tracing_mark_write: SEND 15 b0 4d
+              sh-1470    [001] d....  1507.072566: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x4d
+              sh-1470    [001] d..1.  1507.072872: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [000] ...1.  1507.098039: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [000] d....  1507.098478: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [000] d..1.  1507.098894: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1507.130433: tracing_mark_write: SEND 15 b0 49
+              sh-1470    [001] d....  1507.130848: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x49
+              sh-1470    [001] d..1.  1507.131260: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1507.157371: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [001] d....  1507.157620: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [001] d..1.  1507.157963: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [000] ...1.  1507.183566: tracing_mark_write: SEND 06 0a 1
+              sh-1470    [000] d....  1507.183864: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x6 flags=0x0 len=1 b0=0xa b1=0x1
+              sh-1470    [000] d..1.  1507.184279: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [000] ...1.  1507.211051: tracing_mark_write: SEND 06 0e 1
+              sh-1470    [000] d....  1507.211467: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x6 flags=0x0 len=1 b0=0xe b1=0x1
+              sh-1470    [000] d..1.  1507.211891: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [002] ...1.  1507.239855: tracing_mark_write: SEND 06 0f 1
+              sh-1470    [002] d....  1507.240366: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x6 flags=0x0 len=1 b0=0xf b1=0x1
+              sh-1470    [002] d..1.  1507.240740: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1507.247088: tracing_mark_write: M1_AFTER_COMP_EIGHT_END
+              sh-1470    [001] ...1.  1507.247429: tracing_mark_write: M1_END
+              sh-1470    [001] ...1.  1507.247651: tracing_mark_write: M2_BASELINE_SETUP
+              sh-1470    [000] ...1.  1507.267228: tracing_mark_write: SEND 15 b0 4d
+              sh-1470    [000] d....  1507.267599: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x4d
+              sh-1470    [000] d..1.  1507.268449: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [000] ...1.  1507.302251: tracing_mark_write: SEND 39 b2 05
+              sh-1470    [000] d....  1507.303130: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb2 b1=0x5
+              sh-1470    [000] d..1.  1507.303385: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+              sh-1470    [003] ...1.  1507.332026: tracing_mark_write: SEND 15 b0 49
+              sh-1470    [003] d....  1507.332254: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x49
+              sh-1470    [003] d..1.  1507.332467: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [000] ...1.  1507.367740: tracing_mark_write: SEND 39 b2 7f
+              sh-1470    [000] d....  1507.368391: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb2 b1=0x7f
+              sh-1470    [000] d..1.  1507.368637: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+              sh-1470    [001] ...1.  1507.401218: tracing_mark_write: SEND 15 b0 36
+              sh-1470    [001] d....  1507.401484: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x36
+              sh-1470    [001] d..1.  1507.401833: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1507.428891: tracing_mark_write: SEND 39 b2 12
+              sh-1470    [001] d....  1507.429125: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb2 b1=0x12
+              sh-1470    [001] d..1.  1507.429468: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+              sh-1470    [001] ...1.  1507.456396: tracing_mark_write: SEND 15 b0 67
+              sh-1470    [001] d....  1507.456616: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x67
+              sh-1470    [001] d..1.  1507.456945: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1507.484259: tracing_mark_write: SEND 39 b2 1b
+              sh-1470    [001] d....  1507.484751: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb2 b1=0x1b
+              sh-1470    [001] d..1.  1507.485137: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+              sh-1470    [001] ...1.  1507.512148: tracing_mark_write: SEND 15 b0 35
+              sh-1470    [001] d....  1507.512354: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x35
+              sh-1470    [001] d..1.  1507.512688: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1507.539251: tracing_mark_write: SEND 39 b2 01
+              sh-1470    [001] d....  1507.539467: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb2 b1=0x1
+              sh-1470    [001] d..1.  1507.539797: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+              sh-1470    [002] ...1.  1507.625806: tracing_mark_write: FRAME_M2_BASELINE_BEGIN
+     kworker/2:0-900     [002] .....  1507.650359: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.  1507.677866: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.  1507.677891: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+              sh-1470    [000] ...1.  1508.738537: tracing_mark_write: FRAME_M2_BASELINE_END
+              sh-1470    [000] ...1.  1508.739252: tracing_mark_write: M2_BASELINE_BEGIN
+              sh-1470    [001] ...1.  1508.771263: tracing_mark_write: SEND 15 b0 5a
+              sh-1470    [001] d....  1508.771793: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x5a
+              sh-1470    [001] d..1.  1508.772195: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1508.802262: tracing_mark_write: SEND 24 d8 01 1
+              sh-1470    [001] d....  1508.802702: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd8 b1=0x1
+              sh-1470    [001] d..1.  1508.803212: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [000] ...1.  1508.838901: tracing_mark_write: SEND 15 b0 d0
+              sh-1470    [000] d....  1508.839484: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0xd0
+              sh-1470    [000] d..1.  1508.839784: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1508.869760: tracing_mark_write: SEND 24 d1 01 1
+              sh-1470    [001] d....  1508.869987: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd1 b1=0x1
+              sh-1470    [001] d..1.  1508.870371: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1508.896941: tracing_mark_write: SEND 15 b0 51
+              sh-1470    [001] d....  1508.897189: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x51
+              sh-1470    [001] d..1.  1508.897445: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [000] ...1.  1508.925848: tracing_mark_write: SEND 24 d1 01 1
+              sh-1470    [000] d....  1508.926219: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd1 b1=0x1
+              sh-1470    [000] d..1.  1508.926717: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [000] ...1.  1508.956108: tracing_mark_write: SEND 15 b0 d9
+              sh-1470    [000] d....  1508.956382: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0xd9
+              sh-1470    [000] d..1.  1508.956600: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [000] ...1.  1508.985695: tracing_mark_write: SEND 24 d1 01 1
+              sh-1470    [000] d....  1508.986150: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd1 b1=0x1
+              sh-1470    [000] d..1.  1508.987489: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1509.026148: tracing_mark_write: SEND 15 b0 70
+              sh-1470    [001] d....  1509.026852: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x70
+              sh-1470    [001] d..1.  1509.027229: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1509.057533: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [001] d....  1509.058016: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [001] d..1.  1509.058662: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1509.087716: tracing_mark_write: SEND 15 b0 67
+              sh-1470    [001] d....  1509.087946: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x67
+              sh-1470    [001] d..1.  1509.088269: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1509.119240: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [001] d....  1509.119460: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [001] d..1.  1509.119970: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1509.156809: tracing_mark_write: SEND 15 b0 36
+              sh-1470    [001] d....  1509.157024: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x36
+              sh-1470    [001] d..1.  1509.157337: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1509.188718: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [001] d....  1509.188951: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [001] d..1.  1509.189456: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1509.229546: tracing_mark_write: SEND 15 b0 4d
+              sh-1470    [001] d....  1509.230015: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x4d
+              sh-1470    [001] d..1.  1509.230581: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1509.259956: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [001] d....  1509.260184: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [001] d..1.  1509.260665: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [002] ...1.  1509.290103: tracing_mark_write: SEND 15 b0 49
+              sh-1470    [002] dn...  1509.290362: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x49
+              sh-1470    [002] d..1.  1509.290851: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [002] ...1.  1509.319131: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [002] d....  1509.319462: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [002] d..1.  1509.319805: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1509.361078: tracing_mark_write: SEND 06 0a 1
+              sh-1470    [001] d....  1509.361559: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x6 flags=0x0 len=1 b0=0xa b1=0x1
+              sh-1470    [001] d..1.  1509.362055: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1509.389290: tracing_mark_write: SEND 06 0e 1
+              sh-1470    [001] d....  1509.389510: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x6 flags=0x0 len=1 b0=0xe b1=0x1
+              sh-1470    [001] d..1.  1509.389996: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1509.417673: tracing_mark_write: SEND 06 0f 1
+              sh-1470    [001] d....  1509.417891: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x6 flags=0x0 len=1 b0=0xf b1=0x1
+              sh-1470    [001] d..1.  1509.418461: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [003] ...1.  1509.425724: tracing_mark_write: M2_BASELINE_END
+              sh-1470    [003] ...1.  1509.425853: tracing_mark_write: M2_RAW_OFF_ON
+              sh-1470    [001] ...1.  1509.459215: tracing_mark_write: SEND 05 28
+              sh-1470    [001] d....  1509.459690: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x5 flags=0x0 len=1 b0=0x28 b1=0xbd
+              sh-1470    [001] d..1.  1509.460024: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1509.596750: tracing_mark_write: SEND 05 29
+              sh-1470    [001] d....  1509.597042: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x5 flags=0x0 len=1 b0=0x29 b1=0xbd
+              sh-1470    [001] d..1.  1509.597350: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [003] ...1.  1509.604426: tracing_mark_write: M2_AFTER_ON_BEFORE_FRAME_BEGIN
+              sh-1470    [001] ...1.  1509.634852: tracing_mark_write: SEND 15 b0 5a
+              sh-1470    [001] d....  1509.635364: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x5a
+              sh-1470    [001] d..1.  1509.635704: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [000] ...1.  1509.666064: tracing_mark_write: SEND 24 d8 01 1
+              sh-1470    [000] d....  1509.666989: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd8 b1=0x1
+              sh-1470    [000] d..1.  1509.667508: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1509.697127: tracing_mark_write: SEND 15 b0 d0
+              sh-1470    [001] d....  1509.697360: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0xd0
+              sh-1470    [001] d..1.  1509.697677: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1509.740166: tracing_mark_write: SEND 24 d1 01 1
+              sh-1470    [001] d....  1509.740642: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd1 b1=0x1
+              sh-1470    [001] d..1.  1509.741133: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1509.767984: tracing_mark_write: SEND 15 b0 51
+              sh-1470    [001] d....  1509.768210: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x51
+              sh-1470    [001] d..1.  1509.768549: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1509.798403: tracing_mark_write: SEND 24 d1 01 1
+              sh-1470    [001] d....  1509.798812: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd1 b1=0x1
+              sh-1470    [001] d..1.  1509.799346: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1509.828887: tracing_mark_write: SEND 15 b0 d9
+              sh-1470    [001] d....  1509.829125: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0xd9
+              sh-1470    [001] d..1.  1509.829371: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1509.859808: tracing_mark_write: SEND 24 d1 01 1
+              sh-1470    [001] d....  1509.860039: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd1 b1=0x1
+              sh-1470    [001] d..1.  1509.860368: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1509.891742: tracing_mark_write: SEND 15 b0 70
+              sh-1470    [001] d....  1509.891986: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x70
+              sh-1470    [001] d..1.  1509.892244: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1509.924033: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [001] d....  1509.924505: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [001] d..1.  1509.925049: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [000] ...1.  1509.957397: tracing_mark_write: SEND 15 b0 67
+              sh-1470    [000] d....  1509.957696: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x67
+              sh-1470    [000] d..1.  1509.957920: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1509.999699: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [001] d....  1510.000167: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [001] d..1.  1510.000669: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1510.029038: tracing_mark_write: SEND 15 b0 36
+              sh-1470    [001] d....  1510.029257: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x36
+              sh-1470    [001] d..1.  1510.029513: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [000] ...1.  1510.064721: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [000] d....  1510.065018: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [000] d..1.  1510.065388: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [000] ...1.  1510.101159: tracing_mark_write: SEND 15 b0 4d
+              sh-1470    [000] d....  1510.101446: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x4d
+              sh-1470    [000] d..1.  1510.101674: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [000] ...1.  1510.137219: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [000] d....  1510.137530: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [000] d..1.  1510.137887: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [000] ...1.  1510.175111: tracing_mark_write: SEND 15 b0 49
+              sh-1470    [000] d....  1510.175585: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x49
+              sh-1470    [000] d..1.  1510.175889: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [003] ...1.  1510.212854: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [003] d....  1510.213322: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [003] d..1.  1510.213798: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1510.247216: tracing_mark_write: SEND 06 0a 1
+              sh-1470    [001] d....  1510.247450: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x6 flags=0x0 len=1 b0=0xa b1=0x1
+              sh-1470    [001] d..1.  1510.247797: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1510.283298: tracing_mark_write: SEND 06 0e 1
+              sh-1470    [001] d....  1510.283541: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x6 flags=0x0 len=1 b0=0xe b1=0x1
+              sh-1470    [001] d..1.  1510.283903: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [002] ...1.  1510.325492: tracing_mark_write: SEND 06 0f 1
+              sh-1470    [002] d....  1510.325939: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x6 flags=0x0 len=1 b0=0xf b1=0x1
+              sh-1470    [002] d..1.  1510.326503: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [002] ...1.  1510.337304: tracing_mark_write: M2_AFTER_ON_BEFORE_FRAME_END
+              sh-1470    [002] ...1.  1510.423210: tracing_mark_write: FRAME_M2_AFTER_ON_BEGIN
+     kworker/2:0-900     [002] .....  1510.439981: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.  1510.467655: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.  1510.467678: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+              sh-1470    [001] ...1.  1511.552706: tracing_mark_write: FRAME_M2_AFTER_ON_END
+              sh-1470    [001] ...1.  1511.553300: tracing_mark_write: M2_AFTER_ON_AFTER_FRAME_BEGIN
+              sh-1470    [000] ...1.  1511.586875: tracing_mark_write: SEND 15 b0 5a
+              sh-1470    [000] d....  1511.587391: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x5a
+              sh-1470    [000] d..1.  1511.587675: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1511.616827: tracing_mark_write: SEND 24 d8 01 1
+              sh-1470    [001] d....  1511.617072: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd8 b1=0x1
+              sh-1470    [001] d..1.  1511.617573: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1511.648880: tracing_mark_write: SEND 15 b0 d0
+              sh-1470    [001] d....  1511.649098: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0xd0
+              sh-1470    [001] d..1.  1511.649420: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1511.682917: tracing_mark_write: SEND 24 d1 01 1
+              sh-1470    [001] d....  1511.683458: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd1 b1=0x1
+              sh-1470    [001] d..1.  1511.683971: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1511.718894: tracing_mark_write: SEND 15 b0 51
+              sh-1470    [001] d....  1511.719143: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x51
+              sh-1470    [001] d..1.  1511.719470: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1511.756180: tracing_mark_write: SEND 24 d1 01 1
+              sh-1470    [001] d....  1511.756420: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd1 b1=0x1
+              sh-1470    [001] d..1.  1511.756867: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1511.805660: tracing_mark_write: SEND 15 b0 d9
+              sh-1470    [001] d....  1511.806144: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0xd9
+              sh-1470    [001] d..1.  1511.806684: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1511.845041: tracing_mark_write: SEND 24 d1 01 1
+              sh-1470    [001] d....  1511.845280: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd1 b1=0x1
+              sh-1470    [001] d..1.  1511.845757: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1511.877024: tracing_mark_write: SEND 15 b0 70
+              sh-1470    [001] d....  1511.877269: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x70
+              sh-1470    [001] d..1.  1511.877587: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1511.912036: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [001] d....  1511.912258: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [001] d..1.  1511.912738: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1511.946175: tracing_mark_write: SEND 15 b0 67
+              sh-1470    [001] d....  1511.946499: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x67
+              sh-1470    [001] d..1.  1511.946821: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1511.985142: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [001] d....  1511.985380: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [001] d..1.  1511.985854: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1512.021130: tracing_mark_write: SEND 15 b0 36
+              sh-1470    [001] d....  1512.021586: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x36
+              sh-1470    [001] d..1.  1512.021956: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1512.055865: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [001] d....  1512.056093: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [001] d..1.  1512.056579: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1512.090937: tracing_mark_write: SEND 15 b0 4d
+              sh-1470    [001] d....  1512.091181: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x4d
+              sh-1470    [001] d..1.  1512.091504: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1512.129387: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [001] d....  1512.129636: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [001] d..1.  1512.130003: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1512.161954: tracing_mark_write: SEND 15 b0 49
+              sh-1470    [001] d....  1512.162190: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x49
+              sh-1470    [001] d..1.  1512.162594: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] ...1.  1512.200601: tracing_mark_write: SEND 24 d2 01 1
+              sh-1470    [001] d....  1512.200854: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-1470    [001] d..1.  1512.201352: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1512.236788: tracing_mark_write: SEND 06 0a 1
+              sh-1470    [001] d....  1512.237035: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x6 flags=0x0 len=1 b0=0xa b1=0x1
+              sh-1470    [001] d..1.  1512.237517: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1512.270216: tracing_mark_write: SEND 06 0e 1
+              sh-1470    [001] d....  1512.270599: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x6 flags=0x0 len=1 b0=0xe b1=0x1
+              sh-1470    [001] d..1.  1512.271095: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1512.307585: tracing_mark_write: SEND 06 0f 1
+              sh-1470    [001] d....  1512.307787: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x6 flags=0x0 len=1 b0=0xf b1=0x1
+              sh-1470    [001] d..1.  1512.308087: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-1470    [001] ...1.  1512.314597: tracing_mark_write: M2_AFTER_ON_AFTER_FRAME_END
+              sh-1470    [001] ...1.  1512.315078: tracing_mark_write: M2_END
+              sh-1470    [001] ...1.  1512.315601: tracing_mark_write: CLEANUP_RESTORE_BEGIN
+              sh-1470    [001] d....  1512.315756: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0xd9
+              sh-1470    [001] d..1.  1512.316048: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] d....  1512.321052: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb1 b1=0x8
+              sh-1470    [001] d..1.  1512.321307: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+              sh-1470    [001] d....  1512.329643: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x51
+              sh-1470    [001] d..1.  1512.329859: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] d....  1512.335573: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb1 b1=0x6
+              sh-1470    [001] d..1.  1512.335783: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+              sh-1470    [001] d....  1512.341456: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x4d
+              sh-1470    [001] d..1.  1512.341655: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [001] d....  1512.349909: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb2 b1=0x5
+              sh-1470    [001] d..1.  1512.350149: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+              sh-1470    [003] d....  1512.354794: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x49
+              sh-1470    [003] d..1.  1512.355011: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [003] d....  1512.360790: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb2 b1=0x7f
+              sh-1470    [003] d..1.  1512.360964: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+              sh-1470    [003] d....  1512.366725: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x36
+              sh-1470    [003] d..1.  1512.366910: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [003] d....  1512.373895: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb2 b1=0x12
+              sh-1470    [003] d..1.  1512.374073: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+              sh-1470    [001] d....  1512.378868: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x67
+              sh-1470    [003] d..1.  1512.379246: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [003] d....  1512.384702: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb2 b1=0x1b
+              sh-1470    [003] d..1.  1512.384893: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+              sh-1470    [003] d....  1512.389404: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x35
+              sh-1470    [003] d..1.  1512.389567: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-1470    [003] d....  1512.393687: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb2 b1=0x1
+              sh-1470    [003] d..1.  1512.393844: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+              sh-1470    [003] d....  1512.399668: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x5 flags=0x0 len=1 b0=0x28 b1=0xbd
+              sh-1470    [003] d..1.  1512.399922: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4

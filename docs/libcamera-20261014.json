@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-14T19:15:00+00:00",
+  "versions": {
+    "debian_libcamera": "0.4.0-7 (libcamera-tools, libcamera-ipa; lists both cameras, streams, processing unusable)",
+    "built": "v0.7.2 from git.libcamera.org, meson -Dpipelines=simple -Dipas=simple -Dcam=enabled, everything else disabled, prefix /usr/local; built in /srv/build/libcamera on the tablet",
+    "kernel": "linux-tabs3 6.18.56-66 (front S5K5E3 on CSIPHY2, rear IMX258 with the DW9807 at 0x0c)"
+  },
+  "results_0_4_0": {
+    "front": "frame 0 mean RGB 67/66/64, frame 2 0/0/0, frame 23 3/29/1 at 1288x966",
+    "rear": "frame 0 66/66/63, frame 23 1/29/0 at 1040x780 while the sensor's exposure was driven to its maximum; 'Lens initialisation failed' with the actuator at the wrong address"
+  },
+  "results_0_7_2": {
+    "front_1288x966": "means 0/0/30, 74/68/42, 74/68/42, 70/70/65, 72/72/67, 74/74/69, 78/78/73 at frames 0, 2, 4, 8, 12, 16, 23; 30 fps at the start, 10 fps by the end; the frame is a crop of the middle of the sensor",
+    "rear_1052x780": "means 0/0/0, 69/68/39, 69/70/67, 71/72/69, 71/72/70, 73/74/72, 77/78/76 at the same frames; 15 fps; no lens error; focus_absolute left at 0 (the simple IPA has no autofocus)",
+    "warnings": "no camera sensor helper for s5k5e3 (uncalibrated.yaml); the rear run fails with EBUSY on the front's csiphy2 -> csid1 link while the dashboard's presence sampler streams it (screen off)",
+    "interaction": "cam takes no part in /run/lock/tabs3-camera.lock: a run with the screen off (the dashboard's sampler streaming the front camera) reset the sampler's links, the aborted stream left subdevices marked streaming, and the next raw capture hit WARNING at drivers/media/v4l2-core/v4l2-subdev.c:484 call_s_stream (twice, 1306 s and again 1501 s after boot) and timed out ('VFE sof timeout'); the following captures worked without a reboot. Rule: run libcamera with the screen on or the dashboard stopped",
+    "installed_check": "the installed /usr/local/bin/cam (no environment) lists both cameras; front 12 frames, the last two at mean 72/72/67"
+  },
+  "decision": "installed under /usr/local for software that wants a standard stack; tabs3-snapshot and the dashboard keep the raw path (cheaper, focuses the rear lens, no ISP)",
+  "timing_note": "tabs3-snapshot --camera rear --size 1048x780 with autofocus: 12.8 s with the CPU free (3 exposure frames, 11 focus frames at 139 ms exposure, decode)"
+}

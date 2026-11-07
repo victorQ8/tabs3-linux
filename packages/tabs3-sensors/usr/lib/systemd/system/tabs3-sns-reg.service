@@ -1,0 +1,21 @@
+# The sensor DSP (SLPI) waits for this registry at boot before its Sensor
+# Manager starts; it reads it once per DSP start.
+[Unit]
+Description=Sensor registry server for the sensor DSP (SNS_REG over QRTR)
+Documentation=https://gitlab.com/msm8996-mainline/sns-reg
+ConditionPathExists=|/etc/sns-reg.d/registry.bin
+ConditionPathExists=|/etc/sns-reg.d/registry.conf
+StartLimitIntervalSec=0
+
+[Service]
+ExecStart=/usr/bin/stdbuf -oL /usr/libexec/tabs3-sns-reg
+Restart=on-failure
+RestartSec=2
+DynamicUser=yes
+RestrictAddressFamilies=AF_QIPCRTR
+ProtectSystem=strict
+ProtectHome=yes
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=basic.target

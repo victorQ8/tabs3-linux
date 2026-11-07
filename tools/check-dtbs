@@ -1,0 +1,134 @@
+#!/usr/bin/env python3
+"""Check the four compiled SM-T825 device trees before they are packed or shipped.
+
+Usage: check-dtbs [DIRECTORY]   (default: artifacts/; needs dtc)
+
+Checks board identity, that the TrustZone pins stay reserved, that the
+temperature sensors and their thermal zones are present, and which
+hardware each variant enables: the base tree keeps storage off, the display
+tree (also the recovery) stays independent of vendor firmware, and only the
+full Debian tree enables the GPU, audio DSP, modem and USB host mode.
+Exit status 1 lists every failed check.
+"""
+import pathlib
+import re
+import subprocess
+import sys
+
+TRUSTZONE_PINS = set(range(25, 29)) | set(range(58, 62))
+TLMM = '/soc@0/pinctrl@1010000'
+EMMC, SDCARD = '/soc@0/mmc@7464900', '/soc@0/mmc@74a4900'
+GPU, ADSP, MODEM = '/soc@0/gpu@b00000', '/soc@0/remoteproc@9300000', '/soc@0/remoteproc@2080000'
+DWC3, PCIE_PHY = '/soc@0/usb@6af8800/usb@6a00000', '/soc@0/phy-wrapper@34000'
+SPEAKER_I2C = '/soc@0/i2c@7577000'
+SLPI = '/soc@0/remoteproc@1c00000'
+TSENS = ('/soc@0/thermal-sensor@4a9000', '/soc@0/thermal-sensor@4ad000')
+
+
+def parse(dtb):
+    """Map node path -> {property: raw value} from dtc's DTS output."""
+    text = subprocess.run(['dtc', '-q', '-I', 'dtb', '-O', 'dts', str(dtb)], capture_output=True,
+                          text=True, check=True).stdout
+    nodes, stack = {}, []
+    for line in text.splitlines():
+        line = line.strip()
+        if m := re.fullmatch(r'(?:[\w-]+: )?([^\s{]+) \{', line):
+            stack.append(m.group(1))
+            path = '/' + '/'.join(stack[1:])
+            nodes.setdefault(path, {})
+        elif line == '};':
+            stack.pop()
+        elif stack and (m := re.fullmatch(r'([#\w,.+-]+)(?: = (.*))?;', line)):
+            nodes['/' + '/'.join(stack[1:])][m.group(1)] = m.group(2) if m.group(2) is not None else True
+    return nodes
+
+
+def cells(value):
+    return [int(v, 16) for v in re.findall(r'0x[0-9a-f]+', value or '')]
+
+
+def status(nodes, path):
+    return nodes.get(path, {}).get('status', '"okay"').strip('"') if path in nodes else 'absent'
+
+
+def find(nodes, compatible):
+    return [p for p, props in nodes.items() if f'"{compatible}"' in str(props.get('compatible', ''))]
+
+
+def check(name, nodes):
+    fails = []
+
+    def expect(condition, message):
+        if not condition:
+            fails.append(f'{name}: {message}')
+
+    root = nodes.get('/', {})
+    expect(root.get('model') == '"Samsung Galaxy Tab S3 LTE (SM-T825)"', 'model')
+    expect('"samsung,gts3llte"' in str(root.get('compatible')), 'board compatible')
+    expect(cells(root.get('qcom,msm-id')) == [0xf6, 0x30001], 'qcom,msm-id')
+    expect(cells(root.get('qcom,board-id')) == [8, 5], 'qcom,board-id')
+    pairs = cells(nodes.get(TLMM, {}).get('gpio-reserved-ranges'))
+    reserved = {pin for start, count in zip(pairs[::2], pairs[1::2]) for pin in range(start, start + count)}
+    expect(TRUSTZONE_PINS <= reserved, f'TrustZone pins {sorted(TRUSTZONE_PINS - reserved)} not reserved')
+
+    # SoC temperature sensors and the CPU/GPU throttling zones (package 43+)
+    expect(all(status(nodes, path) == 'okay' for path in TSENS), 'TSENS sensors enabled')
+    zones = [p for p in nodes if p.startswith('/thermal-zones/') and p.count('/') == 2]
+    expect(len(zones) >= 14, f'thermal zones ({len(zones)})')
+    crit = nodes.get('/thermal-zones/cpu0-thermal/trips/cpu-crit', {})
+    expect(crit.get('type') == '"critical"' and cells(crit.get('temperature')) == [110000],
+           'CPU critical trip at 110 C')
+
+    full = name == 'gpu'
+    display = name in ('display', 'gpu')
+    expect(status(nodes, EMMC) == ('disabled' if name == 'base' else 'okay'), 'eMMC status')
+    if name != 'base':
+        expect(cells(nodes.get(EMMC, {}).get('max-frequency')) == [200000000 if full else 52000000],
+               'eMMC clock: full Debian 200 MHz; recovery/probes 52 MHz')
+        if full:
+            expect(all(nodes[EMMC].get(key) is True for key in ('mmc-hs200-1_8v', 'mmc-hs400-1_8v')),
+                   'full Debian advertises qualified HS200/HS400')
+    expect((status(nodes, GPU) == 'okay') == full, 'GPU only in the full Debian tree')
+    expect((status(nodes, ADSP) == 'okay') == full, 'audio DSP only in the full Debian tree')
+    expect((status(nodes, MODEM) == 'okay') == full, 'modem only in the full Debian tree')
+    expect((status(nodes, SLPI) == 'okay') == full, 'sensor DSP only in the full Debian tree')
+    expect((nodes.get(DWC3, {}).get('dr_mode') == '"otg"') == full, 'USB host mode only in the full Debian tree')
+    expect(bool(find(nodes, 'samsung,ams968hh01')) == display, 'panel')
+    expect(bool(find(nodes, 'coreriver,tc305k-touchkey')) == display, 'touch keys')
+    expect((status(nodes, SDCARD) == 'okay') == display, 'microSD')
+    if display:
+        expect(str(nodes.get(PCIE_PHY, {}).get('compatible', '')).startswith('"qcom,msm8996-v3-qmp-pcie-phy"'),
+               'Wi-Fi PCIe PHY uses the v3 tables')
+        # UHS-I SDR104 at 1.8 V since package 64 (packages 45 to 63 carried no-1-8-v)
+        expect(nodes.get(SDCARD, {}).get('no-1-8-v') is None, 'microSD allows 1.8 V signalling (UHS-I)')
+    expect(bool(find(nodes, 'qcom,apq8096-sndcard')) == full, 'sound card only in the full Debian tree')
+    expect((status(nodes, SPEAKER_I2C) == 'okay') == full, 'speaker amplifier I2C bus only in the full Debian tree')
+    expect(len(find(nodes, 'richtek,rt5508')) == (4 if full else 0),
+           'four speaker amplifiers only in the full Debian tree')
+    expect(not any('allow-set-time' in props for props in nodes.values()),
+           'PMIC RTC remains read-only; writes caused resets')
+    if full:
+        expect(bool(find(nodes, 'samsung,gts3l-ap-thermistor')), 'AP thermistor present')
+        expect(not {47, 48, 63, 65, 66, 67, 68} & reserved,
+               'speaker I2C (47/48), I2S switch (63) and primary TDM (65-68) pins not reserved')
+    return fails
+
+
+def main():
+    directory = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else 'artifacts')
+    fails = []
+    for name, suffix in (('base', ''), ('emmc', '-emmc'), ('display', '-display'), ('gpu', '-gpu')):
+        dtb = directory / f'msm8996-samsung-gts3llte{suffix}.dtb'
+        if not dtb.exists():
+            fails.append(f'{name}: {dtb} missing')
+            continue
+        result = check(name, parse(dtb))
+        print(f'{dtb.name}: ' + ('ok' if not result else f'{len(result)} failed'))
+        fails += result
+    for fail in fails:
+        print('FAIL', fail)
+    sys.exit(1 if fails else 0)
+
+
+if __name__ == '__main__':
+    main()

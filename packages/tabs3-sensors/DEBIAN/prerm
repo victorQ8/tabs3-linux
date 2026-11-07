@@ -1,0 +1,8 @@
+#!/bin/sh
+set -e
+if [ "$1" = remove ]; then
+    systemctl disable tabs3-sns-reg.service tabs3-grip-sensor.service
+    if [ -d /run/systemd/system ]; then
+        systemctl stop tabs3-sns-reg.service tabs3-grip-sensor.service
+    fi
+fi

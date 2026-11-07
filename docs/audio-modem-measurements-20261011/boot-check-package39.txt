@@ -1,0 +1,24 @@
+#25
+47.80
+linux-tabs3	6.19.5-39
+tabs3-base	0.1.7
+tabs3-desktop	0.1.8
+2080000.remoteproc: running
+adsp: running
+ 0 [SMT825         ]: apq8096 - SM-T825
+rmtfs: active
+modemst1 ro=1  modemst2 ro=1  fsg ro=1  fsc ro=1
+failed units: 0
+gpu faults: 0
+dsp errors: 0
+Modem processor: running
+Operating mode: 'online'
+SIM card: 'absent'
+Registration: 'not-registered-searching'
+Radio: 'gsm'
+Roaming: 'off'
+Network: MCC/MNC: (redacted)
+Operator: ''
+Service: 'limited'
+Signal: GSM:
+Signal: RSSI: '-55 dBm'

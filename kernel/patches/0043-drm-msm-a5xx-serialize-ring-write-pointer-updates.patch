@@ -1,0 +1,116 @@
+Subject: [PATCH] drm/msm/a5xx: hold the ring lock through WPTR writes
+
+update_wptr() reads ring->cur under preempt_lock but drops the lock before
+programming CP_RB_WPTR. In PREEMPT_ABORT, a concurrent a5xx_flush() is
+allowed to advance the same ring and program its new WPTR. If the delayed
+update_wptr() then writes its earlier snapshot, the hardware pointer moves
+backwards, potentially exposing already-consumed ring contents to the CP.
+
+Serialize the snapshot and MMIO update in both writers. This matches the
+locking boundary already used by a6xx. Retain a5xx_flush()'s barrier before
+the hardware write and leave preemption, priority levels and GPU clocks
+enabled and unchanged.
+
+A deterministic host interleaving test demonstrates the stale overwrite
+with the old functions and its exclusion with these functions, including
+a ring wrap. The SM-T825's observed CP opcode-zero fault with RPTR ahead
+of WPTR is consistent with this race, but hardware causality remains to
+be established by comparative testing.
+
+Related review discussion (same update_wptr lock boundary):
+https://lists.openwall.net/linux-kernel/2024/08/05/1202
+
+--- a/drivers/gpu/drm/msm/adreno/a5xx_gpu.c
++++ b/drivers/gpu/drm/msm/adreno/a5xx_gpu.c
+@@ -33,54 +33,55 @@
+ void a5xx_flush(struct msm_gpu *gpu, struct msm_ringbuffer *ring,
+ 		bool sync)
+ {
+ 	struct adreno_gpu *adreno_gpu = to_adreno_gpu(gpu);
+ 	struct a5xx_gpu *a5xx_gpu = to_a5xx_gpu(adreno_gpu);
+ 	uint32_t wptr;
+ 	unsigned long flags;
+ 
+ 	/*
+ 	 * Most flush operations need to issue a WHERE_AM_I opcode to sync up
+ 	 * the rptr shadow
+ 	 */
+ 	if (sync)
+ 		update_shadow_rptr(gpu, ring);
+ 
+ 	spin_lock_irqsave(&ring->preempt_lock, flags);
+ 
+ 	/* Copy the shadow to the actual register */
+ 	ring->cur = ring->next;
+ 
+ 	/* Make sure to wrap wptr if we need to */
+ 	wptr = get_wptr(ring);
+ 
+-	spin_unlock_irqrestore(&ring->preempt_lock, flags);
+-
+ 	/* Make sure everything is posted before making a decision */
+ 	mb();
+ 
+ 	/* Update HW if this is the current ring and we are not in preempt */
+ 	if (a5xx_gpu->cur_ring == ring && !a5xx_in_preempt(a5xx_gpu))
+ 		gpu_write(gpu, REG_A5XX_CP_RB_WPTR, wptr);
++
++	/* Do not let a preemption update overwrite this with an older WPTR. */
++	spin_unlock_irqrestore(&ring->preempt_lock, flags);
+ }
+ 
+ static void a5xx_submit_in_rb(struct msm_gpu *gpu, struct msm_gem_submit *submit)
+ {
+ 	struct adreno_gpu *adreno_gpu = to_adreno_gpu(gpu);
+ 	struct a5xx_gpu *a5xx_gpu = to_a5xx_gpu(adreno_gpu);
+ 	struct msm_ringbuffer *ring = submit->ring;
+ 	struct drm_gem_object *obj;
+ 	uint32_t *ptr, dwords;
+ 	unsigned int i;
+ 
+ 	for (i = 0; i < submit->nr_cmds; i++) {
+ 		switch (submit->cmd[i].type) {
+ 		case MSM_SUBMIT_CMD_IB_TARGET_BUF:
+ 			break;
+ 		case MSM_SUBMIT_CMD_CTX_RESTORE_BUF:
+ 			if (ring->cur_ctx_seqno == submit->queue->ctx->seqno)
+ 				break;
+ 			fallthrough;
+ 		case MSM_SUBMIT_CMD_BUF:
+ 			/* copy commands into RB: */
+ 			obj = submit->bos[submit->cmd[i].idx].obj;
+ 			dwords = submit->cmd[i].size;
+--- a/drivers/gpu/drm/msm/adreno/a5xx_preempt.c
++++ b/drivers/gpu/drm/msm/adreno/a5xx_preempt.c
+@@ -39,29 +39,30 @@
+ /* Write the most recent wptr for the given ring into the hardware */
+ static inline void update_wptr(struct msm_gpu *gpu, struct msm_ringbuffer *ring)
+ {
+ 	unsigned long flags;
+ 	uint32_t wptr;
+ 
+ 	if (!ring)
+ 		return;
+ 
+ 	spin_lock_irqsave(&ring->preempt_lock, flags);
+ 	wptr = get_wptr(ring);
+-	spin_unlock_irqrestore(&ring->preempt_lock, flags);
+ 
++	/* Serialize the snapshot and MMIO write with a5xx_flush(). */
+ 	gpu_write(gpu, REG_A5XX_CP_RB_WPTR, wptr);
++	spin_unlock_irqrestore(&ring->preempt_lock, flags);
+ }
+ 
+ /* Return the highest priority ringbuffer with something in it */
+ static struct msm_ringbuffer *get_next_ring(struct msm_gpu *gpu)
+ {
+ 	struct adreno_gpu *adreno_gpu = to_adreno_gpu(gpu);
+ 	struct a5xx_gpu *a5xx_gpu = to_a5xx_gpu(adreno_gpu);
+ 	unsigned long flags;
+ 	int i;
+ 
+ 	for (i = 0; i < gpu->nr_rings; i++) {
+ 		bool empty;
+ 		struct msm_ringbuffer *ring = gpu->rb[i];
+ 
+ 		spin_lock_irqsave(&ring->preempt_lock, flags);

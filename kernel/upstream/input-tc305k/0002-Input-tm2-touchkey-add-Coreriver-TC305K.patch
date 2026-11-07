@@ -1,0 +1,223 @@
+From 3356e14df8921528b0ed2209007d81c96a0d9ea9 Mon Sep 17 00:00:00 2001
+From: dexq8 <dexq8@proton.me>
+Date: Mon, 12 Oct 2026 16:18:40 +0300
+Subject: [PATCH 2/2] Input: tm2-touchkey - add Coreriver TC305K
+
+The Galaxy Tab S3 (SM-T825/SM-T820) uses a Coreriver TC305K for its Recent
+and Back touch keys. Like the TC360 it reports through register 0x00 and
+takes the 0x10/0x20 LED commands, but its key byte is a bitmap: bit n is
+set when key n goes down and bit n + 4 when it goes up. The index format
+used by the other variants loses every release with this chip.
+
+Add a "coreriver,tc305k-touchkey" variant that decodes the bitmap, waits
+the 450 ms power-up time of Samsung's driver, turns the grip (SAR) channel
+off as that driver does, logs the firmware version and leaves the key LEDs
+off until userspace turns them on.
+
+Assisted-by: Claude:claude-opus-5-5
+---
+
+Notes:
+    Testing: on 6.19.5 the driver probes on SM-T825, reads firmware 0x18 and turns
+    the grip channel off; the bitmap decoding was tested with a host-side harness.
+    Physical key presses are not tested yet. On v7.3-rc7 build-tested only
+    (arm64, W=1).
+
+ drivers/input/keyboard/tm2-touchkey.c | 110 +++++++++++++++++++++++++-
+ 1 file changed, 106 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/input/keyboard/tm2-touchkey.c b/drivers/input/keyboard/tm2-touchkey.c
+index 967bbe553c0..d1ce9772fb6 100644
+--- a/drivers/input/keyboard/tm2-touchkey.c
++++ b/drivers/input/keyboard/tm2-touchkey.c
+@@ -32,6 +32,11 @@
+ #define TM2_TOUCHKEY_BIT_KEYCODE	GENMASK(2, 0)
+ #define TM2_TOUCHKEY_LED_VOLTAGE_MIN	2500000
+ #define TM2_TOUCHKEY_LED_VOLTAGE_MAX	3300000
++#define TC305K_REG_FWVER		0x01
++#define TC305K_CMD_GRIP_SENSING_OFF	0xa2
++#define TC305K_CMD_DELAY_MS		50
++
++struct tm2_touchkey_data;
+ 
+ struct touchkey_variant {
+ 	u8 keycode_reg;
+@@ -40,6 +45,10 @@ struct touchkey_variant {
+ 	u8 cmd_led_off;
+ 	bool no_reg;
+ 	bool fixed_regulator;
++	bool key_bitmap;
++	bool led_default_off;
++	unsigned int startup_delay_ms;
++	int (*init)(struct tm2_touchkey_data *touchkey);
+ };
+ 
+ struct tm2_touchkey_data {
+@@ -82,6 +91,20 @@ static const struct touchkey_variant tc360_touchkey_variant = {
+ 	.cmd_led_off = TM2_TOUCHKEY_CMD_LED_OFF,
+ };
+ 
++static int tc305k_touchkey_init(struct tm2_touchkey_data *touchkey);
++
++static const struct touchkey_variant tc305k_touchkey_variant = {
++	.keycode_reg = 0x00,
++	.base_reg = 0x00,
++	.fixed_regulator = true,
++	.key_bitmap = true,
++	.led_default_off = true,
++	.startup_delay_ms = 450,
++	.init = tc305k_touchkey_init,
++	.cmd_led_on = TM2_TOUCHKEY_CMD_LED_ON,
++	.cmd_led_off = TM2_TOUCHKEY_CMD_LED_OFF,
++};
++
+ static int tm2_touchkey_led_brightness_set(struct led_classdev *led_dev,
+ 					    enum led_brightness brightness)
+ {
+@@ -117,7 +140,32 @@ static int tm2_touchkey_power_enable(struct tm2_touchkey_data *touchkey)
+ 		return error;
+ 
+ 	/* waiting for device initialization, at least 150ms */
+-	msleep(150);
++	msleep(touchkey->variant->startup_delay_ms ?: 150);
++
++	return 0;
++}
++
++/*
++ * Samsung's driver for the Galaxy Tab S3 turns the TC305K's grip (SAR)
++ * channel off at probe. Do the same, so that only the keys raise interrupts.
++ */
++static int tc305k_touchkey_init(struct tm2_touchkey_data *touchkey)
++{
++	struct i2c_client *client = touchkey->client;
++	int fw;
++	int error;
++
++	fw = i2c_smbus_read_byte_data(client, TC305K_REG_FWVER);
++	if (fw < 0)
++		return fw;
++
++	error = i2c_smbus_write_byte_data(client, touchkey->variant->base_reg,
++					  TC305K_CMD_GRIP_SENSING_OFF);
++	if (error)
++		return error;
++
++	msleep(TC305K_CMD_DELAY_MS);
++	dev_info(&client->dev, "TC305K firmware %#04x\n", fw);
+ 
+ 	return 0;
+ }
+@@ -130,6 +178,33 @@ static void tm2_touchkey_power_disable(void *data)
+ 			       touchkey->regulators);
+ }
+ 
++/*
++ * TC305K: bit n (n < 4) means key n went down, bit n + 4 that it went up.
++ * If one read reports both, report the press first.
++ */
++static void tm2_touchkey_report_bitmap(struct tm2_touchkey_data *touchkey,
++				       u8 data)
++{
++	struct input_dev *input = touchkey->input_dev;
++	int i;
++
++	for (i = 0; i < touchkey->num_keycodes; i++) {
++		if (data & BIT(i)) {
++			input_event(input, EV_MSC, MSC_SCAN, i);
++			input_report_key(input, touchkey->keycodes[i], 1);
++		}
++	}
++	input_sync(input);
++
++	for (i = 0; i < touchkey->num_keycodes; i++) {
++		if (data & BIT(i + 4)) {
++			input_event(input, EV_MSC, MSC_SCAN, i);
++			input_report_key(input, touchkey->keycodes[i], 0);
++		}
++	}
++	input_sync(input);
++}
++
+ static irqreturn_t tm2_touchkey_irq_handler(int irq, void *devid)
+ {
+ 	struct tm2_touchkey_data *touchkey = devid;
+@@ -148,6 +223,11 @@ static irqreturn_t tm2_touchkey_irq_handler(int irq, void *devid)
+ 		goto out;
+ 	}
+ 
++	if (touchkey->variant->key_bitmap) {
++		tm2_touchkey_report_bitmap(touchkey, data);
++		return IRQ_HANDLED;
++	}
++
+ 	index = (data & TM2_TOUCHKEY_BIT_KEYCODE) - 1;
+ 	if (index < 0 || index >= touchkey->num_keycodes) {
+ 		dev_warn(&touchkey->client->dev,
+@@ -240,6 +320,15 @@ static int tm2_touchkey_probe(struct i2c_client *client)
+ 		return error;
+ 	}
+ 
++	if (touchkey->variant->init) {
++		error = touchkey->variant->init(touchkey);
++		if (error) {
++			dev_err(&client->dev,
++				"failed to initialize device: %d\n", error);
++			return error;
++		}
++	}
++
+ 	/* input device */
+ 	touchkey->input_dev = devm_input_allocate_device(&client->dev);
+ 	if (!touchkey->input_dev) {
+@@ -278,7 +367,8 @@ static int tm2_touchkey_probe(struct i2c_client *client)
+ 
+ 	/* led device */
+ 	touchkey->led_dev.name = TM2_TOUCHKEY_DEV_NAME;
+-	touchkey->led_dev.brightness = LED_ON;
++	touchkey->led_dev.brightness =
++		touchkey->variant->led_default_off ? LED_OFF : LED_ON;
+ 	touchkey->led_dev.max_brightness = LED_ON;
+ 	touchkey->led_dev.brightness_set_blocking =
+ 					tm2_touchkey_led_brightness_set;
+@@ -291,7 +381,8 @@ static int tm2_touchkey_probe(struct i2c_client *client)
+ 	}
+ 
+ 	if (touchkey->variant->fixed_regulator)
+-		tm2_touchkey_led_brightness_set(&touchkey->led_dev, LED_ON);
++		tm2_touchkey_led_brightness_set(&touchkey->led_dev,
++						touchkey->led_dev.brightness);
+ 
+ 	return 0;
+ }
+@@ -316,8 +407,16 @@ static int tm2_touchkey_resume(struct device *dev)
+ 	enable_irq(client->irq);
+ 
+ 	ret = tm2_touchkey_power_enable(touchkey);
+-	if (ret)
++	if (ret) {
+ 		dev_err(dev, "failed to enable power: %d\n", ret);
++		return ret;
++	}
++
++	if (touchkey->variant->init) {
++		ret = touchkey->variant->init(touchkey);
++		if (ret)
++			dev_err(dev, "failed to initialize device: %d\n", ret);
++	}
+ 
+ 	return ret;
+ }
+@@ -344,6 +443,9 @@ static const struct of_device_id tm2_touchkey_of_match[] = {
+ 	}, {
+ 		.compatible = "coreriver,tc360-touchkey",
+ 		.data = &tc360_touchkey_variant,
++	}, {
++		.compatible = "coreriver,tc305k-touchkey",
++		.data = &tc305k_touchkey_variant,
+ 	},
+ 	{ },
+ };
+-- 
+2.55.0
+

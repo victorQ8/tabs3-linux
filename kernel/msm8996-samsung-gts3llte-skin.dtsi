@@ -1,0 +1,123 @@
+// SPDX-License-Identifier: BSD-3-Clause
+#include <dt-bindings/thermal/thermal.h>
+
+/ {
+	skin_sensor: ap-thermistor {
+		compatible = "samsung,gts3l-ap-thermistor";
+		io-channels = <&pm8994_vadc VADC_LR_MUX4_PU1_AMUX_THM1>;
+		io-channel-names = "skin";
+		#thermal-sensor-cells = <0>;
+	};
+
+	/*
+	 * Two more board thermistors the stock tree reads on the PMIC ADC (its
+	 * generic labels; package 67): pa_therm0 (THM3, by the LTE power
+	 * amplifier) and the crystal's xo_therm. The VADC's own 100 k NTC and
+	 * crystal tables give the temperature (generic-adc-thermal takes the
+	 * channel's value as millidegrees), not Samsung's calibrated AP table,
+	 * so expect a degree or two of difference from the skin zone. They
+	 * only watch: no cooling maps. The stock tree's third one, quiet_therm
+	 * on THM5, is not populated here: it read the table's floor, -40 C.
+	 */
+	pa_sensor: pa-thermistor {
+		compatible = "generic-adc-thermal";
+		#thermal-sensor-cells = <0>;
+		io-channels = <&pm8994_vadc VADC_LR_MUX6_PU1_AMUX_THM3>;
+		io-channel-names = "sensor-channel";
+	};
+
+	xo_sensor: xo-thermistor {
+		compatible = "generic-adc-thermal";
+		#thermal-sensor-cells = <0>;
+		io-channels = <&pm8994_vadc VADC_LR_MUX3_BUF_PU1_XO_THERM>;
+		io-channel-names = "sensor-channel";
+	};
+
+	thermal-zones {
+		skin-thermal {
+			polling-delay = <5000>;
+			polling-delay-passive = <1000>;
+			thermal-sensors = <&skin_sensor>;
+
+			trips {
+				skin_warm: skin-warm {
+					temperature = <43000>;
+					hysteresis = <2000>;
+					type = "passive";
+				};
+			};
+
+			cooling-maps {
+				map0 {
+					trip = <&skin_warm>;
+					/* This rev05's measured 16/25 OPP tables map states
+					 * 11/20 to 652800 kHz. Start below the server's
+					 * existing 960/940800 cap instead of walking many
+					 * ineffective high-frequency states first. Recheck
+					 * these indices whenever the OPP tables change.
+					 */
+					cooling-device = <&cpu0 11 THERMAL_NO_LIMIT>,
+						<&cpu2 20 THERMAL_NO_LIMIT>,
+						<&gpu THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+				};
+			};
+		};
+
+		pa-thermal {
+			polling-delay = <10000>;
+			polling-delay-passive = <0>;
+			thermal-sensors = <&pa_sensor>;
+
+			trips {
+				pa-hot {
+					temperature = <75000>;
+					hysteresis = <5000>;
+					type = "hot";
+				};
+			};
+		};
+
+		xo-thermal {
+			polling-delay = <10000>;
+			polling-delay-passive = <0>;
+			thermal-sensors = <&xo_sensor>;
+
+			trips {
+				xo-hot {
+					temperature = <75000>;
+					hysteresis = <5000>;
+					type = "hot";
+				};
+			};
+		};
+	};
+};
+
+&pm8994_vadc {
+	channel@73 {
+		reg = <VADC_LR_MUX4_PU1_AMUX_THM1>;
+		label = "skin_therm";
+		qcom,ratiometric;
+		qcom,decimation = <512>;
+		qcom,hw-settle-time = <200>;
+		qcom,avg-samples = <1>;
+	};
+
+	channel@75 {
+		reg = <VADC_LR_MUX6_PU1_AMUX_THM3>;
+		label = "pa_therm";
+		qcom,ratiometric;
+		qcom,decimation = <512>;
+		qcom,hw-settle-time = <200>;
+		qcom,avg-samples = <1>;
+	};
+
+	channel@7c {
+		reg = <VADC_LR_MUX3_BUF_PU1_XO_THERM>;
+		label = "xo_therm";
+		qcom,ratiometric;
+		qcom,decimation = <512>;
+		qcom,hw-settle-time = <200>;
+		qcom,avg-samples = <1>;
+	};
+};

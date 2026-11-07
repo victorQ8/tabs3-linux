@@ -1,0 +1,131 @@
+#!/usr/bin/env python3
+"""Does closing one client's handle unmap a shared BO for every client?
+
+Run on the SM-T825 as root: sudo python3 -I gpu-shared-vma-check
+Exit status 0 means the mapping was kept while shared (patch 0014) and the
+BOs were freed after the last close (also patch 0014). Run it with the desktop
+stopped: the leak check compares whole-device GEM totals from debugfs.
+
+Two DRM file descriptors act as the "app" and the "compositor". The app
+allocates a BO and shares it by dma-buf; the compositor imports it and both
+read its GPU address. The app then closes its handle, as a client does when it
+frees an old window buffer, and allocates a new BO of the same size.
+
+On a GPU with a per-process VM nothing the app does can move the compositor's
+mapping. On a5xx every context shares one VM: if the app's close tears down the
+shared mapping, the new BO lands on the address the compositor still has cached
+and the compositor's own address query returns a different value.
+
+Keeping the mapping must not keep the BO alive: the VMA holds a GEM reference,
+so once every handle and dma-buf is closed the BOs must be freed. Package 32
+kept the mapping but leaked every shared BO; this compares the debugfs object
+count before and after.
+
+No GPU work is submitted.
+"""
+import fcntl
+import glob
+import re
+import os
+import struct
+import sys
+
+DRM_COMMAND_BASE = 0x40
+IOC_WRITE, IOC_READ = 1, 2
+
+
+def ioc(direction, nr, size):
+    return (direction << 30) | (size << 16) | (ord("d") << 8) | nr
+
+
+DRM_IOCTL_GEM_CLOSE = ioc(IOC_WRITE, 0x09, 8)
+DRM_IOCTL_PRIME_HANDLE_TO_FD = ioc(IOC_READ | IOC_WRITE, 0x2D, 12)
+DRM_IOCTL_PRIME_FD_TO_HANDLE = ioc(IOC_READ | IOC_WRITE, 0x2E, 12)
+DRM_IOCTL_MSM_GEM_NEW = ioc(IOC_READ | IOC_WRITE, DRM_COMMAND_BASE + 0x02, 16)
+DRM_IOCTL_MSM_GEM_INFO = ioc(IOC_READ | IOC_WRITE, DRM_COMMAND_BASE + 0x03, 24)
+MSM_BO_WC = 0x00020000
+MSM_INFO_GET_IOVA = 0x01
+SIZE = 1 << 20
+
+
+def gem_new(fd):
+    buf = bytearray(struct.pack("=QII", SIZE, MSM_BO_WC, 0))
+    fcntl.ioctl(fd, DRM_IOCTL_MSM_GEM_NEW, buf)
+    return struct.unpack("=QII", buf)[2]
+
+
+def iova(fd, handle):
+    buf = bytearray(struct.pack("=IIQII", handle, MSM_INFO_GET_IOVA, 0, 0, 0))
+    fcntl.ioctl(fd, DRM_IOCTL_MSM_GEM_INFO, buf)
+    return struct.unpack("=IIQII", buf)[2]
+
+
+def export(fd, handle):
+    buf = bytearray(struct.pack("=IIi", handle, os.O_CLOEXEC | os.O_RDWR, -1))
+    fcntl.ioctl(fd, DRM_IOCTL_PRIME_HANDLE_TO_FD, buf)
+    return struct.unpack("=IIi", buf)[2]
+
+
+def import_(fd, dmabuf):
+    buf = bytearray(struct.pack("=IIi", 0, 0, dmabuf))
+    fcntl.ioctl(fd, DRM_IOCTL_PRIME_FD_TO_HANDLE, buf)
+    return struct.unpack("=IIi", buf)[0]
+
+
+def close(fd, handle):
+    fcntl.ioctl(fd, DRM_IOCTL_GEM_CLOSE, bytearray(struct.pack("=II", handle, 0)))
+
+
+def gem_total():
+    for path in sorted(glob.glob("/sys/kernel/debug/dri/*/gem")):
+        with open(path) as f:
+            match = re.search(r"^Total:\s+(\d+) objects", f.read(), re.MULTILINE)
+        if match:
+            return int(match.group(1))
+    return None
+
+
+def main():
+    node = sys.argv[1] if len(sys.argv) > 1 else "/dev/dri/renderD128"
+    total_before = gem_total()
+    app = os.open(node, os.O_RDWR | os.O_CLOEXEC)
+    comp = os.open(node, os.O_RDWR | os.O_CLOEXEC)
+
+    shared_app = gem_new(app)
+    app_addr = iova(app, shared_app)
+    dmabuf = export(app, shared_app)
+    shared_comp = import_(comp, dmabuf)
+    os.close(dmabuf)
+    comp_addr = iova(comp, shared_comp)
+    print(f"shared BO: app iova {app_addr:#x}, compositor iova {comp_addr:#x}")
+
+    close(app, shared_app)
+    other = gem_new(app)
+    other_addr = iova(app, other)
+    comp_after = iova(comp, shared_comp)
+    print(f"after app close: new app BO iova {other_addr:#x}, "
+          f"compositor re-query {comp_after:#x}")
+
+    reused = other_addr == comp_addr
+    moved = comp_after != comp_addr
+    print(f"compositor's cached address reused by another BO: {reused}")
+    print(f"compositor's BO moved to a new address: {moved}")
+    print("RESULT:", "SHARED MAPPING TORN DOWN" if (reused or moved) else "mapping kept")
+
+    close(app, other)
+    close(comp, shared_comp)
+    os.close(app)
+    os.close(comp)
+    total_after = gem_total()
+    if total_before is None or total_after is None:
+        print("leak check skipped: no GEM totals in /sys/kernel/debug/dri/*/gem")
+        leaked = False
+    else:
+        leaked = total_after > total_before
+        print(f"GEM objects before {total_before}, after last close {total_after}")
+        print("RESULT:", "BOs LEAKED after last close" if leaked else "BOs freed")
+    return 1 if (reused or moved or leaked) else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,35 @@
+Subject: [PATCH] media: venus: reject HFI-v3 encoder capture pool growth while streaming
+
+HFI-v3 encoder output buffers are registered before resources are loaded.
+CREATE_BUFS after STREAMON otherwise adds an unregistered address to the
+capture queue, crashing MSM8996 VIDEO.VE.4.4-00060 in vbuffer.c:1219.
+Registering that address during streaming is rejected by the firmware with
+HFI_ERR_SESSION_INCORRECT_STATE (0x1006), so refuse late capture allocation
+with EBUSY rather than submit an address the firmware cannot accept.
+
+Initial allocation and capture allocation while stopped remain available;
+the input queue and dynamic-buffer generations are unchanged. Applications
+can allocate their full capture pool before STREAMON. GStreamer handles an
+allocation refusal by copying retained compressed output and recycling the
+existing buffers; encoding still uses Venus hardware.
+
+Local hardware diagnosis; not submitted upstream.
+
+--- a/drivers/media/platform/qcom/venus/venc.c
++++ b/drivers/media/platform/qcom/venus/venc.c
+@@ -1098,6 +1098,15 @@
+ 	int ret;
+ 
+ 	if (*num_planes) {
++		/*
++		 * HFI v3 accepts static capture-buffer registration only before
++		 * the session starts. Do not let CREATE_BUFS introduce an
++		 * unregistered address while that session is streaming.
++		 */
++		if (IS_V3(core) && inst->streamon_cap &&
++		    q->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)
++			return -EBUSY;
++
+ 		if (q->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE &&
+ 		    *num_planes != inst->fmt_out->num_planes)
+ 			return -EINVAL;

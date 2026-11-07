@@ -1,0 +1,141 @@
+#!/usr/bin/env python3
+"""Render every dashboard layout and a local comparison gallery.
+
+Uses synthetic metrics only. No framebuffer, network or device access.
+TABS3_FONT_DIR can point to an extracted Debian /usr/share/fonts tree.
+"""
+import argparse
+import copy
+import importlib.machinery
+import importlib.util
+from pathlib import Path
+import sys
+import time
+
+from PIL import Image, ImageDraw, ImageFont
+
+ROOT = Path(__file__).resolve().parents[1]
+PROGRAM = ROOT / 'packages/tabs3-dashboard/usr/libexec/tabs3-dashboard'
+sys.path.insert(0, str(PROGRAM.parent))
+loader = importlib.machinery.SourceFileLoader('dashboard_preview_source', str(PROGRAM))
+spec = importlib.util.spec_from_loader(loader.name, loader)
+dashboard = importlib.util.module_from_spec(spec)
+loader.exec_module(dashboard)
+
+DESCRIPTIONS = {
+    'original': 'The original instrument panel. Quiet rules, a large clock, inline history.',
+    'observatory': 'A wide telemetry plot, a precision dial, and cool mint indicators.',
+    'folio': 'An editorial clock face, warm ivory figures, and a spacious three-column reading.',
+    'terminal': 'A btop-inspired resource monitor: framed plots, colored meters, and compact tables.',
+    'silicon': 'The machine, revealed. Brushed metal, memory packages, an exposed GPU die, and live readings.',
+}
+
+
+def sample(scenario):
+    m = dashboard.fake_metrics()
+    m['now'] = time.mktime((2026, 10, 14, 14, 32, 8, 0, 0, -1))
+    m['release'] = 'tabS3 0.1.35'
+    m['kernel'] = 'kernel 6.18.56-80'
+    m['remoteprocs'] = {'modem': 'running', 'audio DSP': 'running', 'sensor DSP': 'running'}
+    if scenario == 'warning':
+        m['cpu'] = 97.4
+        m['thermal'] = {'cpu': 87.2, 'gpu': 64.5, 'ap': 46.1}
+        m['battery'].update(capacity=18, charger=0, status='Discharging', current=-420, temp=36.8)
+        m['memory']['used'] = m['memory']['total'] * .87
+        m['storage']['used'] = m['storage']['total'] * .94
+        m['hist']['cpu'] = [min(100, x + 45) for x in m['hist']['cpu']]
+        m['hist']['temp'] = [x + 35 for x in m['hist']['temp']]
+        m['hist']['battery'] = [22 - 4*i/299 for i in range(300)]
+        m['hist']['memory'] = [x + 70 for x in m['hist']['memory']]
+        m['remoteprocs']['modem'] = 'offline'
+    elif scenario in ('descent', 'resting'):
+        m['battery'].update(capacity=94 if scenario == 'descent' else 80,
+                            charger=1, status='Discharging', current=-450,
+                            charge_behaviour='force-discharge' if scenario == 'descent' else 'inhibit-charge',
+                            keeper_target=80)
+    elif scenario == 'missing':
+        m['thermal'] = dict.fromkeys(m['thermal'])
+        m['battery'] = dict.fromkeys(m['battery'])
+        m['network'] = {}
+        m['remoteprocs'] = {}
+        m['freqs'] = []
+        m['lux'] = None
+        for key in ('temp', 'battery'):
+            m['hist'][key] = [None] * 300
+    for key, value in [('cpu', m['cpu']), ('temp', m['thermal']['cpu']),
+                       ('battery', m['battery']['capacity']),
+                       ('memory', 100*m['memory']['used']/m['memory']['total'])]:
+        m['hist'][key][-1] = value
+    return m
+
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument('output', type=Path, nargs='?', default=ROOT/'work/dashboard-designs')
+    p.add_argument('--font-set', choices=dashboard.FONT_SETS, default='b612')
+    args = p.parse_args()
+    args.output.mkdir(parents=True, exist_ok=True)
+    for theme in dashboard.THEMES:
+        renderer = dashboard.make_renderer(2048, 1536, args.font_set, theme)
+        for scenario in ('normal', 'warning', 'missing', 'descent', 'resting'):
+            frame = renderer.render(copy.deepcopy(sample(scenario)), '14:28 light change')
+            frame.save(args.output / f'{theme}-{scenario}.png')
+    board = Image.new('RGB', (2048, 852*((len(dashboard.THEMES)+1)//2)), '#101413')
+    draw = ImageDraw.Draw(board)
+    try:
+        font = ImageFont.truetype(f'{dashboard.FONTS}/truetype/dejavu/DejaVuSans.ttf', 26)
+    except OSError:
+        font = ImageFont.load_default(26)
+    for i, theme in enumerate(dashboard.THEMES):
+        x, y = (i % 2)*1024, (i // 2)*852
+        draw.text((x+28, y+25), theme.upper(), font=font, fill='#e8efed')
+        with Image.open(args.output / f'{theme}-normal.png') as source:
+            board.paste(source.resize((1024, 768), Image.Resampling.LANCZOS), (x, y+84))
+    board.save(args.output/'comparison.png')
+    cards = ''.join(f'<button class="choice" data-theme="{name}" '
+                    f'aria-pressed="{str(name=="silicon").lower()}">'
+                    f'<strong>{name.title()}</strong><span>{desc}</span></button>'
+                    for name, desc in DESCRIPTIONS.items())
+    html = '''<!doctype html><html lang="en"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TabS3 Linux · The machine, revealed</title>
+<style>
+:root{color-scheme:dark;font:16px system-ui,sans-serif;background:#0b0f0e;color:#e8efed}
+*{box-sizing:border-box}body{margin:0 auto;max-width:1500px;padding:44px 32px}
+header{display:flex;justify-content:space-between;align-items:end;gap:24px;margin-bottom:32px}
+h1{font-size:clamp(28px,4vw,48px);font-weight:500;letter-spacing:-.04em;margin:8px 0}
+p{color:#a0ada7;line-height:1.6;margin:0}.eyebrow{font:12px ui-monospace,monospace;color:#8ae8bd;letter-spacing:.16em}
+.choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:24px 0}
+button{font:inherit;color:inherit;cursor:pointer}.choice{text-align:left;padding:20px;background:#101714;border:1px solid #2b3631;border-radius:8px}
+.choice strong{display:block;font-size:19px;margin-bottom:8px;font-weight:500}
+.choice span{display:block;color:#9faea5;font-size:13px;line-height:1.5}
+.choice[aria-pressed=true]{border-color:#8ae8bd;background:#14231b}
+.toolbar{display:flex;justify-content:space-between;gap:16px;align-items:center;margin:28px 0 16px;flex-wrap:wrap}
+label{color:#a0ada7;font-size:14px}select{background:#131c17;color:#e8efed;border:1px solid #34483c;padding:8px 12px;border-radius:5px;margin-left:8px;font:inherit}
+a{color:#8ae8bd;text-decoration:none}a:hover{text-decoration:underline}
+figure{margin:0}figure img{display:block;width:100%;height:auto;border:1px solid #2b3631;background:black;border-radius:12px}
+figcaption{font-size:13px;color:#87968e;margin:16px 0 28px;line-height:1.6}
+code{font:13px ui-monospace,monospace;color:#c9dfd1}footer{border-top:1px solid #2b3631;padding-top:24px;font-size:13px;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+@media(max-width:800px){body{padding:24px 16px}.choices{grid-template-columns:repeat(2,1fr)}header{display:block}.choice{padding:14px}}
+</style>
+<header><div><div class="eyebrow">TABS3 / DESIGN COLLECTION</div><h1>The machine, revealed.</h1>
+<p>Meet Silicon. A hardware portrait, alive with your server’s telemetry.</p></div><p>2048 × 1536 · native panel previews</p></header>
+<nav class="choices" aria-label="Dashboard design">CARDS</nav>
+<div class="toolbar"><label>Preview state<select id="scenario"><option value="normal">Normal</option><option value="warning">Hot / low battery</option><option value="missing">Sensors unavailable</option><option value="descent">Keeper reducing charge</option><option value="resting">Keeper resting on external power</option></select></label>
+<div><code id="setting">sudo tabs3-dashboard-theme silicon</code> &nbsp; · &nbsp; <a id="full" href="silicon-normal.png" target="_blank" rel="noopener">Open full resolution ↗</a></div></div>
+<figure><img id="preview" width="2048" height="1536" src="silicon-normal.png" alt="Silicon dashboard, normal state">
+<figcaption>Sample data rendered by the actual dashboard. Every theme keeps the black AMOLED background, pixel shifting, and presence wake.</figcaption></figure>
+<footer><span>Original remains the default. Use the command above on the tablet to save your choice.</span>
+<span>Terminal: inspired by <a href="https://github.com/aristocratos/btop">btop</a> · <a href="comparison.png">Compare all designs</a></span></footer>
+<script>
+let theme='silicon';const scenario=document.querySelector('#scenario');
+function show(){const src=theme+'-'+scenario.value+'.png';document.querySelector('#preview').src=src;document.querySelector('#preview').alt=theme+' dashboard, '+scenario.value+' state';document.querySelector('#full').href=src;document.querySelector('#setting').textContent='sudo tabs3-dashboard-theme '+theme;document.querySelectorAll('.choice').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.theme===theme)));}
+document.querySelectorAll('.choice').forEach(b=>b.addEventListener('click',()=>{theme=b.dataset.theme;show()}));scenario.addEventListener('change',show);
+</script></html>'''.replace('CARDS', cards)
+    (args.output/'index.html').write_text(html)
+    print(args.output/'index.html')
+    print(args.output/'comparison.png')
+
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,6 @@
+#!/bin/bash
+# SSH to the installed Debian on the tablet with the project key.
+ROOT=$(cd "$(dirname "$0")/../.." && pwd)
+exec ssh -i "$ROOT/private/id_ed25519" -o IdentitiesOnly=yes -o BatchMode=yes \
+  -o ConnectTimeout=4 -o UserKnownHostsFile="$ROOT/private/installed-known-hosts" \
+  dev@172.16.42.2 "$@"

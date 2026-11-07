@@ -1,0 +1,51 @@
+From: tabS3 bring-up <noreply@localhost>
+Subject: [PATCH] media: qcom: camss: vote for the VFE's memory path on MSM8996
+
+The VFE writes its frames through the multimedia NOC, a path the RPM
+only keeps clocked while somebody votes bandwidth on it. The MSM8996
+resources carry no interconnect paths, so the camera only works while
+the display is on, whose bandwidth vote keeps the path alive. With the
+panel blanked (SM-T825 running Debian, 60 s idle) the VFE still receives
+every frame (its SOF interrupts keep coming) but none of its writes
+complete: no buffer is ever returned, the halt at stream-off times out
+("VFE halt timeout") and the VFE SMMU then fails every TLB sync ("TLB
+sync timed out -- SMMU may be deadlocked") until a reboot.
+
+Add the two paths MSM8953 already votes for, a config path and the VFE's
+path to DDR, so the driver requests bandwidth while the block is in use.
+The device tree names them "cam_ahb" and "cam_vfe_mem".
+
+Assisted-by: Claude:claude-fable-5-1
+---
+diff -ruN a/drivers/media/platform/qcom/camss/camss.c b/drivers/media/platform/qcom/camss/camss.c
+--- a/drivers/media/platform/qcom/camss/camss.c	2026-10-14 12:00:50.458295504 +0300
++++ b/drivers/media/platform/qcom/camss/camss.c	2026-10-14 12:00:50.458413519 +0300
+@@ -308,6 +308,19 @@
+ 	},
+ };
+ 
++static const struct resources_icc icc_res_8x96[] = {
++	{
++		.name = "cam_ahb",
++		.icc_bw_tbl.avg = 38400,
++		.icc_bw_tbl.peak = 76800,
++	},
++	{
++		.name = "cam_vfe_mem",
++		.icc_bw_tbl.avg = 939524,
++		.icc_bw_tbl.peak = 1342177,
++	},
++};
++
+ static const struct camss_subdev_resources csiphy_res_8x96[] = {
+ 	/* CSIPHY0 */
+ 	{
+@@ -4319,6 +4332,8 @@
+ 	.csid_res = csid_res_8x96,
+ 	.ispif_res = &ispif_res_8x96,
+ 	.vfe_res = vfe_res_8x96,
++	.icc_res = icc_res_8x96,
++	.icc_path_num = ARRAY_SIZE(icc_res_8x96),
+ 	.csiphy_num = ARRAY_SIZE(csiphy_res_8x96),
+ 	.csid_num = ARRAY_SIZE(csid_res_8x96),
+ 	.vfe_num = ARRAY_SIZE(vfe_res_8x96),

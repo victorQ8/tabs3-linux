@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-14T18:10:00+00:00",
+  "installed": {
+    "linux-tabs3": "6.18.56-65",
+    "tabs3-base": "0.1.25 (tabs3_camera.py, tabs3-snapshot)",
+    "tabs3-dashboard": "0.1.5 (camera presence wake, corner picture)",
+    "v4l-utils": "1.30.1-1",
+    "python3-numpy": "2.2.4 (installed for the colour decode)",
+    "libcamera": "0.4.0-7 libcamera-tools and libcamera-ipa, installed for the trial and left installed; not used by anything"
+  },
+  "libcamera_trial": {
+    "cameras": "cam -l lists both: 1 Internal back camera (imx258, lens init fails on the DW9807), 2 Internal front camera (s5k5e3, no sensor helper, uncalibrated.yaml)",
+    "streams": "front 2568x1932 ABGR8888 at 30 fps and 1288x966; rear 2096x1560 at 15 fps and 1052x780: the simple pipeline handler and the software ISP run on MSM8996",
+    "processing": "frame 0 neutral (mean RGB 67/66/64 front, 66/66/63 rear), then near black with a green cast: 1/20/1 by frame 4, 3/29/1 by frame 23 (front), 1/29/0 (rear) while the rear sensor's exposure was driven to its maximum 1582 lines at 1.3x gain; unusable, cause not pursued"
+  },
+  "exposure_loop": {
+    "front_2576x1932": "498 lines 1.00x median 17 -> 2024 lines 1.97x median 23 -> 3982 lines (65.6 ms) 8.00x median 78, p95 188, 0.8 % saturated: settled in 3 steps; 6.2 s including the numpy decode",
+    "rear_2104x1560": "1582 lines 1.30x median 18 -> 2050 lines 8.00x median 32 -> 7175 lines (149.5 ms) 8.00x median 73, p95 190: settled in 3 steps, 5.4 s",
+    "pictures": "front: the room (ceiling lights, vent, crown moulding, cabinet, mirror, a monitor at the edge), neutral colours; rear: the folded cover's flap and a keyboard close up, the lens being covered in the mount; both under private/captures/, not committed"
+  },
+  "presence_sampler": {
+    "mode": "front 640x480, v4l2-ctl stream-skip 1, one frame",
+    "per_sample_ms": "470 at 66.7 ms exposure and 7.1x gain (the first sample 841 ms with the pipeline setup); the loop raised the exposure from 32.8 ms at 1x to 66.7 ms at 7.1x in three samples",
+    "noise_floor_percent": "0.21 to 0.27 over four still samples at 1 s spacing",
+    "threshold_percent": 3.5,
+    "dashboard_cpu": "3.4 % of a core over 130 s with the screen blanked (sampler every 4 s plus the sound capture); 2.4 % plus 0.5 % was measured before the camera"
+  },
+  "dashboard": {
+    "tile": "bottom-right above the footer line, 16 % of the width, from the 640x480 mode; the first picture within 15 s of the service start, refreshed every 10 min while the screen is on",
+    "sandbox": "DeviceAllow /dev/media0 rw and char-video4linux rw added; the sampler and the tile both ran inside the service (their state files under /var/lib/tabs3-camera were written by it)",
+    "journal": "no camera, snapshot or traceback lines in two blank-and-wake cycles; the sensor is runtime-suspended afterwards"
+  },
+  "pending_on_hardware": [
+    "the owner's wave at the tablet with the screen off (expected: presence wake: camera: N % of the picture changed)",
+    "the owner's verdict on the corner picture (SNAPSHOT_MINUTES=0 removes it)"
+  ]
+}

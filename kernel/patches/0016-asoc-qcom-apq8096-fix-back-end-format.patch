@@ -1,0 +1,30 @@
+Subject: [PATCH] ASoC: qcom: apq8096: fix back-end sample format to S16_LE
+
+The back-end fixup fixes rate and channels but leaves the format to the
+front end. Samsung's MSM8996 ADSP firmware (Galaxy Tab S3) rejects
+AFE_PORT_CMD_DEVICE_START for 24-bit SLIMbus ports, so any client choosing
+S24_LE, PipeWire included, fails with "AFE enable for port ... failed".
+Fix the back end at S16_LE, as sdm845 does; the DSP converts the stream.
+
+--- a/sound/soc/qcom/apq8096.c
++++ b/sound/soc/qcom/apq8096.c
+@@ -7,6 +7,7 @@
+ #include <sound/soc.h>
+ #include <sound/soc-dapm.h>
+ #include <sound/pcm.h>
++#include <sound/pcm_params.h>
+ #include "common.h"
+ 
+ #define SLIM_MAX_TX_PORTS 16
+@@ -20,9 +21,11 @@
+ 					SNDRV_PCM_HW_PARAM_RATE);
+ 	struct snd_interval *channels = hw_param_interval(params,
+ 					SNDRV_PCM_HW_PARAM_CHANNELS);
++	struct snd_mask *fmt = hw_param_mask(params, SNDRV_PCM_HW_PARAM_FORMAT);
+ 
+ 	rate->min = rate->max = 48000;
+ 	channels->min = channels->max = 2;
++	snd_mask_set_format(fmt, SNDRV_PCM_FORMAT_S16_LE);
+ 
+ 	return 0;
+ }

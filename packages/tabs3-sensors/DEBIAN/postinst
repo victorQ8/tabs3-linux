@@ -1,0 +1,23 @@
+#!/bin/sh
+# Enable the registry server on first install and the grip sensor bind when
+# it is new; apply the sensor udev rule.
+set -e
+if [ "$1" = configure ]; then
+    if [ -z "$2" ]; then
+        systemctl enable tabs3-sns-reg.service
+    fi
+    if [ -z "$2" ] || dpkg --compare-versions "$2" lt 0.1.1; then
+        systemctl enable tabs3-grip-sensor.service
+    fi
+    if [ -d /run/systemd/system ]; then
+        systemctl daemon-reload
+        if systemctl is-enabled --quiet tabs3-sns-reg.service; then
+            systemctl restart tabs3-sns-reg.service
+        fi
+        if systemctl is-enabled --quiet tabs3-grip-sensor.service; then
+            systemctl start --no-block tabs3-grip-sensor.service || true
+        fi
+        udevadm control --reload
+        udevadm trigger --action=change --subsystem-match=iio
+    fi
+fi

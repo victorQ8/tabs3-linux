@@ -1,0 +1,8 @@
+Started tabs3-v32-renderer.service - [systemd-run] /usr/bin/gnome-text-editor --new-window /tmp/tabs3-graphics-check.txt.
+Environment variable GSK_RENDERER=ngl set, trying GskGLRenderer
+Using renderer 'GskGLRenderer' for surface 'GdkWaylandToplevel'
+0
+0
+54
+3
+0

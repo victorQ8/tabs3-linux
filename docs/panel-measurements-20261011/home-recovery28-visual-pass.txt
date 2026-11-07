@@ -1,0 +1,18 @@
+Linux (none) 6.19.5-gts3l1 #13 SMP PREEMPT 2026-10-10 00:00:00 UTC aarch64 GNU/Linux
+0
+Screen off requested
+Screen on requested
+Recovery action: Check filesystem
+[    3.687706] msm_dsi 994000.dsi: panel LP11: clock deferred, lane_ctrl=00000000
+[    3.711736] msm_dsi 996000.dsi: panel LP11: clock deferred, lane_ctrl=00000000
+[    3.807879] panel-samsung-ams968hh01 994000.dsi.0: startup checkpoint: reset released
+[    3.869337] panel-samsung-ams968hh01 994000.dsi.0: startup checkpoint: TCON_RDY=1 ret=0
+[    3.871594] msm_dsi 996000.dsi: panel LP11: first command starts clock, lane_ctrl=10000000
+[    3.871634] msm_dsi 994000.dsi: panel LP11: first command starts clock, lane_ctrl=10000000
+[   34.901608] [drm:dpu_encoder_helper_wait_for_irq [msm]] *ERROR* encoder is disabled id=33, callback=dpu_encoder_phys_cmd_pp_tx_done_irq [msm], IRQ=[0, 8]
+[   34.935739] msm_dsi 994000.dsi: panel LP11: clock deferred, lane_ctrl=00000000
+[   34.959695] msm_dsi 996000.dsi: panel LP11: clock deferred, lane_ctrl=00000000
+[   35.055644] panel-samsung-ams968hh01 994000.dsi.0: startup checkpoint: reset released
+[   35.117194] panel-samsung-ams968hh01 994000.dsi.0: startup checkpoint: TCON_RDY=1 ret=0
+[   35.119337] msm_dsi 996000.dsi: panel LP11: first command starts clock, lane_ctrl=10000000
+[   35.119380] msm_dsi 994000.dsi: panel LP11: first command starts clock, lane_ctrl=10000000

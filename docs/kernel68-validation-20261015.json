@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-15T06:55:00+00:00",
+  "installed": {
+    "linux-tabs3": "6.18.56-68 (modules installed, boot partition written from recovery at 09:47 local, readback verified)",
+    "boot_partition": "package 68 combined image, sha256 be55e8993aae6be3a65d61bcf1d16eb2e3c908ac64d1ecae0bec69896c4320ea (private/images/package68/)",
+    "tabs3-base": "0.1.27 (battery keeper with the forced descent)",
+    "tabs3-dashboard": "0.1.6"
+  },
+  "previous": "6.18.56-67",
+  "change": "patch 0041: the SM5705 charger's force-discharge charge behaviour (operation mode SUSPEND, buck off), ended by the driver at 15 %, on VBUS loss, after a fault, at shutdown and suspend; status Discharging meanwhile. Keeper 0.1.27 uses it above high+3 down to high, keeps inhibit at high and auto below low, auto when offline, no discharge with the marks at 100; keeper decisions unit-tested against a fake sysfs (tests/test_battery_keeper.py)",
+  "why": "the owner saw 100 % and Not charging for a day: inhibit leaves the buck supplying the system, so the cell only self-discharges (weeks)",
+  "path": [
+    "09:35: RAM boot of package 68 (SSH after 21 s), keeper timer stopped; charge_behaviour offers auto, inhibit-charge, force-discharge",
+    "force-discharge: status Discharging, charger online 1, battery current -564, -465, -654 mA over 30 s, voltage 4.343 -> 4.296 V; inhibit-charge: Not charging, -4 mA; auto: Full, +128 mA; inhibit again: -7 mA; no kernel error",
+    "09:47: tabs3-base 0.1.27 installed, boot partition written from recovery, Debian back on package 68 from disk; the keeper's first run set force-discharge at 100 %: Discharging, online 1, -271 mA; dashboard, screen and keeper timer active"
+  ],
+  "unknown": [
+    "the time from 100 to 80 % on the tablet's own load (about 270 mA at idle with the screen off suggests four to five hours)",
+    "the gauge's current accuracy (an open battery item)"
+  ],
+  "pending_on_hardware": ["watch the first descent reach 80 % and the keeper switch to inhibit-charge"]
+}

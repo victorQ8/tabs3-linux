@@ -1,0 +1,13 @@
+[Unit]
+Description=Verified off-device backup of the Tab S3 appliance
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/dev/tabs3-linux
+ExecStart=/usr/bin/python3 tools/server/backup.py --profile appliance --keep 7
+TimeoutStartSec=40min
+Nice=15
+UMask=0077
+NoNewPrivileges=yes
+# Runs on the development PC; no tablet services are stopped. It needs this
+# repository's private SSH key/host pin and writes private/backups only.

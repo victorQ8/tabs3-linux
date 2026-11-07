@@ -1,0 +1,213 @@
+{
+  "normal_packets_equal": true,
+  "driver_normal": [
+    {
+      "time": 295.364073,
+      "type": 21,
+      "flags": 0,
+      "len": 2,
+      "payload": [
+        176,
+        77
+      ]
+    },
+    {
+      "time": 295.364339,
+      "type": 57,
+      "flags": 0,
+      "len": 2,
+      "payload": [
+        178,
+        5
+      ]
+    },
+    {
+      "time": 295.364494,
+      "type": 21,
+      "flags": 0,
+      "len": 2,
+      "payload": [
+        176,
+        73
+      ]
+    },
+    {
+      "time": 295.364644,
+      "type": 57,
+      "flags": 0,
+      "len": 2,
+      "payload": [
+        178,
+        127
+      ]
+    },
+    {
+      "time": 295.364792,
+      "type": 21,
+      "flags": 0,
+      "len": 2,
+      "payload": [
+        176,
+        54
+      ]
+    },
+    {
+      "time": 295.364939,
+      "type": 57,
+      "flags": 0,
+      "len": 2,
+      "payload": [
+        178,
+        18
+      ]
+    },
+    {
+      "time": 295.365085,
+      "type": 21,
+      "flags": 0,
+      "len": 2,
+      "payload": [
+        176,
+        103
+      ]
+    },
+    {
+      "time": 295.365229,
+      "type": 57,
+      "flags": 0,
+      "len": 2,
+      "payload": [
+        178,
+        27
+      ]
+    },
+    {
+      "time": 295.365375,
+      "type": 21,
+      "flags": 0,
+      "len": 2,
+      "payload": [
+        176,
+        53
+      ]
+    },
+    {
+      "time": 295.365575,
+      "type": 57,
+      "flags": 0,
+      "len": 2,
+      "payload": [
+        178,
+        1
+      ]
+    }
+  ],
+  "manual_normal": [
+    {
+      "time": 297.543881,
+      "type": 21,
+      "flags": 0,
+      "len": 2,
+      "payload": [
+        176,
+        77
+      ]
+    },
+    {
+      "time": 297.544223,
+      "type": 57,
+      "flags": 0,
+      "len": 2,
+      "payload": [
+        178,
+        5
+      ]
+    },
+    {
+      "time": 297.544334,
+      "type": 21,
+      "flags": 0,
+      "len": 2,
+      "payload": [
+        176,
+        73
+      ]
+    },
+    {
+      "time": 297.544408,
+      "type": 57,
+      "flags": 0,
+      "len": 2,
+      "payload": [
+        178,
+        127
+      ]
+    },
+    {
+      "time": 297.544481,
+      "type": 21,
+      "flags": 0,
+      "len": 2,
+      "payload": [
+        176,
+        54
+      ]
+    },
+    {
+      "time": 297.544556,
+      "type": 57,
+      "flags": 0,
+      "len": 2,
+      "payload": [
+        178,
+        18
+      ]
+    },
+    {
+      "time": 297.544627,
+      "type": 21,
+      "flags": 0,
+      "len": 2,
+      "payload": [
+        176,
+        103
+      ]
+    },
+    {
+      "time": 297.544696,
+      "type": 57,
+      "flags": 0,
+      "len": 2,
+      "payload": [
+        178,
+        27
+      ]
+    },
+    {
+      "time": 297.544773,
+      "type": 21,
+      "flags": 0,
+      "len": 2,
+      "payload": [
+        176,
+        53
+      ]
+    },
+    {
+      "time": 297.544847,
+      "type": 57,
+      "flags": 0,
+      "len": 2,
+      "payload": [
+        178,
+        1
+      ]
+    }
+  ],
+  "frame_kickoffs": [
+    294.25706,
+    294.290474,
+    298.273577
+  ],
+  "note": "Host-entry trace proves equal type/flags/length/2-byte payload for all ten normal-condition packets. It does not prove the DDI accepted them. No frame kickoff between compression/dual-link step 2 and normal-conditions step 3 in this replay."
+}

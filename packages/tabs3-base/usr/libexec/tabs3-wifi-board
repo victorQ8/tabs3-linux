@@ -1,0 +1,28 @@
+#!/bin/sh
+# Copy the SM-T825 Wi-Fi board data (bdwlan30.bin) from Android's system
+# partition, where Samsung keeps the only copy. Runs before the PCIe rescan
+# loads ath10k and before tabs3.root_extend=system grows root over system.
+set -eu
+dest=/usr/lib/firmware/updates/ath10k/QCA6174/hw3.0/board.bin
+[ ! -s "$dest" ] || exit 0
+if ! grep -qx PARTNAME=system /sys/class/block/mmcblk0p44/uevent; then
+    echo 'No Android system partition at mmcblk0p44; copy board.bin by hand.' >&2
+    exit 1
+fi
+# Once root has grown over system, those blocks belong to Debian and the old
+# Android files may be partly overwritten while still looking readable.
+if [ -n "$(ls /sys/class/block/mmcblk0p44/holders)" ] && [ -e /var/lib/tabs3/root-expanded ]; then
+    echo 'Root already grew over the system partition; restore board.bin from a backup.' >&2
+    exit 1
+fi
+mkdir -p "${dest%/*}"
+rm -f "$dest.partial"
+debugfs -c -R "dump /etc/firmware/bdwlan30.bin $dest.partial" /dev/mmcblk0p44 2>/dev/null || true
+if [ ! -s "$dest.partial" ]; then
+    rm -f "$dest.partial"
+    echo 'No /etc/firmware/bdwlan30.bin on the system partition (already reused?).' >&2
+    exit 1
+fi
+chmod 644 "$dest.partial"
+mv "$dest.partial" "$dest"
+echo "Installed Wi-Fi board data: $(sha256sum "$dest")"

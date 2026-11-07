@@ -1,0 +1,235 @@
+#!/usr/bin/python3
+"""Record one read-only server health sample; never change power or hardware."""
+import datetime
+import json
+import math
+import os
+from pathlib import Path
+import sys
+import time
+
+
+def read(path):
+    try:
+        return path.read_text().strip()
+    except OSError:
+        return None
+
+
+def integer(path):
+    try:
+        return int(read(path))
+    except (TypeError, ValueError):
+        return None
+
+
+def selected(path):
+    """The bracketed choice of a sysfs selector such as charge_behaviour."""
+    text = read(path) or ''
+    start, end = text.find('['), text.find(']')
+    return text[start + 1:end] if 0 <= start < end else None
+
+
+def root_read_only(mountinfo):
+    """Read PID 1's root, not ProtectSystem=strict's private read-only view.
+
+    Either a read-only mount or read-only superblock makes the real root
+    read-only. Missing, ambiguous or malformed data is unknown, never healthy.
+    """
+    if not isinstance(mountinfo, str):
+        return None
+    roots = []
+    for line in mountinfo.splitlines():
+        fields = line.split()
+        if len(fields) < 6 or fields[4] != '/':
+            continue
+        try:
+            separator = fields.index('-')
+        except ValueError:
+            return None
+        if separator < 6 or len(fields) != separator + 4:
+            return None
+        mount = set(fields[5].split(',')) & {'ro', 'rw'}
+        superblock = set(fields[separator + 3].split(',')) & {'ro', 'rw'}
+        if len(mount) != 1 or len(superblock) != 1:
+            return None
+        roots.append('ro' in mount or 'ro' in superblock)
+    return roots[0] if len(roots) == 1 else None
+
+
+def collect(root=Path('/')):
+    def path(name):
+        return root / name.lstrip('/')
+
+    compatible = read(path('/sys/firmware/devicetree/base/compatible'))
+    if not compatible or 'samsung,gts3llte' not in compatible.split('\0'):
+        raise RuntimeError('Expected SM-T825 device tree')
+    supplies = path('/sys/class/power_supply')
+    battery = supplies / 'sm5705-battery'
+    charger = supplies / 'sm5705-charger'
+    memory = {}
+    for line in (read(path('/proc/meminfo')) or '').splitlines():
+        key, _, value = line.partition(':')
+        if key in ('MemTotal', 'MemAvailable', 'SwapTotal', 'SwapFree'):
+            try:
+                memory[key] = int(value.split()[0]) * 1024
+            except (ValueError, IndexError):
+                pass
+    zones = {}
+    for zone in path('/sys/class/thermal').glob('thermal_zone*'):
+        name = read(zone / 'type') or zone.name
+        zones[name] = integer(zone / 'temp')
+    usage = os.statvfs(root)
+    network = {}
+    for name in ('wlan0', 'usb0'):
+        interface = path('/sys/class/net') / name
+        network[name] = {
+            'operstate': read(interface / 'operstate'),
+            'carrier': integer(interface / 'carrier'),
+            'counters': {field: integer(interface / 'statistics' / field)
+                         for field in ('rx_bytes', 'tx_bytes', 'rx_errors',
+                                       'tx_errors', 'rx_dropped', 'tx_dropped')},
+        }
+    uptime = read(path('/proc/uptime'))
+    try:
+        uptime = float(uptime.split()[0])
+    except (AttributeError, ValueError, IndexError):
+        uptime = None
+    return {
+        'schema_version': 3,
+        'recorded_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        'boot_id': read(path('/proc/sys/kernel/random/boot_id')),
+        'uptime_s': uptime,
+        'ntp_synchronized_this_boot': path('/run/systemd/timesync/synchronized').exists(),
+        'kernel': read(path('/proc/sys/kernel/osrelease')),
+        'kernel_tainted': integer(path('/proc/sys/kernel/tainted')),
+        'root_fsck_status': integer(path('/run/tabs3-root-fsck.status')),
+        'root_read_only': root_read_only(read(path('/proc/1/mountinfo'))),
+        'root_mount_namespace': 'pid1',
+        'loadavg': read(path('/proc/loadavg')),
+        'memory_bytes': memory,
+        'pressure': {name: read(path('/proc/pressure') / name)
+                     for name in ('cpu', 'memory', 'io')},
+        'root_bytes': {'total': usage.f_blocks * usage.f_frsize,
+                       'available': usage.f_bavail * usage.f_frsize},
+        'temperatures_mc': zones,
+        'battery': {name: integer(battery / name) for name in
+                    ('capacity', 'temp', 'current_now', 'voltage_now')},
+        'battery_status': read(battery / 'status'),
+        'charger': {name: integer(charger / name) for name in
+                    ('online', 'temp', 'input_current_limit')},
+        'charger_type': read(charger / 'usb_type'),
+        'charger_health': read(charger / 'health'),
+        'charger_behaviour': selected(charger / 'charge_behaviour'),
+        'cpu': {policy.name: {name: integer(policy / name) for name in
+                              ('scaling_cur_freq', 'scaling_max_freq')}
+                for policy in path('/sys/devices/system/cpu/cpufreq').glob('policy*')},
+        'cpuidle_driver': read(path('/sys/devices/system/cpu/cpuidle/current_driver')),
+        'network': network,
+        'remoteproc': {read(p / 'name') or p.name: read(p / 'state')
+                       for p in path('/sys/class/remoteproc').glob('remoteproc*')},
+    }
+
+
+def assess(sample, previous=None):
+    """Early investigation thresholds, not charging or thermal-control policy."""
+    notices = []
+    battery = sample['battery']
+    percent, temperature = battery['capacity'], battery['temp']
+    if percent is None or temperature is None:
+        notices.append('battery_read_failed')
+    if percent is not None and percent <= 20:
+        notices.append('battery_low')
+    if temperature is not None and temperature >= 380:
+        notices.append('battery_warm')
+    cpu = [value for name, value in sample['temperatures_mc'].items()
+           if name.startswith('cpu') and value is not None]
+    if not cpu:
+        notices.append('cpu_temperature_unavailable')
+    elif max(cpu) >= 85000:
+        notices.append('cpu_hot')
+    if sample['charger_health'] not in (None, 'Good'):
+        notices.append('charger_health_not_good')
+    memory = sample['memory_bytes']
+    if memory.get('MemTotal', 0) and memory.get('MemAvailable', 0) < memory['MemTotal'] / 20:
+        notices.append('memory_low')
+    disk = sample['root_bytes']
+    if disk['available'] < disk['total'] / 20:
+        notices.append('root_space_low')
+    if sample['network']['wlan0']['operstate'] != 'up':
+        notices.append('wifi_link_not_up')
+    previous = previous if isinstance(previous, dict) else None
+    same_boot = bool(previous and sample['boot_id'] and previous.get('boot_id') == sample['boot_id'])
+    sample['new_boot_since_previous_sample'] = bool(previous and not same_boot)
+    now = sample['uptime_s']
+    last = previous.get('uptime_s') if same_boot else None
+    valid_time = lambda value: type(value) in (int, float) and math.isfinite(value) and value >= 0
+    gap = now - last if valid_time(now) and valid_time(last) else None
+    sample['sample_gap_s'] = gap
+    continuous = gap is not None and 0 < gap <= 180
+    if same_boot and not continuous:
+        notices.append('telemetry_gap')
+    if not valid_time(now):
+        notices.append('uptime_read_failed')
+    if sample.get('root_read_only') is None:
+        notices.append('root_mount_read_failed')
+    elif sample['root_read_only']:
+        notices.append('root_read_only')
+    if sample.get('kernel_tainted') not in (None, 0):
+        notices.append('kernel_tainted')
+    # Require sustained drain; a single transient negative reading is not a
+    # fault, and neither is the battery keeper's deliberate descent from a
+    # full battery (charge_behaviour force-discharge, tabs3-base 0.1.27).
+    drain = (sample['charger']['online'] == 1 and
+             sample.get('charger_behaviour') != 'force-discharge' and
+             battery['current_now'] is not None and battery['current_now'] < -100000)
+    start = previous.get('drain_started_uptime_s') if continuous and drain else None
+    if not valid_time(start) or (last is not None and start > last):
+        start = None
+    if drain and start is None and valid_time(now):
+        start = now
+    sample['drain_started_uptime_s'] = start if drain else None
+    if drain and start is not None and sample['uptime_s'] is not None and sample['uptime_s'] - start >= 900:
+        notices.append('battery_draining_on_external_power')
+    sample['notices'] = notices
+    return sample
+
+
+def save(sample, directory):
+    directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+    encoded = json.dumps(sample, separators=(',', ':')) + '\n'
+    temporary = directory / 'latest.tmp'
+    temporary.write_text(encoded)
+    temporary.replace(directory / 'latest.json')
+    daily = directory / (sample['recorded_utc'][:10] + '.jsonl')
+    # At a one-minute interval, the expected volume is under 8 MiB/day.
+    # Bound both per-file growth and retention, even if clocks are corrected.
+    if not daily.exists() or daily.stat().st_size + len(encoded.encode()) <= 8 * 1024 * 1024:
+        with daily.open('a') as out:
+            out.write(encoded)
+    else:
+        print('daily health log size limit reached', file=sys.stderr)
+    old = sorted(directory.glob('????-??-??.jsonl'), key=lambda p: p.stat().st_mtime, reverse=True)
+    for expired in old[7:]:
+        expired.unlink()
+
+
+def main():
+    started = time.monotonic()
+    directory = Path(os.environ.get('LOGS_DIRECTORY', '/var/log/tabs3-server'))
+    previous = None
+    try:
+        previous = json.loads((directory / 'latest.json').read_text())
+        if not isinstance(previous, dict):
+            previous = None
+    except (OSError, ValueError):
+        pass
+    sample = assess(collect(), previous)
+    sample['collection_seconds'] = round(time.monotonic() - started, 4)
+    save(sample, directory)
+    if sample['notices']:
+        print('server health: ' + ', '.join(sample['notices']), file=sys.stderr)
+
+
+if __name__ == '__main__':
+    main()

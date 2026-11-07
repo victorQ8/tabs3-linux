@@ -1,0 +1,56 @@
+# tracer: nop
+#
+# entries-in-buffer/entries-written: 38/38   #P:4
+#
+#                                _-----=> irqs-off/BH-disabled
+#                               / _----=> need-resched
+#                              | / _---=> hardirq/softirq
+#                              || / _--=> preempt-depth
+#                              ||| / _-=> migrate-disable
+#                              |||| /     delay
+#           TASK-PID     CPU#  |||||  TIMESTAMP  FUNCTION
+#              | |         |   |||||     |         |
+              sh-702     [002] ...1.   673.558665: tracing_mark_write: STATIC_VERIFY_START
+              sh-702     [002] ...1.   676.566647: tracing_mark_write: FAILED_BRIGHT_WAKE
+              sh-702     [002] ...1.   676.577971: tracing_mark_write: SEND 15 b0 5a
+              sh-702     [001] ...1.   676.595754: tracing_mark_write: SEND 24 d8 01 1
+              sh-702     [002] ...1.   676.613141: tracing_mark_write: SEND 15 b0 d0
+              sh-702     [001] ...1.   676.634959: tracing_mark_write: SEND 24 d1 01 1
+              sh-702     [000] ...1.   676.650382: tracing_mark_write: SEND 15 b0 5a
+              sh-702     [000] ...1.   676.665577: tracing_mark_write: SEND 24 d8 01 1
+              sh-702     [001] ...1.   676.681559: tracing_mark_write: SEND 15 b0 51
+              sh-702     [001] ...1.   676.696553: tracing_mark_write: SEND 24 d1 01 1
+              sh-702     [000] ...1.   676.710954: tracing_mark_write: SEND 15 b0 5a
+              sh-702     [000] ...1.   676.726080: tracing_mark_write: SEND 24 d8 01 1
+              sh-702     [001] ...1.   676.742242: tracing_mark_write: SEND 15 b0 d9
+              sh-702     [001] ...1.   676.758582: tracing_mark_write: SEND 24 d1 01 1
+              sh-702     [001] ...1.   676.774807: tracing_mark_write: SEND 15 b0 5a
+              sh-702     [000] ...1.   676.789224: tracing_mark_write: SEND 24 d8 01 1
+              sh-702     [001] ...1.   676.805092: tracing_mark_write: SEND 15 b0 70
+              sh-702     [002] ...1.   676.819874: tracing_mark_write: SEND 24 d2 01 1
+              sh-702     [001] ...1.   676.841334: tracing_mark_write: SEND 15 b0 5a
+              sh-702     [000] ...1.   676.861158: tracing_mark_write: SEND 24 d8 01 1
+              sh-702     [001] ...1.   676.877901: tracing_mark_write: SEND 15 b0 67
+              sh-702     [001] ...1.   676.892693: tracing_mark_write: SEND 24 d2 01 1
+              sh-702     [000] ...1.   676.909982: tracing_mark_write: SEND 15 b0 5a
+              sh-702     [000] ...1.   676.925213: tracing_mark_write: SEND 24 d8 01 1
+              sh-702     [001] ...1.   676.940872: tracing_mark_write: SEND 15 b0 36
+              sh-702     [001] ...1.   676.955582: tracing_mark_write: SEND 24 d2 01 1
+              sh-702     [002] ...1.   676.973227: tracing_mark_write: SEND 15 b0 5a
+              sh-702     [001] ...1.   676.994351: tracing_mark_write: SEND 24 d8 01 1
+              sh-702     [002] ...1.   677.011462: tracing_mark_write: SEND 15 b0 4d
+              sh-702     [001] ...1.   677.031607: tracing_mark_write: SEND 24 d2 01 1
+              sh-702     [003] ...1.   677.049704: tracing_mark_write: SEND 15 b0 5a
+              sh-702     [001] ...1.   677.069822: tracing_mark_write: SEND 24 d8 01 1
+              sh-702     [002] ...1.   677.086627: tracing_mark_write: SEND 15 b0 49
+              sh-702     [001] ...1.   677.106175: tracing_mark_write: SEND 24 d2 01 1
+              sh-702     [002] ...1.   677.123905: tracing_mark_write: SEND 06 0a 1
+              sh-702     [001] ...1.   677.143426: tracing_mark_write: SEND 06 0e 1
+              sh-702     [002] ...1.   677.160336: tracing_mark_write: SEND 06 0f 1
+              sh-702     [002] ...1.   677.170187: tracing_mark_write: END
+[   13.732557] panel-samsung-ams968hh01 994000.dsi.0: DSI input fixup step 2 sent
+[   14.341002] panel-samsung-ams968hh01 994000.dsi.0: DSI input fixup step 3 sent
+[   18.150073] platform 67a000.crypto: deferred probe pending: qcrypto: Failed to get TX DMA channel
+[   18.150185] gcc-msm8996 300000.clock-controller: sync_state() pending due to 83000.rng
+[   18.150226] gcc-msm8996 300000.clock-controller: sync_state() pending due to 644000.dma-controller
+[   18.150262] gcc-msm8996 300000.clock-controller: sync_state() pending due to 67a000.crypto

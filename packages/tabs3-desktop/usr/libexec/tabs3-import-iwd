@@ -1,0 +1,77 @@
+#!/usr/bin/python3
+"""Preserve personal Wi-Fi profiles before NetworkManager takes over IWD."""
+import os
+from pathlib import Path
+import re
+import uuid
+
+from gi.repository import GLib
+
+
+def keyfile(path):
+    k = GLib.KeyFile()
+    k.load_from_file(str(path), GLib.KeyFileFlags.NONE)
+    return k
+
+
+def get(k, group, key, default=None):
+    try:
+        return k.get_string(group, key)
+    except GLib.Error:
+        return default
+
+
+def migrate(source, destination):
+    destination.mkdir(parents=True, exist_ok=True, mode=0o700)
+    existing = set()
+    for p in destination.glob('*.nmconnection'):
+        k = keyfile(p)
+        value = get(k, 'wifi', 'ssid')
+        if value is not None:
+            if re.fullmatch(r'(?:[0-9]+;)+', value):
+                existing.add(bytes(int(v) for v in value.split(';') if v))
+            else:
+                existing.add(value.encode())
+    imported = 0
+    for p in sorted(source.glob('*.psk')):
+        # IWD encodes otherwise unsuitable SSIDs as =<hex>.psk.
+        ssid = bytes.fromhex(p.stem[1:]) if p.stem.startswith('=') else p.stem.encode()
+        if ssid in existing:
+            continue
+        old = keyfile(p)
+        secret = get(old, 'Security', 'PreSharedKey')
+        if secret is not None and not re.fullmatch(r'[0-9A-Fa-f]{64}', secret):
+            raise ValueError('Unsupported IWD PSK representation; original retained')
+        if secret is None:
+            secret = get(old, 'Security', 'Passphrase')
+            if secret is None or not 8 <= len(secret.encode()) <= 63:
+                raise ValueError('Missing usable IWD PSK; original retained')
+        ident = str(uuid.uuid5(uuid.NAMESPACE_URL, 'tabs3-iwd:' + ssid.hex()))
+        new = GLib.KeyFile()
+        for group, values in {
+            'connection': {'id': 'tabs3-wifi-' + ident[:8], 'uuid': ident,
+                           'type': 'wifi', 'autoconnect': get(old, 'Settings', 'AutoConnect', 'true')},
+            'wifi': {'mode': 'infrastructure', 'ssid': ''.join(f'{b};' for b in ssid)},
+            'wifi-security': {'key-mgmt': 'wpa-psk', 'psk': secret},
+            'ipv4': {'method': 'auto'}, 'ipv6': {'method': 'auto'},
+        }.items():
+            for name, value in values.items():
+                new.set_string(group, name, value)
+        target = destination / f'tabs3-iwd-{ident}.nmconnection'
+        if target.exists():
+            continue
+        # O_EXCL and mode 0600 keep existing settings and secrets protected.
+        fd = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, 'w') as out:
+            out.write(new.to_data()[0])
+        existing.add(ssid)
+        imported += 1
+    return imported
+
+
+if __name__ == '__main__':
+    if os.geteuid() != 0:
+        raise SystemExit('Run on the tablet with sudo')
+    n = migrate(Path('/var/lib/tabs3/desktop-backup/iwd'),
+                Path('/etc/NetworkManager/system-connections'))
+    print(f'Imported {n} personal Wi-Fi profile(s); original backup retained.')

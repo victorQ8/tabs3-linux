@@ -1,0 +1,293 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Rear camera: Sony IMX258 13 MP on CSIPHY0 / CCI master 0, a Dongwoon
+ * DW9807 voice-coil actuator on BLSP2 I2C1 (stock i2c_7, TLMM 55/56),
+ * captured through the MSM8996 CAMSS (CSIPHY0 -> CSID0 -> ISPIF -> VFE0).
+ * From the stock tree (qcom,cci@a0c000 -> qcom,camera@0, i2c@75b5000 ->
+ * qcom,actuator@18) and Samsung's camera dtsi; see
+ * research/platform-20261013/camera/NOTES.md for everything that had to be
+ * inferred (lane count, addresses, the module EEPROM).
+ *
+ * Every camera supply is a PM8994 rail (no S2MPB02 LDO is referenced by a
+ * stock camera node): cam_vana L29 2.8 V, cam_vdig S3 1.3 V behind the
+ * CAM_CORE_EN switch (TLMM 9), cam_vio LVS1 1.8 V, cam_vaf L17 2.8 V (the
+ * actuator; always on with the sensor DSP), mipi-csi-vdd L2 1.25 V.
+ *
+ * Front camera: Samsung S5K5E3YX 5 MP on CSIPHY2 / CCI master 1 (stock
+ * qcom,camera@2: cell-index 2, slave 0x20 8-bit, MCLK2 24 MHz on TLMM 15,
+ * CAM_RESET2 TLMM 40, its own CAM_CORE_EN switch on TLMM 8, cam_vana L23
+ * 2.8 V, cam_vdig S3, cam_vio LVS1, mount angle 270). Register tables from
+ * the module's vendor configuration (research notes).
+ */
+#include <dt-bindings/clock/qcom,mmcc-msm8996.h>
+#include <dt-bindings/gpio/gpio.h>
+
+/ {
+	/*
+	 * CAM_CORE_EN (TLMM 9): the stock rear-sensor node lists both S3
+	 * (1.3 V, "cam_vdig") and this enable; the front sensor calls its
+	 * equivalent "CAM_VDIG". A discrete regulator on the camera flex makes
+	 * the sensor's digital core rail (nominally 1.2 V) from S3, so the
+	 * imx258 driver sequences it as its vdig supply.
+	 */
+	vreg_cam_core: regulator-cam-core {
+		compatible = "regulator-fixed";
+		regulator-name = "vreg_cam_core";
+		regulator-min-microvolt = <1200000>;
+		regulator-max-microvolt = <1200000>;
+		gpio = <&tlmm 9 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+		startup-delay-us = <1000>;
+		vin-supply = <&vreg_s3a_1p3>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&cam_rear_core_en_default>;
+	};
+
+	/* The front sensor's own CAM_CORE_EN switch (TLMM 8) on S3 */
+	vreg_cam_core_front: regulator-cam-core-front {
+		compatible = "regulator-fixed";
+		regulator-name = "vreg_cam_core_front";
+		regulator-min-microvolt = <1200000>;
+		regulator-max-microvolt = <1200000>;
+		gpio = <&tlmm 8 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+		startup-delay-us = <1000>;
+		vin-supply = <&vreg_s3a_1p3>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&cam_front_core_en_default>;
+	};
+};
+
+&rpm_requests {
+	regulators-0 {
+		/* stock cam_vana (rear) */
+		vreg_l29a_2p8: l29 {
+			regulator-name = "vreg_l29a_2p8";
+			regulator-min-microvolt = <2800000>;
+			regulator-max-microvolt = <2800000>;
+		};
+
+		/* stock cam_vio: 1.8 V load switch */
+		vreg_lvs1a_1p8: lvs1 {
+			regulator-name = "vreg_lvs1a_1p8";
+		};
+		/* stock cam_vana (front) */
+		vreg_l23a_2p8: l23 {
+			regulator-name = "vreg_l23a_2p8";
+			regulator-min-microvolt = <2800000>;
+			regulator-max-microvolt = <2800000>;
+		};
+	};
+};
+
+/* BLSP2 QUP1, stock i2c_7 (TLMM 55/56): DW9807 actuator and the module EEPROM */
+&blsp2_i2c1 {
+	clock-frequency = <400000>;
+	status = "okay";
+
+	/*
+	 * The dw9807-vcm binding has no supply property; its VDD is L17,
+	 * kept on by the sensor DSP (sensors.dtsi), and its I2C I/O rail is
+	 * LVS1 ("cam_vio"), kept on below (its writes failed with EIO while
+	 * only the sensor powered LVS1). The stock actuator address 0x18 is
+	 * the 8-bit write address: the part answers at 0x0c (bus probe of
+	 * 2026-10-14; packages 62 to 65 had 0x18 and the driver's writes were
+	 * refused). The module EEPROM (the DW9807's EEPROM block, stock
+	 * slave address 0xb0) answers at 0x58, see eeprom@58.
+	 */
+	cam_rear_vcm: lens@c {
+		compatible = "dongwoon,dw9807-vcm";
+		reg = <0x0c>;
+	};
+
+	/*
+	 * The rear module's calibration EEPROM: the DW9807's 64 Kbit block
+	 * with 16-bit addresses (stock qcom,eeprom@50, slave address 0xb0,
+	 * word addressing, section map at 0x0000 and data up to 0x1fff).
+	 * Read-only; nothing writes it.
+	 */
+	cam_rear_eeprom: eeprom@58 {
+		compatible = "atmel,24c64";
+		reg = <0x58>;
+		read-only;
+	};
+};
+
+&vreg_lvs1a_1p8 {
+	regulator-always-on;
+};
+
+/*
+ * The CSI PHYs and CSIDs sit in the CAMSS GDSC, which the driver only
+ * switches on through the VFE domains, after the PHY is powered in the
+ * pipeline order; the top AHB clock then fails ("status stuck at off",
+ * package 62 RAM boot). A third, last power domain is the CAMSS block
+ * itself: the driver attaches it to the device (its "legacy magic index")
+ * so the PHY's runtime resume powers it first.
+ */
+&camss {
+	power-domains = <&mmcc VFE0_GDSC>, <&mmcc VFE1_GDSC>, <&mmcc CAMSS_GDSC>;
+	/*
+	 * The VFE writes its frames through the multimedia NOC, a path the RPM
+	 * only keeps clocked while somebody votes bandwidth on it. Without a
+	 * vote of its own the camera only worked while the display was on (the
+	 * display's vote kept the path alive): with the panel blanked the VFE's
+	 * writes never completed, the halt at stream-off timed out and the VFE
+	 * SMMU reported itself deadlocked until a reboot. The driver votes on
+	 * these paths while the block is in use (patch 0039).
+	 */
+	interconnects = <&mnoc MASTER_VFE &bimc SLAVE_EBI_CH0>,
+			<&bimc MASTER_AMPSS_M0 &mnoc SLAVE_CAMERA_CFG>;
+	interconnect-names = "cam_vfe_mem", "cam_ahb";
+	vdda-supply = <&vreg_l2a_1p25>;
+	status = "okay";
+
+	ports {
+		port@0 {
+			reg = <0>;
+
+			/*
+			 * Four data lanes, straight mapping (the downstream
+			 * defaults, csi_lane_assign 0x4320 / mask 0x1f). The
+			 * MSM8996 CSIPHY code hard-wires the clock lane.
+			 */
+			csiphy0_ep: endpoint {
+				clock-lanes = <7>;
+				data-lanes = <0 1 2 3>;
+				remote-endpoint = <&imx258_ep>;
+			};
+		};
+
+		port@2 {
+			reg = <2>;
+			/* Front sensor: two data lanes on CSIPHY2 */
+			csiphy2_ep: endpoint {
+				clock-lanes = <7>;
+				data-lanes = <0 1>;
+				remote-endpoint = <&s5k5e3_ep>;
+			};
+		};
+	};
+};
+
+/* The SoC node already selects the stock CCI pin states (TLMM 17-20) */
+&cci {
+	status = "okay";
+};
+
+/* CCI master 0 (400 kHz) */
+&cci_i2c0 {
+	camera@1a {
+		compatible = "sony,imx258";
+		reg = <0x1a>;
+
+		/* stock cam_src_clk (mclk0_clk_src) 24 MHz on TLMM 13 */
+		clocks = <&mmcc CAMSS_MCLK0_CLK>;
+		assigned-clocks = <&mmcc CAMSS_MCLK0_CLK>;
+		assigned-clock-rates = <24000000>;
+
+		/* XCLR = CAM_RESET0 (TLMM 30), driven by patch 0036 */
+		reset-gpios = <&tlmm 30 GPIO_ACTIVE_LOW>;
+
+		vana-supply = <&vreg_l29a_2p8>;
+		vdig-supply = <&vreg_cam_core>;
+		vif-supply = <&vreg_lvs1a_1p8>;
+
+		lens-focus = <&cam_rear_vcm>;
+		orientation = <1>;	/* rear camera */
+		rotation = <90>;	/* stock qcom,mount-angle = <90> */
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&cam_rear_default>;
+
+		port {
+			imx258_ep: endpoint {
+				data-lanes = <1 2 3 4>;
+				/*
+				 * The driver's 24 MHz INCK table: 1272 Mbps/lane
+				 * (4208x3120 at 30 fps) and 642 Mbps/lane (binned).
+				 */
+				link-frequencies = /bits/ 64 <636000000 321000000>;
+				remote-endpoint = <&csiphy0_ep>;
+			};
+		};
+	};
+};
+
+/* CCI master 1 (400 kHz): the front sensor */
+&cci_i2c1 {
+	camera@10 {
+		compatible = "samsung,s5k5e3";
+		reg = <0x10>;
+		/* stock cam_src_clk (mclk2_clk_src) 24 MHz on TLMM 15 */
+		clocks = <&mmcc CAMSS_MCLK2_CLK>;
+		assigned-clocks = <&mmcc CAMSS_MCLK2_CLK>;
+		assigned-clock-rates = <24000000>;
+		/* CAM_RESET2 (TLMM 40) */
+		reset-gpios = <&tlmm 40 GPIO_ACTIVE_LOW>;
+		vana-supply = <&vreg_l23a_2p8>;
+		vdig-supply = <&vreg_cam_core_front>;
+		vio-supply = <&vreg_lvs1a_1p8>;
+		orientation = <0>;	/* front camera */
+		rotation = <270>;	/* stock qcom,mount-angle = <270> */
+		pinctrl-names = "default";
+		pinctrl-0 = <&cam_front_default>;
+		port {
+			s5k5e3_ep: endpoint {
+				data-lanes = <1 2>;
+				/* 896 Mbps per lane from the 24 MHz clock */
+				link-frequencies = /bits/ 64 <448000000>;
+				remote-endpoint = <&csiphy2_ep>;
+			};
+		};
+	};
+};
+
+&tlmm {
+	/* stock cam_sensor_mclk0_active (4 mA) and cam_sensor_rear_active */
+	cam_rear_default: cam-rear-default-state {
+		mclk0-pins {
+			pins = "gpio13";
+			function = "cam_mclk";
+			drive-strength = <4>;
+			bias-disable;
+		};
+
+		reset-pins {
+			pins = "gpio30";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	cam_rear_core_en_default: cam-rear-core-en-default-state {
+		pins = "gpio9";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	/* stock cam_sensor_mclk2_active (4 mA) and cam_sensor_front_active */
+	cam_front_default: cam-front-default-state {
+		mclk2-pins {
+			pins = "gpio15";
+			function = "cam_mclk";
+			drive-strength = <4>;
+			bias-disable;
+		};
+		reset-pins {
+			pins = "gpio40";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	cam_front_core_en_default: cam-front-core-en-default-state {
+		pins = "gpio8";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+};

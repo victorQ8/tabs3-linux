@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-15T08:10:00+00:00",
+  "installed": {
+    "boot_partition": "package 76 (see docs/kernel76-validation-20261015.json)",
+    "ram_booted": "packages 69 to 72 and 74",
+    "tabs3-base": "0.1.30"
+  },
+  "chip": {
+    "bus": "BLSP1 QUP5 i2c@7579000 (stock i2c_5), TLMM 83/84 blsp_i2c5 at 100 kHz, interrupt TLMM 73 falling; the QUP node is not in mainline's msm8996.dtsi, usbpd.dtsi adds it",
+    "answer": "0x33 on the scan; hardware boot 4; firmware boot 6 main 00.00.d5 (flash-mode reads)",
+    "with_the_pc": "function state 0x89ff241d: attached, sink, device, policy state 29 (error recovery), CC1 4 CC2 2, Rp 1; no partner messages, no source capabilities"
+  },
+  "hub_without_driver": {
+    "attach_in_host_mode": "state 0x97ff120e before VBUS (source, host, wait new capabilities), 0x89ff4211 two seconds after VBUS (sink, device, sink wait for capabilities: the chip accepted the hub's power-role swap), then 0xc9ffc21d (error recovery, VBUS-SBU short flagged): nobody turned the tablet's VBUS off in time",
+    "after_dropping_the_tablet_vbus": "state 0x95ff4215: attached, sink, host, sink ready; charger online, +56 to +376 mA into the battery, the hub's capability 5 V 3 A dual-role power and data; the USB host controller saw no device on the port"
+  },
+  "driver_first_version_ram_boot_70": {
+    "sequence_ms": "0: boost on; 19: chip detached; 69: attached sink device, sink wait for capabilities; 77: charger 'USB OTG VBUS off: the partner supplies the port'; 275: sink ready, source capabilities received; 693: data-role swap, attached sink host",
+    "result": "charger online with the port in host mode and the controller reporting sink and host, 8 interrupts served; no USB device enumerated",
+    "cause": "SM5705 MUIC: CTRL 0x02 = 0x1e (automatic switching on), MANSW1 0x13 = 0x00 (D+/D- switch open), charger type unknown; writing MANSW1 = 0x24 and clearing the automatic-switch bit made the hub (14cd:8601) and its billboard device enumerate within a second, charging unchanged"
+  },
+  "fix_in_package_71": "the charger holds D+/D- on USB with automatic switching off while the host role is held, whoever supplies VBUS, and releases it when the host role ends or the boost cannot start; the contract current from the controller sets the input limit (3 A offered, 1.5 A cap)",
+  "pending_on_hardware": [
+    "the chip's half-second cycle with a partner without PD: find whether the stock driver tells the chip about VBUS",
+    "other devices in the hub's USB-A ports"
+  ],
+  "validation_package_71": {
+    "hub_attach": "attached, source, host, policy state 14 (source wait new capabilities): a hub with its own charger still waits for the tablet's VBUS before it talks",
+    "after_tabs3_usb_host_host_ms": "0: boost on; 19: detached; 69: attached sink device, sink wait for capabilities; 77: charger 'USB OTG VBUS off: the partner supplies the port', 3000 mA; 276: sink ready, source capabilities 5 V 3 A dual-role power and data; 690: data-role swap, attached sink host; 1200: the hub (14cd:8601) and its billboard device enumerated by themselves",
+    "charging": "charger online, input limit 1500000, +1.0 to +1.1 A into the battery until the keeper resumed its forced descent a minute later (94 %)",
+    "reboot_with_the_hub": "the contract survives: the driver probes into attached sink host, the charger is online at 1.5 A, but the USB role is the boot default (device) until tabs3-usb-host host",
+    "record": "docs/kernel71-validation-20261015.json"
+  },
+  "validation_package_72": {
+    "change": "the driver sets the USB role switch from the controller's data role through a usb-c-connector node (usbpd.dtsi); the charger refuses the boost below 15 %",
+    "hub_attach_ms": "0: attached sink device (the hub sources at once); 165: the partner supplies 3000 mA; 250: sink ready; 670: data-role swap, attached sink host; 674: USB role host; 830: charger 'USB OTG: the partner supplies VBUS, no boost'; 1300: the hub found, 4 ports; 1800: its billboard device",
+    "reboot_with_the_hub": "probe at 8.7 s into attached sink host, USB role host at 8.73 s, the hub found at 9.4 s, charger online at the 1.5 A limit; no command",
+    "pc_cable": "role device, gadget configured, SDP at 500 mA",
+    "lesson": "a cable detected while the MUIC's switch is held (the PC cable arriving in host mode on package 71) reads Unknown and the switch stays open after the hold ends; a re-plug detects again. Package 72 drops to device as the partner leaves, so the next cable is detected normally",
+    "record": "docs/kernel72-validation-20261015.json"
+  },
+  "validation_packages_74_to_76": {
+    "blips": "as the tablet's VBUS comes on the chip reports a detach for a few tens of milliseconds, then for about 100 ms 'attached, sink, device' with its policy engine still detached; a partner that really supplies reaches 'sink wait for capabilities' (17) within 70 ms",
+    "fixes": "74: the drop to the device role waits a second; 75: a sink attach at policy state 0 does not pause the boost; 76: those blips are not logged and do not hurry the poll",
+    "non_pd_partner": "with the Ethernet adapter the chip cycles every 460 ms (3, 14, 0, sink attach at 0, 3) while the tablet sources; the data path is untouched",
+    "hub_first_try": "15:19: the hub sourced on attach, swap at +410 ms, hub found at +960 ms; at 15:10, right after cable moves, it needed twelve tries over 12 s before it could source",
+    "record": "docs/kernel76-validation-20261015.json"
+  }
+}

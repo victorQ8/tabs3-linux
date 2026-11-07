@@ -1,0 +1,11 @@
+Modem processor: running
+Operating mode: 'online'
+SIM card: 'absent'
+Registration: 'not-registered-searching'
+Radio: 'gsm'
+Roaming: 'off'
+Network: MCC/MNC: (redacted)
+Operator: ''
+Service: 'limited'
+Signal: GSM:
+Signal: RSSI: '-56 dBm'

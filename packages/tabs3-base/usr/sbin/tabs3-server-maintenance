@@ -1,0 +1,69 @@
+#!/bin/sh
+# Server maintenance policy. It does not install updates or reboot the machine.
+set -eu
+[ "$(id -u)" = 0 ] || { echo 'Run as root.' >&2; exit 1; }
+tr '\000' '\n' < /sys/firmware/devicetree/base/compatible |
+    grep -qx 'samsung,gts3llte' || { echo 'Not an SM-T825.' >&2; exit 1; }
+command -v unattended-upgrade >/dev/null
+/usr/sbin/sshd -t
+# The validated installed root spans userdata + Android system. Persist the
+# filesystem's error response in its superblock and apply it to this mount.
+# A filesystem error then stops writes; it still needs diagnosis and repair.
+if [ "$(findmnt -n -o SOURCE /)" = /dev/mapper/tabs3root ] &&
+   [ "$(findmnt -n -o FSTYPE /)" = ext4 ]; then
+    tune2fs -e remount-ro /dev/mapper/tabs3root >/dev/null
+    mount -o remount,errors=remount-ro /
+else
+    echo 'Root error policy skipped: not the validated tabs3root ext4 mapping.' >&2
+fi
+# Preserve any previous project-owned policy before selecting server settings.
+install -d -m 0700 /var/lib/tabs3/server-maintenance
+for file in /etc/ssh/sshd_config.d/00-tabs3-server.conf /etc/apt/apt.conf.d/90-tabs3-server; do
+    backup=/var/lib/tabs3/server-maintenance/$(basename "$file").before
+    if [ -f "$file" ] && [ ! -e "$backup" ]; then cp -p "$file" "$backup"; fi
+done
+install -d /etc/ssh/sshd_config.d
+conf=/etc/ssh/sshd_config.d/00-tabs3-server.conf
+previous=$(mktemp)
+had_previous=false
+if [ -e "$conf" ]; then cp -p "$conf" "$previous"; had_previous=true; fi
+cat > "$conf" <<'EOF'
+# The local console password is unchanged. Remote server access uses keys.
+PubkeyAuthentication yes
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitRootLogin no
+EOF
+chmod 0644 "$conf"
+if ! /usr/sbin/sshd -t; then
+    if "$had_previous"; then cp -p "$previous" "$conf"; else rm -f "$conf"; fi
+    rm -f "$previous"
+    echo 'SSH validation failed; previous configuration restored.' >&2
+    exit 1
+fi
+rm -f "$previous"
+systemctl reload ssh.service
+
+cat > /etc/apt/apt.conf.d/90-tabs3-server <<'EOF'
+// Only Debian security updates are automatic. Local hardware packages need
+// their separate build, RAM-test and boot-image validation procedure.
+#clear Unattended-Upgrade::Allowed-Origins;
+#clear Unattended-Upgrade::Origins-Pattern;
+Unattended-Upgrade::Origins-Pattern {
+    "origin=Debian,codename=trixie-security,label=Debian-Security";
+};
+Unattended-Upgrade::Package-Blacklist {
+    "^linux-tabs3$";
+    "^tabs3-.*";
+};
+Unattended-Upgrade::Automatic-Reboot "false";
+Unattended-Upgrade::Remove-Unused-Kernel-Packages "false";
+Unattended-Upgrade::Remove-Unused-Dependencies "false";
+APT::Periodic::Enable "1";
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+EOF
+chmod 0644 /etc/apt/apt.conf.d/90-tabs3-server
+apt-config dump >/dev/null
+systemctl enable --now apt-daily.timer apt-daily-upgrade.timer
+echo 'Server maintenance configured: SSH keys, Debian security updates, no automatic reboot.'

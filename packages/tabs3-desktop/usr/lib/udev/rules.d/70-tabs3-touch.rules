@@ -1,0 +1,2 @@
+# Same orientation as the five-point-tested recovery: x=y, y=1-x.
+SUBSYSTEM=="input", KERNEL=="event*", ATTRS{name}=="Synaptics s5807", ENV{LIBINPUT_CALIBRATION_MATRIX}="0 1 0 -1 0 1"

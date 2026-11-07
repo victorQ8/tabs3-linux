@@ -1,0 +1,103 @@
+#!/usr/bin/python3
+"""Preserve offline wall time with a read-only RTC and NTP-verified offset."""
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import time
+
+RTC = Path('/sys/class/rtc/rtc0/since_epoch')
+STATE = Path('/var/lib/tabs3/rtc-offset')
+FLOOR = 1760000000
+
+
+def read_rtc():
+    value = int(RTC.read_text().strip())
+    if not 0 <= value <= 0xffffffff:
+        raise ValueError('RTC counter is out of range')
+    return value
+
+
+def restore_target(record, rtc, now):
+    if not isinstance(record, dict) or record.get('version') != 1:
+        raise ValueError('unrecognised saved RTC offset')
+    if any(type(record.get(k)) is not int for k in ('rtc', 'utc')):
+        raise ValueError('saved RTC values must be integers')
+    if not 0 <= record['rtc'] <= 0xffffffff or record['utc'] < FLOOR:
+        raise ValueError('saved RTC values are out of range')
+    if rtc < record['rtc']:
+        raise ValueError('RTC counter went backwards; a new NTP sync is needed')
+    target = record['utc'] + rtc - record['rtc']
+    return target if target > now else None
+
+
+def save():
+    synced = subprocess.run(
+        ['timedatectl', 'show', '-p', 'NTPSynchronized', '--value'],
+        capture_output=True, text=True, timeout=10, check=False)
+    if synced.returncode or synced.stdout.strip() != 'yes':
+        print('Clock is not NTP-synchronized; saved RTC offset left unchanged.')
+        return
+    now, rtc = int(time.time()), read_rtc()
+    if now < FLOOR:
+        raise ValueError('system time is implausible')
+    record = {'version': 1, 'utc': now, 'rtc': rtc}
+    STATE.parent.mkdir(parents=True, exist_ok=True)
+    name = None
+    try:
+        with tempfile.NamedTemporaryFile(mode='w', dir=STATE.parent,
+                                         prefix='.rtc-offset-', delete=False) as f:
+            name = f.name
+            json.dump(record, f)
+            f.write('\n')
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(name, STATE)
+        name = None
+        fd = os.open(STATE.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+    finally:
+        if name:
+            os.unlink(name)
+    print('Saved an NTP-verified RTC offset.')
+
+
+def restore():
+    if not STATE.exists():
+        print('No saved RTC offset yet.')
+        return
+    try:
+        target = restore_target(json.loads(STATE.read_text()), read_rtc(),
+                                int(time.time()))
+    except (ValueError, TypeError) as exc:
+        print(f'Ignoring saved RTC offset: {exc}', file=sys.stderr)
+        return
+    if target is None:
+        print('System clock already at or ahead of the RTC estimate.')
+        return
+    subprocess.run(['date', '-s', '@' + str(target)], check=True,
+                   stdout=subprocess.DEVNULL, timeout=10)
+    print('System clock advanced using the saved RTC offset.')
+
+
+def main():
+    if len(sys.argv) != 2 or sys.argv[1] not in ('save', 'restore'):
+        print('usage: tabs3-rtc-offset restore|save', file=sys.stderr)
+        return 64
+    if not RTC.exists():
+        return 0
+    try:
+        (save if sys.argv[1] == 'save' else restore)()
+    except (OSError, ValueError, subprocess.SubprocessError) as exc:
+        print(f'RTC offset failed: {exc}', file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

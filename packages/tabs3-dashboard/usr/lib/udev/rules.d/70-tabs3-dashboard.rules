@@ -1,0 +1,5 @@
+# The dashboard draws on the panel's framebuffer, which appears when the
+# display driver probes, sometimes after multi-user.target has already been
+# reached. Tag the framebuffer for systemd so dev-fb0.device exists, and have
+# the device pull the dashboard in as soon as it is there.
+SUBSYSTEM=="graphics", KERNEL=="fb0", TAG+="systemd", ENV{SYSTEMD_WANTS}+="tabs3-dashboard.service"

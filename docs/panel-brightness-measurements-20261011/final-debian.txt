@@ -1,0 +1,56 @@
+Linux tabs3 6.19.5-gts3l1 #14 SMP PREEMPT 2026-10-10 00:00:00 UTC aarch64 GNU/Linux
+linux-tabs3	6.19.5-29
+tabs3-base	0.1.6
+brightness=86
+actual_brightness=86
+max_brightness=255
+saved_brightness=86
+enabled
+active
+  UNIT LOAD ACTIVE SUB DESCRIPTION
+
+0 loaded units listed.
+DEVTYPE=power_supply
+OF_NAME=fuel-gauge
+OF_FULLNAME=/i2c-sm5705-fg/fuel-gauge@71
+OF_COMPATIBLE_0=siliconmitus,sm5705-fuel-gauge
+OF_COMPATIBLE_N=1
+POWER_SUPPLY_NAME=sm5705-battery
+POWER_SUPPLY_TYPE=Battery
+POWER_SUPPLY_STATUS=Charging
+POWER_SUPPLY_PRESENT=1
+POWER_SUPPLY_TECHNOLOGY=Li-ion
+POWER_SUPPLY_VOLTAGE_NOW=3972656
+POWER_SUPPLY_VOLTAGE_OCV=3965332
+POWER_SUPPLY_CURRENT_NOW=-85449
+POWER_SUPPLY_CHARGE_FULL_DESIGN=6000000
+POWER_SUPPLY_CAPACITY=69
+POWER_SUPPLY_TEMP=219
+POWER_SUPPLY_TYPE=Battery
+DEVTYPE=power_supply
+OF_NAME=charger
+OF_FULLNAME=/i2c-sm5705/charger@49
+OF_COMPATIBLE_0=siliconmitus,sm5705-charger
+OF_COMPATIBLE_N=1
+POWER_SUPPLY_NAME=sm5705-charger
+POWER_SUPPLY_TYPE=USB
+POWER_SUPPLY_STATUS=Charging
+POWER_SUPPLY_CHARGE_TYPE=Fast
+POWER_SUPPLY_HEALTH=Good
+POWER_SUPPLY_ONLINE=1
+POWER_SUPPLY_CONSTANT_CHARGE_CURRENT=1500000
+POWER_SUPPLY_CONSTANT_CHARGE_VOLTAGE=4380000
+POWER_SUPPLY_CHARGE_BEHAVIOUR=auto
+POWER_SUPPLY_INPUT_CURRENT_LIMIT=500000
+POWER_SUPPLY_TEMP=263
+POWER_SUPPLY_TYPE=USB
+POWER_SUPPLY_USB_TYPE=Unknown [SDP] DCP CDP
+Y
+[    7.212139] msm_dsi 994000.dsi: panel LP11: clock deferred, lane_ctrl=00000000
+[    7.236190] msm_dsi 996000.dsi: panel LP11: clock deferred, lane_ctrl=00000000
+[    7.393453] panel-samsung-ams968hh01 994000.dsi.0: startup checkpoint: TCON_RDY=1 ret=0
+[    7.395951] msm_dsi 996000.dsi: panel LP11: first command starts clock, lane_ctrl=10000000
+[    7.395987] msm_dsi 994000.dsi: panel LP11: first command starts clock, lane_ctrl=10000000
+[    7.623411] panel-samsung-ams968hh01 994000.dsi.0: MTP 33 51 55 43 3a 53 5b 36 14 00 00 40 51 57 42 3c 53 5b 3c 0c 00 00 38 53 56 47 3d 55 5c 64 82 00 00
+[    7.623479] panel-samsung-ams968hh01 994000.dsi.0: Generated 65 calibrated gamma levels; default level 86 (111 nit)
+[   18.662449] platform 67a000.crypto: deferred probe pending: qcrypto: Failed to get TX DMA channel

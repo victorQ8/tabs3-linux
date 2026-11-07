@@ -1,0 +1,15 @@
+[Unit]
+Description=Copy the Tab S3 LTE Wi-Fi board data from Android's system partition
+DefaultDependencies=no
+After=systemd-udev-trigger.service
+Before=tabs3-wifi-pcie.service tabs3-grow-rootfs.service shutdown.target
+Conflicts=shutdown.target
+ConditionPathExists=!/usr/lib/firmware/updates/ath10k/QCA6174/hw3.0/board.bin
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/tabs3-wifi-board
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

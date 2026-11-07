@@ -1,0 +1,41 @@
+From e739f6e593656a5309f5cc7f284edc35f8327935 Mon Sep 17 00:00:00 2001
+From: Pritam Manohar Sutar <pritam.sutar@samsung.com>
+Date: Fri, 24 Oct 2025 14:24:55 +0530
+Subject: [PATCH] usb: dwc3: Allow usb role swich control from userspace
+
+There is a possibility of user needs for USB mode switching on boards
+that lack external hardware support for dynamic host/device role
+detection. This is particularly relevant in automotive applications
+where userspace applications need to switch USB roles (host to device)
+at runtime for CarPlay/Android Auto integration.
+
+Add an `allow_userspace_control` flag to handle such cases. When
+enabled, it exposes a sysfs attribute that allows userspace to switch
+the USB role manually between host and device. This provides flexibility
+for platforms that cannot rely on hardware-based mode detection.
+
+The role switch can be done as below
+echo host > /sys/class/usb_role/<ADDR>.usb-role-switch/role
+echo device > /sys/class/usb_role/<ADDR>.usb-role-switch/role
+
+Acked-by: Thinh Nguyen <Thinh.Nguyen@synopsys.com>
+Signed-off-by: Pritam Manohar Sutar <pritam.sutar@samsung.com>
+Link: https://patch.msgid.link/20251024085455.789555-1-pritam.sutar@samsung.com
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+(cherry picked from commit 389597581e3ef46940476f2d59c9ac7f9a26b113)
+---
+ drivers/usb/dwc3/drd.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/usb/dwc3/drd.c b/drivers/usb/dwc3/drd.c
+index 76161991906..670754dbea8 100644
+--- a/drivers/usb/dwc3/drd.c
++++ b/drivers/usb/dwc3/drd.c
+@@ -513,6 +513,7 @@ static int dwc3_setup_role_switch(struct dwc3 *dwc)
+ 	dwc3_role_switch.set = dwc3_usb_role_switch_set;
+ 	dwc3_role_switch.get = dwc3_usb_role_switch_get;
+ 	dwc3_role_switch.driver_data = dwc;
++	dwc3_role_switch.allow_userspace_control = true;
+ 	dwc->role_sw = usb_role_switch_register(dwc->dev, &dwc3_role_switch);
+ 	if (IS_ERR(dwc->role_sw))
+ 		return PTR_ERR(dwc->role_sw);

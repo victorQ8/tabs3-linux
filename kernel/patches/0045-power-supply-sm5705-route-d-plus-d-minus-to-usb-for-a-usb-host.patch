@@ -1,0 +1,109 @@
+From: tabS3 bring-up <noreply@localhost>
+Subject: [PATCH] power: supply: sm5705: route D+/D- to USB for a USB host as Samsung's MUIC driver does
+
+After a USB host session the tablet's gadget stayed invisible to a PC
+plugged in next: the charger driver had returned the MUIC to automatic
+switching, and the SM5705's automatic mode leaves D+/D- open for a
+standard or charging downstream port. Samsung's MUIC driver switches by
+hand on every USB attach (manual mode, D+/D- to USB) and returns to
+automatic switching with the lines open on detach. Do the same from the
+charger's policy pass while the port is not a host: route D+/D- to USB
+while the detected source is an SDP or CDP and give the switch back when
+VBUS goes; a present VBUS of another kind changes nothing. At shutdown a
+PC still attached keeps the lines, for the bootloader's fastboot.
+
+Assisted-by: Claude:claude-opus-5-5
+---
+diff -ruN a/drivers/power/supply/sm5705_charger.c b/drivers/power/supply/sm5705_charger.c
+--- a/drivers/power/supply/sm5705_charger.c	2026-10-15 20:22:05.023686660 +0300
++++ b/drivers/power/supply/sm5705_charger.c	2026-10-15 20:22:05.023964615 +0300
+@@ -112,6 +112,7 @@
+ 	bool otg_wanted;	/* the USB host wants VBUS */
+ 	bool otg_paused;	/* the partner supplies VBUS: no boost while host */
+ 	bool muic_held;		/* D+/D- held on USB, automatic switching off */
++	bool muic_usb;		/* D+/D- routed by hand for a USB host (device role) */
+ 	int partner_ua;		/* the partner's contract while it supplies */
+ 	u8 muic_ctrl, muic_mansw1;
+ 	struct led_classdev_flash fled;
+@@ -279,6 +280,59 @@
+ 	return err ?: ret;
+ }
+ 
++/* Called with lock held. Samsung's MUIC driver routes D+/D- by hand for a
++ * USB host (SDP or CDP), and on detach returns to automatic switching with
++ * the lines open: the automatic mode alone leaves them open for a PC, so
++ * after a host session the PC never saw the gadget. The host role's hold
++ * (sm5705_muic_hold_usb_locked) takes precedence.
++ */
++static int sm5705_muic_device_usb_locked(struct sm5705_chg *chg, bool on)
++{
++	int ret;
++
++	if (chg->muic_held || on == chg->muic_usb)
++		return 0;
++	if (on) {
++		ret = sm5705_muic_update(chg, SM5705_MUIC_MANSW1, 0xff, SM5705_MUIC_MANSW1_USB);
++		if (!ret)
++			ret = sm5705_muic_update(chg, SM5705_MUIC_CTRL, SM5705_MUIC_CTRL_AUTO_SW, 0);
++	} else {
++		ret = sm5705_muic_update(chg, SM5705_MUIC_CTRL, SM5705_MUIC_CTRL_AUTO_SW,
++					 SM5705_MUIC_CTRL_AUTO_SW);
++		if (!ret)
++			ret = sm5705_muic_update(chg, SM5705_MUIC_MANSW1, 0xff, 0);
++	}
++	if (ret)
++		return ret;
++	chg->muic_usb = on;
++	dev_info(&chg->client->dev, "%s\n", on ? "USB host attached: D+/D- to USB" :
++		 "USB host gone: data switch automatic, lines open");
++	return 0;
++}
++
++/* Called with lock held, outside the host role: route D+/D- to USB while a
++ * USB host's VBUS is present, and give the switch back when VBUS goes. A
++ * present VBUS of another kind changes nothing (its detection is final
++ * until the next attach).
++ */
++static void sm5705_muic_follow_locked(struct sm5705_chg *chg, u8 s1)
++{
++	int type, ret;
++
++	if (chg->muic_held || chg->otg_wanted)
++		return;
++	if (s1 & SM5705_STATUS1_VBUSPOK) {
++		type = sm5705_chg_usb_type(chg);
++		if (type != POWER_SUPPLY_USB_TYPE_SDP && type != POWER_SUPPLY_USB_TYPE_CDP)
++			return;
++		ret = sm5705_muic_device_usb_locked(chg, true);
++	} else {
++		ret = sm5705_muic_device_usb_locked(chg, false);
++	}
++	if (ret)
++		dev_warn_ratelimited(&chg->client->dev, "USB data switch: error %d\n", ret);
++}
++
+ /* Called with lock held while the boost may run: keep charging off, finish
+  * a requested stop, and stop on any boost, status or temperature fault.
+  */
+@@ -371,6 +425,7 @@
+ 		goto fail;
+ 	}
+ 	valid = chg->temp_valid;
++	sm5705_muic_follow_locked(chg, s1);
+ 	/* A forced discharge (charge_behaviour force-discharge) runs the
+ 	 * system from the battery until userspace ends it, VBUS goes away or
+ 	 * the gauge reaches the floor; then the normal policy resumes.
+@@ -1046,6 +1101,13 @@
+ 	if (chg->otg_on && sm5705_otg_off_locked(chg))
+ 		dev_err(&chg->client->dev, "cannot confirm USB OTG VBUS off\n");
+ 	sm5705_muic_release_locked(chg);
++	/* A PC still attached keeps D+/D- for the bootloader's fastboot. */
++	{
++		u8 s1;
++
++		if (!sm5705_chg_read(chg, SM5705_STATUS1, &s1))
++			sm5705_muic_follow_locked(chg, s1);
++	}
+ 	sm5705_disable_cleanup(chg);
+ 	/* A powered-off or sleeping tablet takes its power from VBUS. */
+ 	chg->force_discharge = false;

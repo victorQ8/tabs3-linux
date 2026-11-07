@@ -1,0 +1,137 @@
+{
+  "recorded_utc": "2026-10-11T10:02:21.752116+00:00",
+  "device": "SM-T825 LTE rev05; AMS968HH01 / ANA38401",
+  "kernel_package": "6.19.5-29",
+  "kernel_build": 14,
+  "patch": "0031",
+  "implementation": {
+    "levels": "0..255 stock normal levels; 65 gamma rows plus per-level AID",
+    "nominal_range_nit": [
+      2,
+      360
+    ],
+    "default_level": 86,
+    "default_nominal_nit": 111,
+    "calibration": "Factory MTP read twice and checked; runtime C computes per-panel tables",
+    "sequence": "HS AID, ACL averaging/start/percent, ELVSS, CAPS, gamma, final update key; cmd_lock spans the full tuple",
+    "screen_off": "Full DRM/fbdev power cycle; brightness 0 means stock minimum 2 nit, not off. Manual bl_power blanking is rejected.",
+    "off_state": "Cache requested brightness; apply before display-on during enable",
+    "write_failure": "Return error; retain previous applied/requested driver state, send no update key after an earlier transfer error"
+  },
+  "host_validation": {
+    "original_source": "awesometic/android_kernel_samsung_msm8996 f48aec90fcebf4615fdee4a8abac7339930db856",
+    "gamma_comparison": "65 rows x 33 bytes for actual tablet, zero and signed-offset fixtures; matches independently compiled Samsung C and Python reference",
+    "sanitizers": "AddressSanitizer and UndefinedBehaviorSanitizer on gamma port",
+    "tests": "4 test methods: original gamma fixtures, invalid VT rejection, stock mapping, full command sequence/fault injection/off-state caching",
+    "builds": "Kernel, module package and initramfs succeeded. Unused generated curve removed; final module build has no compiler warnings. ARM64 initramfs SSH check passed under QEMU.",
+    "known_warning": "Pre-existing depmod modules.builtin.modinfo metadata warning in initramfs build"
+  },
+  "live_readback": {
+    "levels": [
+      0,
+      17,
+      51,
+      86,
+      142,
+      193,
+      255
+    ],
+    "nominal_nit": [
+      2,
+      20,
+      60,
+      111,
+      183,
+      249,
+      360
+    ],
+    "D2_67_elvss": [
+      "19",
+      "1c",
+      "21",
+      "21",
+      "1f",
+      "1e",
+      "1b"
+    ],
+    "D2_6d_caps": [
+      "81",
+      "81",
+      "85",
+      "85",
+      "85",
+      "85",
+      "85"
+    ],
+    "ACL_all": {
+      "D2_36": "12",
+      "D2_4d": "05",
+      "D2_49": "7f"
+    },
+    "known_D8_5a_controls": 35,
+    "control_value": "33",
+    "frame_kickoffs_during_reads": 0,
+    "off_state_change": "Requested level 51 while blank; actual_brightness stayed 0 until full wake, then 51",
+    "rapid_cycle": "Level 142 retained through immediate off/on"
+  },
+  "migration": "systemd-backlight restored old binary value 1, clamped to 12. Reset current and saved brightness to 86 once. New installations start with driver default 86.",
+  "physical_validation": {
+    "seven_step_ramp": "User: Brightness increases; colours stay correct. Clean two-round sweep completed; an earlier missed/overlapping replay was stopped and is not used as evidence.",
+    "dim_and_full_wake": "User: Both wakes look correct and steady. Levels 17 (20 nominal nit) and 255 (360 nominal nit); actual_brightness matched before and after each wake.",
+    "recovery": "User: Colours, wake and filesystem button all work. Fresh recovery build #14 at level 86; log records off, on, deliberate Check filesystem action; root reports clean.",
+    "scope": "No separate assertion about accidental wake actions from this combined test; user was asked to tap the button deliberately after waking."
+  },
+  "limits": [
+    "Nits are Samsung table targets, not measured with a luminance meter.",
+    "Room-temperature voltage table only; low-temperature ELVSS selection and HBM are not implemented.",
+    "No claim of individual physical validation for all 256 levels.",
+    "Instant battery current readings from a one-second sweep are not a power-efficiency measurement."
+  ],
+  "rollback": "private/backups/kernel28-before-brightness",
+  "install_record": "private/kernel29-install.json",
+  "evidence": {
+    "boot.txt": {
+      "path": "docs/panel-brightness-measurements-20261011/boot.txt",
+      "sha256": "003ce152c67334c5bdff68f4b12afa54335748e459f3c054514cbd482e92e154"
+    },
+    "levels-readback.txt": {
+      "path": "docs/panel-brightness-measurements-20261011/levels-readback.txt",
+      "sha256": "3c4bd6a789c5ac037f00dedac704e8ffed9dd785914c384279f3b7ea2880b959"
+    },
+    "levels-readback.trace": {
+      "path": "docs/panel-brightness-measurements-20261011/levels-readback.trace",
+      "sha256": "fa52e1e5373cf902876103aba047ad892b44a9351780e4a047b98cdf985c5bab"
+    },
+    "visual-ramp.txt": {
+      "path": "docs/panel-brightness-measurements-20261011/visual-ramp.txt",
+      "sha256": "00c7f12989dcb39d4981e18b6bd028cf8da26ccf1ab9af2b2802581dec183675"
+    },
+    "visual-wake.txt": {
+      "path": "docs/panel-brightness-measurements-20261011/visual-wake.txt",
+      "sha256": "d5d543bcba0527789665b77aaa4d5263ab9d0662ef9fa28b881cc2da0ebeb8d8"
+    },
+    "recovery-boot.txt": {
+      "path": "docs/panel-brightness-measurements-20261011/recovery-boot.txt",
+      "sha256": "dfaa991414a5f90f1af055e0e7b9739619c34362c5d9e27942bf1a7b100b15e2"
+    },
+    "recovery-interaction.txt": {
+      "path": "docs/panel-brightness-measurements-20261011/recovery-interaction.txt",
+      "sha256": "9553e8087b0f31e6cc675489bc19fd7d98231469536ecbf8efcd241a2bde6852"
+    },
+    "final-debian.txt": {
+      "path": "docs/panel-brightness-measurements-20261011/final-debian.txt",
+      "sha256": "79be0bb2735f0f50e1dea38c39e50b3e3202feeec0c06812c8168c7b19b0af22"
+    },
+    "measurement-commands.txt": {
+      "path": "docs/panel-brightness-measurements-20261011/measurement-commands.txt",
+      "sha256": "fde55e9956173095940b73b6e560e4003b119634763cd1b92a14928dc7d41242"
+    }
+  },
+  "installed": {
+    "kernel": "6.19.5-29",
+    "base": "0.1.6",
+    "boot_and_recovery": "Both flushed/readback hash verified; both booted build #14",
+    "final_state": "Debian running, saved/current/applied brightness 86, screen service enabled and active, no failed units",
+    "charge_state": "Automatic, SDP 500 mA, health Good, 69%, battery 21.9 C / charger board 26.3 C. Boot-time net current sample -85.4 mA is not a steady-state charging measurement."
+  }
+}

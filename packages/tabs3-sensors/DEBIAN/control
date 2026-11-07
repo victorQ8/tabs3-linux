@@ -1,0 +1,15 @@
+Package: tabs3-sensors
+Version: 0.1.1
+Architecture: arm64
+Maintainer: tabS3 Project <root@localhost>
+Depends: libc6, libqrtr1, systemd, udev
+Recommends: iio-sensor-proxy
+Section: admin
+Priority: optional
+Description: Sensor DSP registry and sensor setup for the Galaxy Tab S3 LTE
+ Serves the sensor DSP (SLPI) its registry over QRTR with sns-reg, patched to
+ serve the binary registry image of Samsung's Android, and describes the
+ accelerometer's mounting for iio-sensor-proxy, and binds the SX9310 grip
+ sensor once the DSP is up (its probe at boot runs a moment too early). The
+ registry image derives from the tablet's own Android software and is
+ installed separately; see tools/sensor-registry in the tabS3 repository.

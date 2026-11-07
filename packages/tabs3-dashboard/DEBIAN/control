@@ -1,0 +1,14 @@
+Package: tabs3-dashboard
+Version: 0.1.9
+Architecture: all
+Maintainer: tabS3 Project <root@localhost>
+Depends: tabs3-base (>= 0.1.25), python3, python3-pil, fonts-b612, fonts-dejavu-core, kbd, iproute2
+Recommends: tabs3-sensors, v4l-utils
+Suggests: fonts-inter, fonts-jetbrains-mono, fonts-manrope, fonts-cascadia-code, fonts-sora, fonts-hack, fonts-adobe-sourcesans3, fonts-atkinson-hyperlegible
+Section: admin
+Priority: optional
+Description: Server status on the Galaxy Tab S3 LTE's own panel
+ Draws clock, load, temperatures, battery, memory, storage, network and
+ firmware state straight into the panel's framebuffer, and wakes the screen
+ when the light sensor, the accelerometer, the microphone or the front
+ camera notice someone.

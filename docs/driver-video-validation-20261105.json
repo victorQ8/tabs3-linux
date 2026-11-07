@@ -1,0 +1,438 @@
+{
+  "schema": 1,
+  "date": "2026-11-05",
+  "device_model": "SM-T825",
+  "kernel": "6.18.56-gts3l1",
+  "installed_kernel_package": "6.18.56-80",
+  "boot_partition_written": false,
+  "reboot_performed": false,
+  "all_video_paths_qualified": false,
+  "input": "Synthetic SMPTE/testsrc2 patterns only; no camera, microphone or screen capture.",
+  "baseline_h264_encode": {
+    "status": "failed",
+    "width": 320,
+    "height": 240,
+    "planned_frames": 60,
+    "exit_code": 1,
+    "output_bytes": 0,
+    "failure": "EINVAL during queue setup; HFI-v3 lacks 8x8-transform property serialization."
+  },
+  "candidate_h264_encode": {
+    "status": "failed",
+    "patch": "0048",
+    "module_sha256": "b52d45230cb7074ed1b46e3e84713e1c8ac3c1dc8de22f0a2f3fd265df1127f2",
+    "planned_frames": 60,
+    "exit_code": 1,
+    "output_bytes": 15637,
+    "decoded_stream_info": {
+      "codec_name": "h264",
+      "profile": "Baseline",
+      "width": 320,
+      "height": 240,
+      "nb_read_frames": "3"
+    },
+    "failure": "Firmware fatal error in vbuffer.c:1219 after three frames; recovered.",
+    "paced_retry": {
+      "fps": 30,
+      "exit_code": 1,
+      "output_bytes": 15637,
+      "stream_execution_s": 0.092466375,
+      "failure": "Same firmware crash before intended end of stream."
+    }
+  },
+  "original_vp8_encode": {
+    "status": "failed",
+    "width": 640,
+    "height": 480,
+    "fps": 30,
+    "planned_frames": 60,
+    "exit_code": 1,
+    "output_bytes": 20526,
+    "stream_execution_s": 0.100380779,
+    "failure": "Same firmware fatal signature with original modules; initial firmware recovery retries failed before recovery completed."
+  },
+  "original_h264_decode_after_recovery": {
+    "status": "passed_bounded_test",
+    "width": 640,
+    "height": 480,
+    "input_frames": 60,
+    "output_frames": 60,
+    "eos": true,
+    "exit_code": 0,
+    "elapsed_s": 0.49,
+    "sink": "fakesink with identity buffer counter; not onscreen",
+    "source_sha256": "1a8a28981ebd7f8c108c7bd29dd49667d22b86adca6a7e37af4fbf48bd05a950"
+  },
+  "rollback": {
+    "original_module_restored": true,
+    "original_build_id_note": "040000001400000003000000474e55006077a41dfba0817051160bd4fc51d7ed048faa2e",
+    "candidate_build_id_note": "040000001400000003000000474e5500c662a5096441c879b5c75923e30b01dae14bb2a8",
+    "restored_build_id_note": "040000001400000003000000474e55006077a41dfba0817051160bd4fc51d7ed048faa2e"
+  },
+  "kernel_fault_evidence": [
+    "[20239.675211] qcom-venus-encoder c00000.video-codec:video-encoder: enc: event session error 0",
+    "[20239.675240] qcom-venus c00000.video-codec: SFR message from FW: QC_IMAGE_VERSION_STRING=VIDEO.VE.4.4-00060 Err_Fatal - Z:\\b\\venus_proc\\venus\\utils\\src\\vbuffer.c:1219:",
+    "[20239.993942] qcom-venus c00000.video-codec: system error has occurred (recovered)",
+    "[20387.695712] qcom-venus-encoder c00000.video-codec:video-encoder: enc: event session error 0",
+    "[20387.695744] qcom-venus c00000.video-codec: SFR message from FW: QC_IMAGE_VERSION_STRING=VIDEO.VE.4.4-00060 Err_Fatal - Z:\\b\\venus_proc\\venus\\utils\\src\\vbuffer.c:1219:",
+    "[20387.993678] qcom-venus c00000.video-codec: system error has occurred (recovered)",
+    "[20642.322868] qcom-venus-encoder c00000.video-codec:video-encoder: enc: event session error 0",
+    "[20642.322899] qcom-venus c00000.video-codec: SFR message from FW: QC_IMAGE_VERSION_STRING=VIDEO.VE.4.4-00060 Err_Fatal - Z:\\b\\venus_proc\\venus\\utils\\src\\vbuffer.c:1219:",
+    "[20643.642325] qcom-venus c00000.video-codec: System error has occurred, recovery failed to init HFI",
+    "[20644.925173] qcom-venus c00000.video-codec: System error has occurred, recovery failed to init HFI",
+    "[20645.079096] qcom-venus c00000.video-codec: system error has occurred (recovered)"
+  ],
+  "limits": [
+    "Encoding remains broken; patch 0048 fixes setup only.",
+    "Decoder result does not qualify all codecs, resolutions, concurrency, pixel accuracy or endurance.",
+    "Firmware crash is a production gate failure even after recovery."
+  ],
+  "raw_evidence": {
+    "decoder-reference.h264": {
+      "sha256": "1a8a28981ebd7f8c108c7bd29dd49667d22b86adca6a7e37af4fbf48bd05a950",
+      "bytes": 261441
+    },
+    "decoder-result.json": {
+      "sha256": "87c7dd59f668b86f8738b44160ecd58b9ca9bfef919becbeb013080db5404bdb",
+      "bytes": 29952
+    },
+    "fixed-result.json": {
+      "sha256": "c4657a8155737be00170e10ab5a238d20f4b15781574c0eb593c0524772bef82",
+      "bytes": 2480
+    },
+    "function-trace.txt": {
+      "sha256": "d04df09f911ac28ce62e13648b2a9f47aebd9e588736e6cd17be634350c70e34",
+      "bytes": 1432
+    },
+    "live-result.json": {
+      "sha256": "0dc470a1aaea10e8868fdd0bba3e3b4030684d0dddce51a176d78e1dbad490be",
+      "bytes": 1322
+    },
+    "result-2.json": {
+      "sha256": "c5c5cf1368aaeb07a3ea43f8c089a1df0c414bed24c4c2706cb3778185156371",
+      "bytes": 9050
+    },
+    "result.json": {
+      "sha256": "7ff414dd503392cc8c01ecc3f1535022eea871e696a36294a7a94dc90badb33b",
+      "bytes": 1176
+    },
+    "sample-fixed.h264": {
+      "sha256": "bd73b8ed832acd8047b450dd7c74b9c0a6ff159394d2308be6518a4840abf3bd",
+      "bytes": 15637
+    },
+    "sample-live.h264": {
+      "sha256": "bd73b8ed832acd8047b450dd7c74b9c0a6ff159394d2308be6518a4840abf3bd",
+      "bytes": 15637
+    },
+    "sample.h264": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "stock-vp8-result.json": {
+      "sha256": "ada3e19787d193258dd979f7248f5f98a2e49b82f9a7e2b89ff2845f44872d4d",
+      "bytes": 996
+    },
+    "stock-vp8.bin": {
+      "sha256": "19c03f368b5b7be5319dc66c9c50d835272ef2c163eeeb55075ac94d8f9eb83e",
+      "bytes": 20526
+    }
+  },
+  "final_candidate": {
+    "package": "6.18.56-81~drivers2",
+    "patches": [
+      "0048",
+      "0049",
+      "0050"
+    ],
+    "status": "passed_bounded_hardware_tests",
+    "installed": false,
+    "encoder_eos_fix": "HFI-v3 zero-address/zero-length EOS; real nonempty buffers require an address.",
+    "capture_buffer_fix": "Reject capture-pool growth after STREAMON on HFI v3. Allocate larger pools before streaming; applications recycle or copy retained encoded output.",
+    "discarded_experiment": "Registering a new buffer while streaming was rejected by firmware (0x1006) and was removed from the source patch set.",
+    "hardware_tests": [
+      {
+        "name": "vp8_file_60",
+        "exit_code": 0,
+        "eos": true,
+        "late_pool_growth_refused": true
+      },
+      {
+        "name": "h264_file_60",
+        "exit_code": 0,
+        "eos": true,
+        "late_pool_growth_refused": true
+      },
+      {
+        "name": "h264_file_300",
+        "exit_code": 0,
+        "eos": true,
+        "late_pool_growth_refused": true
+      },
+      {
+        "name": "h264_decode_60",
+        "exit_code": 0,
+        "chain_messages": 60,
+        "eos": true
+      },
+      {
+        "name": "vp8_mkv_60",
+        "exit_code": 0,
+        "eos": true,
+        "late_pool_growth_refused": true
+      },
+      {
+        "name": "h264_1080p_60",
+        "exit_code": 0,
+        "eos": true,
+        "late_pool_growth_refused": false
+      },
+      {
+        "name": "h264_reopen_1",
+        "exit_code": 0,
+        "eos": true,
+        "late_pool_growth_refused": true
+      },
+      {
+        "name": "h264_reopen_2",
+        "exit_code": 0,
+        "eos": true,
+        "late_pool_growth_refused": true
+      },
+      {
+        "name": "h264_reopen_3",
+        "exit_code": 0,
+        "eos": true,
+        "late_pool_growth_refused": true
+      },
+      {
+        "name": "h264_decode_60",
+        "exit_code": 0,
+        "chain_messages": 60,
+        "eos": true
+      }
+    ],
+    "independent_host_decoding": {
+      "policy50-h264.h264": {
+        "probe_exit_code": 0,
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "h264",
+              "profile": "Baseline",
+              "width": 320,
+              "height": 240,
+              "nb_read_frames": "60"
+            }
+          ]
+        },
+        "probe_errors": "",
+        "decode_exit_code": 0,
+        "decode_errors": ""
+      },
+      "policy50-h264-long.h264": {
+        "probe_exit_code": 0,
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "h264",
+              "profile": "Baseline",
+              "width": 640,
+              "height": 480,
+              "nb_read_frames": "300"
+            }
+          ]
+        },
+        "probe_errors": "",
+        "decode_exit_code": 0,
+        "decode_errors": ""
+      },
+      "extended50-1080p.h264": {
+        "probe_exit_code": 0,
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "h264",
+              "profile": "Baseline",
+              "width": 1920,
+              "height": 1080,
+              "nb_read_frames": "60"
+            }
+          ],
+          "format": {}
+        },
+        "probe_errors": "",
+        "decode_exit_code": 0,
+        "decode_errors": ""
+      },
+      "extended50-reopen1.h264": {
+        "probe_exit_code": 0,
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "h264",
+              "profile": "Baseline",
+              "width": 640,
+              "height": 480,
+              "nb_read_frames": "60"
+            }
+          ],
+          "format": {}
+        },
+        "probe_errors": "",
+        "decode_exit_code": 0,
+        "decode_errors": ""
+      },
+      "extended50-reopen2.h264": {
+        "probe_exit_code": 0,
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "h264",
+              "profile": "Baseline",
+              "width": 640,
+              "height": 480,
+              "nb_read_frames": "60"
+            }
+          ],
+          "format": {}
+        },
+        "probe_errors": "",
+        "decode_exit_code": 0,
+        "decode_errors": ""
+      },
+      "extended50-reopen3.h264": {
+        "probe_exit_code": 0,
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "h264",
+              "profile": "Baseline",
+              "width": 640,
+              "height": 480,
+              "nb_read_frames": "60"
+            }
+          ],
+          "format": {}
+        },
+        "probe_errors": "",
+        "decode_exit_code": 0,
+        "decode_errors": ""
+      },
+      "extended50-vp8.mkv": {
+        "probe_exit_code": 0,
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "vp8",
+              "profile": "0",
+              "width": 640,
+              "height": 480,
+              "nb_read_frames": "60"
+            }
+          ],
+          "format": {
+            "duration": "2.000000"
+          }
+        },
+        "probe_errors": "",
+        "decode_exit_code": 0,
+        "decode_errors": ""
+      }
+    },
+    "kernel_errors_during_final_tests": [],
+    "module_sha256": {
+      "venus_enc": "17e40a88030f32e5fe98e436d0dc457ee41a9c66e5dcdf0c45345dc78007076c",
+      "venus_dec": "c96654823cb10b68a20340cac9c4bd5cda4a7d3caedc49df41a61a2c0124293f",
+      "venus_core": "35b496cf60cbe63721cc7782e4b2c676a009664a5d3a529c00c02becdaf39da7"
+    },
+    "loaded_build_ids": {
+      "venus_enc": "040000001400000003000000474e550032b82286ba819b3fa9d8dcdadbe8d347d678a46e",
+      "venus_dec": "040000001400000003000000474e5500aa28560f518dc3613fbf6f1e34285e038a1ab223",
+      "venus_core": "040000001400000003000000474e5500ad9394c77098b7b7dfa5b7a538ced6a4a1c6bd98"
+    },
+    "restored_original": true,
+    "final_restored_build_ids": {
+      "venus_enc": "040000001400000003000000474e5500c6564ba1ebe6eb757e7d4675205cb1082362d3a6",
+      "venus_dec": "040000001400000003000000474e5500aa28560f518dc3613fbf6f1e34285e038a1ab223",
+      "venus_core": "040000001400000003000000474e55006077a41dfba0817051160bd4fc51d7ed048faa2e"
+    },
+    "packaged_modules_match_tested_build_ids": true,
+    "limits": [
+      "No full candidate boot yet; audio changes still need hardware validation.",
+      "No camera-to-encoder, all-profile/all-codec, sustained-throughput or endurance qualification.",
+      "Original package-80 codec modules restored, so these fixes are not yet permanent."
+    ],
+    "evidence": {
+      "extended50-1080p.h264": {
+        "sha256": "6336f2401c73cbed81d21bf123a3695f00f08627b4515df01c968527ba58fe1f",
+        "bytes": 5838139
+      },
+      "extended50-reopen1.h264": {
+        "sha256": "ec55a49cb10dbb2c379f3746c8b5c261d8ad9a5fe8a4581171b2ea5ba4d5cefe",
+        "bytes": 1308966
+      },
+      "extended50-reopen2.h264": {
+        "sha256": "ec55a49cb10dbb2c379f3746c8b5c261d8ad9a5fe8a4581171b2ea5ba4d5cefe",
+        "bytes": 1308966
+      },
+      "extended50-reopen3.h264": {
+        "sha256": "ec55a49cb10dbb2c379f3746c8b5c261d8ad9a5fe8a4581171b2ea5ba4d5cefe",
+        "bytes": 1308966
+      },
+      "extended50-result.json": {
+        "sha256": "5a3fbaa4c31e9d6d502706fb0b4a4bfaca686ed17c8e00835780f4c8c9fce9d6",
+        "bytes": 567426
+      },
+      "extended50-vp8.mkv": {
+        "sha256": "d50072879ddf07c8ecf1ac93358faac096695a2a85468b32816e8fe4bd1cf91a",
+        "bytes": 746065
+      },
+      "host-decode-validation.json": {
+        "sha256": "6ccf6c361ae57696c5d976ccbdff62203933473e5a0efa4ab0c0a87bc47f6e09",
+        "bytes": 2938
+      },
+      "midpoint.png": {
+        "sha256": "80aee0dd75a2f49f8a578f9fbe4aa3ccb7f222e36f7225a1981fa52fd08e9f1d",
+        "bytes": 42123
+      },
+      "policy50-h264-long.h264": {
+        "sha256": "2aa64a94886548c74283a6dc67df4d897d834f2919c32b4828e961fcee926d1c",
+        "bytes": 6956972
+      },
+      "policy50-h264.h264": {
+        "sha256": "133aefa910f3cbd9dcb3ec1168600a0d864d0c22f2bbe13cf367f4d24996f85c",
+        "bytes": 356588
+      },
+      "policy50-result.json": {
+        "sha256": "d5d85bdb6b7cda0cdf6e5529794803ad7787e73a1266bbc6f3688a65bb12b2af",
+        "bytes": 759594
+      },
+      "policy50-vp8.bin": {
+        "sha256": "bfdbd134e4a34a84c481e8bc9d09f42b4493f7c3235f3f4d2b2bbca125b4f1ca",
+        "bytes": 745097
+      },
+      "run_extended.py": {
+        "sha256": "fea5f5090397b77042a1677fd722fb38a3e801e51d3ac496e248bd2307f135d9",
+        "bytes": 4914
+      },
+      "run_hardware.py": {
+        "sha256": "b6e56205df6c09ec0998edc96704446d9f5bfc2735e16883f0ce14ba562f63cc",
+        "bytes": 4646
+      }
+    }
+  }
+}

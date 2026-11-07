@@ -1,0 +1,23 @@
+Subject: [PATCH] ASoC: qcom: q6asm-dai: flush after a successful capture pause
+
+The capture STOP sequence introduced by local patch 0018 tests !ret before
+queuing FLUSH. q6asm_cmd_nowait() returns apr_send_pkt() directly; that
+function returns the positive packet size on a successful rpmsg send.
+Consequently the usual successful PAUSE never reaches FLUSH.
+
+Accept any nonnegative result, retaining the existing error propagation and
+playback EOS behavior. Do not change the audio client's setup lifetime or
+the synchronous command path. Hardware capture reopen testing is required.
+
+--- a/sound/soc/qcom/qdsp6/q6asm-dai.c
++++ b/sound/soc/qcom/qdsp6/q6asm-dai.c
+@@ -356,7 +356,8 @@
+ 		if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+ 			ret = q6asm_cmd_nowait(prtd->audio_client,
+ 					       prtd->stream_id, CMD_PAUSE);
+-			if (!ret)
++			/* APR returns the packet size on a successful send. */
++			if (ret >= 0)
+ 				ret = q6asm_cmd_nowait(prtd->audio_client,
+ 						       prtd->stream_id,
+ 						       CMD_FLUSH);

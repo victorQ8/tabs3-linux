@@ -1,0 +1,332 @@
+Subject: [PATCH] power: supply: sm5705: USB OTG VBUS regulator
+
+Add an "otg-vbus" regulator for USB host mode on the SM-T825 USB-C port.
+Enabling it follows Samsung's sequence: boost output 5.1 V (FLEDCNTL6),
+OTG current limit 900 mA (CHGCNTL6[3:2], keeping the boost input limit in
+[1:0]), then USB OTG mode (CNTL = 7). The MUIC is put in manual switching
+with D+/D- on USB (stock does the same for OTG) so charger detection cannot
+take the data lines.
+
+Safety: refuse while external VBUS is present (no boosting against a
+charger or host) and outside 0-45 C battery temperature; pause charging
+while boosting; every write is read back. While boosting, the 1 s policy
+keeps charging off and stops the boost on OTGFAIL, BOOSTPOK_NG, a status
+read error or a temperature fault. Disabling restores charge mode first and
+retries until confirmed, then the stock idle settings (4.5 V, 500 mA) and
+the MUIC's automatic switching. Shutdown and suspend stop the boost. Our
+own boost is not reported as an online source.
+
+--- a/drivers/power/supply/sm5705_charger.c
++++ b/drivers/power/supply/sm5705_charger.c
+@@ -11,6 +11,7 @@
+ #include <linux/module.h>
+ #include <linux/of.h>
+ #include <linux/power_supply.h>
++#include <linux/regulator/driver.h>
+ #include <linux/workqueue.h>
+ #include "sm5705-gts3l-policy.h"
+ 
+@@ -26,11 +27,28 @@
+ #define SM5705_STATUS2_WDTMROFF		BIT(7)
+ #define SM5705_STATUS3		0x0a
+ #define SM5705_STATUS3_THEMSHDN		BIT(1)
++#define SM5705_STATUS3_OTGFAIL		BIT(2)
+ #define SM5705_STATUS3_PRETMROFF	BIT(4)
+ #define SM5705_STATUS3_FASTTMROFF	BIT(5)
++#define SM5705_STATUS4		0x0b
++#define SM5705_STATUS4_BOOSTPOK_NG	BIT(4)
++#define SM5705_CNTL		0x0c
++#define SM5705_CNTL_MODE		GENMASK(2, 0)
++#define SM5705_MODE_CHG_ON		5
++#define SM5705_MODE_USB_OTG		7
+ #define SM5705_VBUSCNTL		0x0d
+ #define SM5705_CHGCNTL2		0x10
+ #define SM5705_CHGCNTL4		0x12
++/* [3:2] OTG current limit 0.5/0.7/0.9/1.5 A; [1:0] boost input limit, kept */
++#define SM5705_CHGCNTL6		0x14
++#define SM5705_CHGCNTL6_OTG		GENMASK(3, 2)
++#define SM5705_OTG_500MA		(0 << 2)
++#define SM5705_OTG_900MA		(2 << 2)
++/* [3:0] boost output, 4.0 V + 0.1 V steps */
++#define SM5705_FLEDCNTL6	0x20
++#define SM5705_FLEDCNTL6_BSTOUT		GENMASK(3, 0)
++#define SM5705_BSTOUT_4500MV		0x5
++#define SM5705_BSTOUT_5100MV		0xb
+ #define SM5705_DEVICEID		0x37
+ 
+ #define SM5705_POLL_MS		1000
+@@ -42,6 +60,10 @@
+ #define SM5705_MUIC_DEVT1_SDP		BIT(2)
+ #define SM5705_MUIC_DEVT1_CDP		BIT(5)
+ #define SM5705_MUIC_DEVT1_DCP		BIT(6)
++#define SM5705_MUIC_CTRL	0x02
++#define SM5705_MUIC_CTRL_AUTO_SW	BIT(2)	/* clear: manual switch */
++#define SM5705_MUIC_MANSW1	0x13
++#define SM5705_MUIC_MANSW1_USB		0x24	/* D- and D+ to USB */
+ 
+ static bool auto_input_limit = true;
+ module_param(auto_input_limit, bool, 0644);
+@@ -61,6 +83,10 @@
+ 	bool temp_valid;
+ 	int battery_temp, charger_temp;
+ 	int last_error;
++	struct regulator_dev *otg;
++	bool otg_on;		/* the boost may be running */
++	bool otg_wanted;	/* the USB host wants VBUS */
++	u8 muic_ctrl, muic_mansw1;
+ };
+ 
+ static int sm5705_chg_read(struct sm5705_chg *chg, u8 reg, u8 *val)
+@@ -138,6 +164,76 @@
+ 	return ret ? ret : (check & mask) == value ? 0 : -EIO;
+ }
+ 
++static int sm5705_muic_update(struct sm5705_chg *chg, u8 reg, u8 mask, u8 value)
++{
++	int old = i2c_smbus_read_byte_data(chg->muic, reg), check, ret;
++
++	if (old < 0)
++		return old;
++	ret = i2c_smbus_write_byte_data(chg->muic, reg, (old & ~mask) | value);
++	if (ret)
++		return ret;
++	check = i2c_smbus_read_byte_data(chg->muic, reg);
++	if (check < 0)
++		return check;
++	return (check & mask) == value ? 0 : -EIO;
++}
++
++/* The boost runs from the battery: only between 0 and 45 C. */
++static bool sm5705_otg_temp_ok(struct sm5705_chg *chg)
++{
++	return chg->temp_valid && chg->battery_temp > 0 && chg->battery_temp < 450;
++}
++
++/* Called with lock held. Stop the boost first; if that cannot be confirmed,
++ * otg_on stays set and the policy pass retries. Then restore the stock
++ * idle settings and the MUIC's automatic switching.
++ */
++static int sm5705_otg_off_locked(struct sm5705_chg *chg)
++{
++	int err, ret;
++
++	err = sm5705_update_verified(chg, SM5705_CNTL, SM5705_CNTL_MODE, SM5705_MODE_CHG_ON);
++	if (err)
++		return err;
++	chg->otg_on = false;
++	err = sm5705_update_verified(chg, SM5705_CHGCNTL6, SM5705_CHGCNTL6_OTG,
++				     SM5705_OTG_500MA);
++	ret = sm5705_update_verified(chg, SM5705_FLEDCNTL6, SM5705_FLEDCNTL6_BSTOUT,
++				     SM5705_BSTOUT_4500MV);
++	err = err ?: ret;
++	ret = sm5705_muic_update(chg, SM5705_MUIC_MANSW1, 0xff, chg->muic_mansw1);
++	err = err ?: ret;
++	ret = sm5705_muic_update(chg, SM5705_MUIC_CTRL, SM5705_MUIC_CTRL_AUTO_SW,
++				 chg->muic_ctrl & SM5705_MUIC_CTRL_AUTO_SW);
++	return err ?: ret;
++}
++
++/* Called with lock held while the boost may run: keep charging off, finish
++ * a requested stop, and stop on any boost, status or temperature fault.
++ */
++static int sm5705_otg_policy(struct sm5705_chg *chg, int ret, u8 s3)
++{
++	u8 s4 = 0;
++
++	if (!ret)
++		ret = sm5705_chg_read(chg, SM5705_STATUS4, &s4);
++	if (sm5705_enable(chg, false))
++		dev_err_ratelimited(&chg->client->dev, "cannot confirm charging disabled\n");
++	if (!chg->otg_wanted)
++		return sm5705_otg_off_locked(chg);
++	if (ret || (s3 & SM5705_STATUS3_OTGFAIL) || (s4 & SM5705_STATUS4_BOOSTPOK_NG) ||
++	    !sm5705_otg_temp_ok(chg)) {
++		dev_err(&chg->client->dev,
++			"USB OTG VBUS stopped: error %d, STATUS3 0x%02x, STATUS4 0x%02x, battery %d (0.1 C)\n",
++			ret, s3, s4, chg->battery_temp);
++		chg->otg_wanted = false;
++		sm5705_otg_off_locked(chg);
++		return -EIO;
++	}
++	return 0;
++}
++
+ /* Called with lock held. Battery charge and system input are independent:
+  * a thermal inhibit leaves the buck supply available. Control/read faults
+  * still disable charging and fall back to the minimum input limit.
+@@ -153,6 +249,8 @@
+ 	t1 = sm5705_read_temperature(chg->battery_therm, false, &chg->battery_temp);
+ 	t2 = sm5705_read_temperature(chg->charger_therm, true, &chg->charger_temp);
+ 	chg->temp_valid = !t1 && !t2;
++	if (chg->otg_on)
++		return sm5705_otg_policy(chg, ret, s3);
+ 	if (ret)
+ 		goto fail;
+ 	if ((s1 & SM5705_STATUS1_VBUSOVP) ||
+@@ -232,13 +330,14 @@
+ 		ret = sm5705_chg_read(chg, SM5705_STATUS1, &s1);
+ 		if (ret)
+ 			return ret;
+-		val->intval = !!(s1 & SM5705_STATUS1_VBUSPOK);
++		/* Our own OTG boost is not a power source. */
++		val->intval = !chg->otg_on && (s1 & SM5705_STATUS1_VBUSPOK);
+ 		return ret;
+ 	case POWER_SUPPLY_PROP_STATUS:
+ 		ret = sm5705_chg_status(chg, &s1, &s2, NULL);
+ 		if (ret)
+ 			return ret;
+-		if (!(s1 & SM5705_STATUS1_VBUSPOK))
++		if (chg->otg_on || !(s1 & SM5705_STATUS1_VBUSPOK))
+ 			val->intval = POWER_SUPPLY_STATUS_DISCHARGING;
+ 		else if (s2 & (SM5705_STATUS2_DONE | SM5705_STATUS2_TOPOFF))
+ 			val->intval = POWER_SUPPLY_STATUS_FULL;
+@@ -385,6 +484,115 @@
+ 	.property_is_writeable = sm5705_chg_property_is_writeable,
+ };
+ 
++/*
++ * USB OTG: VBUS for a USB device on the USB-C port, from the SM5705 boost
++ * (stock sequence: 5.1 V output, OTG current limit, then USB OTG mode).
++ * Charging pauses while the battery feeds the port. Never boost against an
++ * external source already driving VBUS.
++ */
++static int sm5705_otg_enable(struct regulator_dev *rdev)
++{
++	struct sm5705_chg *chg = rdev_get_drvdata(rdev);
++	struct device *dev = &chg->client->dev;
++	u8 s1, s2, s3;
++	int ret, val;
++
++	mutex_lock(&chg->lock);
++	ret = sm5705_chg_status(chg, &s1, &s2, &s3);
++	if (ret)
++		goto out;
++	if (s1 & SM5705_STATUS1_VBUSPOK) {
++		dev_warn(dev, "USB OTG refused: VBUS is already present\n");
++		ret = -EBUSY;
++		goto out;
++	}
++	if (!sm5705_otg_temp_ok(chg)) {
++		dev_warn(dev, "USB OTG refused: battery temperature unknown or out of range\n");
++		ret = -ERANGE;
++		goto out;
++	}
++	ret = sm5705_enable(chg, false);
++	if (ret)
++		goto out;
++	val = i2c_smbus_read_byte_data(chg->muic, SM5705_MUIC_CTRL);
++	if (val < 0) {
++		ret = val;
++		goto out;
++	}
++	chg->muic_ctrl = val;
++	val = i2c_smbus_read_byte_data(chg->muic, SM5705_MUIC_MANSW1);
++	if (val < 0) {
++		ret = val;
++		goto out;
++	}
++	chg->muic_mansw1 = val;
++	chg->otg_on = true;
++	chg->otg_wanted = true;
++	/* Keep D+/D- on USB: charger detection must not switch them away. */
++	ret = sm5705_muic_update(chg, SM5705_MUIC_MANSW1, 0xff, SM5705_MUIC_MANSW1_USB);
++	if (!ret)
++		ret = sm5705_muic_update(chg, SM5705_MUIC_CTRL, SM5705_MUIC_CTRL_AUTO_SW, 0);
++	if (!ret)
++		ret = sm5705_update_verified(chg, SM5705_FLEDCNTL6, SM5705_FLEDCNTL6_BSTOUT,
++					     SM5705_BSTOUT_5100MV);
++	if (!ret)
++		ret = sm5705_update_verified(chg, SM5705_CHGCNTL6, SM5705_CHGCNTL6_OTG,
++					     SM5705_OTG_900MA);
++	if (!ret)
++		ret = sm5705_update_verified(chg, SM5705_CNTL, SM5705_CNTL_MODE,
++					     SM5705_MODE_USB_OTG);
++	if (ret) {
++		chg->otg_wanted = false;
++		sm5705_otg_off_locked(chg);
++		goto out;
++	}
++	dev_info(dev, "USB OTG VBUS on: 5.1 V, 900 mA limit, charging paused\n");
++out:
++	mutex_unlock(&chg->lock);
++	return ret;
++}
++
++static int sm5705_otg_disable(struct regulator_dev *rdev)
++{
++	struct sm5705_chg *chg = rdev_get_drvdata(rdev);
++	int ret;
++
++	mutex_lock(&chg->lock);
++	chg->otg_wanted = false;
++	ret = sm5705_otg_off_locked(chg);
++	mutex_unlock(&chg->lock);
++	if (ret)
++		dev_err(&chg->client->dev, "USB OTG VBUS off: error %d, retrying\n", ret);
++	else
++		dev_info(&chg->client->dev, "USB OTG VBUS off\n");
++	/* Resume the charging policy now rather than at the next poll. */
++	mod_delayed_work(system_wq, &chg->poll, 0);
++	return ret;
++}
++
++static int sm5705_otg_is_enabled(struct regulator_dev *rdev)
++{
++	struct sm5705_chg *chg = rdev_get_drvdata(rdev);
++
++	return chg->otg_on;
++}
++
++static const struct regulator_ops sm5705_otg_ops = {
++	.enable = sm5705_otg_enable,
++	.disable = sm5705_otg_disable,
++	.is_enabled = sm5705_otg_is_enabled,
++};
++
++static const struct regulator_desc sm5705_otg_desc = {
++	.name = "otg-vbus",
++	.of_match = "otg-vbus",
++	.type = REGULATOR_VOLTAGE,
++	.owner = THIS_MODULE,
++	.ops = &sm5705_otg_ops,
++	.fixed_uV = 5100000,
++	.n_voltages = 1,
++};
++
+ static void sm5705_chg_poll(struct work_struct *work)
+ {
+ 	struct sm5705_chg *chg = container_of(work, struct sm5705_chg, poll.work);
+@@ -411,6 +619,10 @@
+ 
+ 	cancel_delayed_work_sync(&chg->poll);
+ 	mutex_lock(&chg->lock);
++	/* No VBUS from the tablet across shutdown or suspend. */
++	chg->otg_wanted = false;
++	if (chg->otg_on && sm5705_otg_off_locked(chg))
++		dev_err(&chg->client->dev, "cannot confirm USB OTG VBUS off\n");
+ 	sm5705_disable_cleanup(chg);
+ 	sm5705_update_verified(chg, SM5705_VBUSCNTL, 0x7f, 0);
+ 	chg->safety.blocked = true;
+@@ -419,6 +631,7 @@
+ 
+ static int sm5705_chg_probe(struct i2c_client *client)
+ {
++	struct regulator_config rcfg = {};
+ 	struct power_supply_config cfg = {};
+ 	struct device *dev = &client->dev;
+ 	struct sm5705_chg *chg;
+@@ -468,6 +681,14 @@
+ 	ret = devm_add_action_or_reset(dev, sm5705_chg_stop, chg);
+ 	if (ret)
+ 		return ret;
++
++	/* Only usable where the device tree has an otg-vbus child for a host. */
++	rcfg.dev = dev;
++	rcfg.driver_data = chg;
++	chg->otg = devm_regulator_register(dev, &sm5705_otg_desc, &rcfg);
++	if (IS_ERR(chg->otg))
++		return dev_err_probe(dev, PTR_ERR(chg->otg), "cannot register USB OTG VBUS\n");
++
+ 	schedule_delayed_work(&chg->poll, 0);
+ 
+ 	dev_info(dev, "SM5705 charger, device ID 0x%02x\n", id);

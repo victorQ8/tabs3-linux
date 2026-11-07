@@ -1,0 +1,79 @@
+# tracer: nop
+#
+# entries-in-buffer/entries-written: 67/67   #P:4
+#
+#                                _-----=> irqs-off/BH-disabled
+#                               / _----=> need-resched
+#                              | / _---=> hardirq/softirq
+#                              || / _--=> preempt-depth
+#                              ||| / _-=> migrate-disable
+#                              |||| /     delay
+#           TASK-PID     CPU#  |||||  TIMESTAMP  FUNCTION
+#              | |         |   |||||     |         |
+              sh-6111    [003] ...1.   293.533486: tracing_mark_write: DRIVER_REPLAY_START
+     kworker/3:1-56      [003] d....   293.533672: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x5 flags=0x0 len=1 b0=0x29 b1=0x0
+     kworker/3:1-56      [003] d..1.   293.533862: result: (mipi_dsi_device_transfer+0x50/0x70 <- dsi_host_transfer) ret=4
+     kworker/3:1-56      [003] d....   294.152100: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0xd9
+     kworker/3:1-56      [003] d..1.   294.152399: result: (mipi_dsi_device_transfer+0x50/0x70 <- dsi_host_transfer) ret=4
+     kworker/3:1-56      [003] d....   294.152419: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb1 b1=0x0
+     kworker/3:1-56      [003] d..1.   294.152584: result: (ams968hh01_write_register+0x90/0xf8 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+     kworker/1:3-4788    [001] .....   294.257060: dpu_enc_kickoff: id=33
+     kworker/1:3-4788    [001] .....   294.290474: dpu_enc_kickoff: id=33
+     kworker/1:3-4788    [001] d....   294.756098: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0xd9
+     kworker/1:3-4788    [001] d..1.   294.756372: result: (mipi_dsi_device_transfer+0x50/0x70 <- dsi_host_transfer) ret=4
+     kworker/1:3-4788    [001] d....   294.756394: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb1 b1=0x8
+     kworker/1:3-4788    [001] d..1.   294.756541: result: (ams968hh01_write_register+0x90/0xf8 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+     kworker/1:3-4788    [001] d....   294.756555: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x51
+     kworker/1:3-4788    [001] d..1.   294.756694: result: (mipi_dsi_device_transfer+0x50/0x70 <- dsi_host_transfer) ret=4
+     kworker/1:3-4788    [001] d....   294.756708: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb1 b1=0x6
+     kworker/1:3-4788    [001] d..1.   294.756844: result: (ams968hh01_write_register+0x90/0xf8 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+     kworker/1:3-4788    [001] d....   294.756859: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=34 b0=0x83 b1=0xb3
+     kworker/1:3-4788    [001] d..1.   294.756999: result: (mipi_dsi_device_transfer+0x50/0x70 <- dsi_host_transfer) ret=40
+     kworker/1:3-4788    [001] d....   294.757011: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x35
+     kworker/1:3-4788    [001] d..1.   294.757145: result: (mipi_dsi_device_transfer+0x50/0x70 <- dsi_host_transfer) ret=4
+     kworker/1:3-4788    [001] d....   294.757157: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb2 b1=0x1
+     kworker/1:3-4788    [001] d..1.   294.757292: result: (ams968hh01_write_register+0x90/0xf8 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+     kworker/1:3-4788    [001] d....   295.364073: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x4d
+     kworker/1:3-4788    [001] d..1.   295.364322: result: (mipi_dsi_device_transfer+0x50/0x70 <- dsi_host_transfer) ret=4
+     kworker/1:3-4788    [001] d....   295.364339: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb2 b1=0x5
+     kworker/1:3-4788    [001] d..1.   295.364481: result: (ams968hh01_write_register+0x90/0xf8 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+     kworker/1:3-4788    [001] d....   295.364494: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x49
+     kworker/1:3-4788    [001] d..1.   295.364631: result: (mipi_dsi_device_transfer+0x50/0x70 <- dsi_host_transfer) ret=4
+     kworker/1:3-4788    [001] d....   295.364644: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb2 b1=0x7f
+     kworker/1:3-4788    [001] d..1.   295.364780: result: (ams968hh01_write_register+0x90/0xf8 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+     kworker/1:3-4788    [001] d....   295.364792: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x36
+     kworker/1:3-4788    [001] d..1.   295.364927: result: (mipi_dsi_device_transfer+0x50/0x70 <- dsi_host_transfer) ret=4
+     kworker/1:3-4788    [001] d....   295.364939: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb2 b1=0x12
+     kworker/1:3-4788    [001] d..1.   295.365073: result: (ams968hh01_write_register+0x90/0xf8 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+     kworker/1:3-4788    [001] d....   295.365085: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x67
+     kworker/1:3-4788    [001] d..1.   295.365217: result: (mipi_dsi_device_transfer+0x50/0x70 <- dsi_host_transfer) ret=4
+     kworker/1:3-4788    [001] d....   295.365229: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb2 b1=0x1b
+     kworker/1:3-4788    [001] d..1.   295.365364: result: (ams968hh01_write_register+0x90/0xf8 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+     kworker/1:3-4788    [001] d....   295.365375: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x35
+     kworker/1:3-4788    [001] d..1.   295.365562: result: (mipi_dsi_device_transfer+0x50/0x70 <- dsi_host_transfer) ret=4
+     kworker/1:3-4788    [001] d....   295.365575: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb2 b1=0x1
+     kworker/1:3-4788    [001] d..1.   295.365714: result: (ams968hh01_write_register+0x90/0xf8 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+              sh-6111    [001] ...1.   297.540373: tracing_mark_write: DRIVER_REPLAY_END
+              sh-6111    [001] ...1.   297.540625: tracing_mark_write: MANUAL_NORMAL_START
+ panel-normal-fa-6208    [002] d....   297.543881: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x4d
+ panel-normal-fa-6208    [002] d..1.   297.544194: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+ panel-normal-fa-6208    [002] d....   297.544223: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb2 b1=0x5
+ panel-normal-fa-6208    [002] d..1.   297.544324: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+ panel-normal-fa-6208    [002] d....   297.544334: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x49
+ panel-normal-fa-6208    [002] d..1.   297.544400: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+ panel-normal-fa-6208    [002] d....   297.544408: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb2 b1=0x7f
+ panel-normal-fa-6208    [002] d..1.   297.544472: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+ panel-normal-fa-6208    [002] d....   297.544481: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x36
+ panel-normal-fa-6208    [002] d..1.   297.544548: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+ panel-normal-fa-6208    [002] d....   297.544556: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb2 b1=0x12
+ panel-normal-fa-6208    [002] d..1.   297.544619: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+ panel-normal-fa-6208    [002] d....   297.544627: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x67
+ panel-normal-fa-6208    [002] d..1.   297.544688: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+ panel-normal-fa-6208    [002] d....   297.544696: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb2 b1=0x1b
+ panel-normal-fa-6208    [002] d..1.   297.544765: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+ panel-normal-fa-6208    [002] d....   297.544773: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x35
+ panel-normal-fa-6208    [002] d..1.   297.544838: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+ panel-normal-fa-6208    [002] d....   297.544847: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb2 b1=0x1
+ panel-normal-fa-6208    [002] d..1.   297.544910: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+              sh-6111    [003] ...1.   297.546308: tracing_mark_write: MANUAL_NORMAL_END
+     kworker/2:1-57      [002] .....   298.273577: dpu_enc_kickoff: id=33

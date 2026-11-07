@@ -1,0 +1,44 @@
+phoc_mode=hiprio
+()
+phoc_pid=11190
+FD_MESA_DEBUG=hiprio
+tabs3-phase-cairo-29050-before uptime=2364.45
+101
+tabs3-phase-cairo-29050-open uptime=2367.80
+101
+tabs3-phase-cairo-29050-scroll uptime=2369.19
+101
+tabs3-phase-cairo-29050-osk uptime=2370.43
+101
+tabs3-phase-cairo-29050-close uptime=2372.75
+101
+tabs3-phase-ngl-11804-before uptime=2372.89
+101
+tabs3-phase-ngl-11804-open uptime=2376.09
+101
+tabs3-phase-ngl-11804-scroll uptime=2377.34
+101
+tabs3-phase-ngl-11804-osk uptime=2378.61
+101
+tabs3-phase-ngl-11804-close uptime=2381.05
+101
+tabs3-phase-cairo-8334-before uptime=2381.19
+101
+tabs3-phase-cairo-8334-open uptime=2384.39
+101
+tabs3-phase-cairo-8334-scroll uptime=2385.63
+101
+tabs3-phase-cairo-8334-osk uptime=2386.89
+101
+tabs3-phase-cairo-8334-close uptime=2389.20
+101
+tabs3-phase-ngl-2924-before uptime=2389.35
+101
+tabs3-phase-ngl-2924-open uptime=2392.57
+101
+tabs3-phase-ngl-2924-scroll uptime=2393.85
+101
+tabs3-phase-ngl-2924-osk uptime=2395.15
+101
+tabs3-phase-ngl-2924-close uptime=2397.56
+101

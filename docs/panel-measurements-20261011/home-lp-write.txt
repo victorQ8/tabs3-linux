@@ -1,0 +1,82 @@
+LP_WRITE_BASELINE
+15 b0 5a
+ok 4
+24 d8 01 1
+33 (1 bytes)
+15 b0 36
+ok 4
+24 d2 01 1
+12 (1 bytes)
+WRITE_lp_10
+lp 15 b0 36
+ok 4
+lp 39 b2 10
+ok 8
+lp 15 b0 35
+ok 4
+lp 39 b2 01
+ok 8
+15 b0 5b
+ok 4
+24 d8 01 1
+51 (1 bytes)
+15 b0 36
+ok 4
+24 d2 01 1
+10 (1 bytes)
+WRITE_lp_12
+lp 15 b0 36
+ok 4
+lp 39 b2 12
+ok 8
+lp 15 b0 35
+ok 4
+lp 39 b2 01
+ok 8
+15 b0 5b
+ok 4
+24 d8 01 1
+51 (1 bytes)
+15 b0 36
+ok 4
+24 d2 01 1
+12 (1 bytes)
+WRITE_hs_10
+15 b0 36
+ok 4
+39 b2 10
+ok 8
+15 b0 35
+ok 4
+39 b2 01
+ok 8
+15 b0 5b
+ok 4
+24 d8 01 1
+51 (1 bytes)
+15 b0 36
+ok 4
+24 d2 01 1
+10 (1 bytes)
+WRITE_hs_12
+15 b0 36
+ok 4
+39 b2 12
+ok 8
+15 b0 35
+ok 4
+39 b2 01
+ok 8
+15 b0 5b
+ok 4
+24 d8 01 1
+51 (1 bytes)
+15 b0 36
+ok 4
+24 d2 01 1
+12 (1 bytes)
+END
+RESTORE 15 b0 36: ok 4
+RESTORE 39 b2 12: ok 8
+RESTORE 15 b0 35: ok 4
+RESTORE 39 b2 01: ok 8

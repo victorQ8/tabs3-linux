@@ -1,0 +1,150 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Samsung Galaxy Tab S3 LTE (SM-T825) S Pen digitizer: Wacom W9019 EMR
+ * controller running Samsung's firmware ("epen/w9019_gts3l.fw", ic_type
+ * 0x233b = 9019), I2C address 0x56 on BLSP2 QUP6 (stock "i2c_12",
+ * i2c@75ba000, TLMM 87/88, 400 kHz). Bootloader address 0x09 is only used
+ * for firmware flashing and must not get a node.
+ *
+ * Stock DT (live.dts 6898-6919 == msm8996-sec-gts3llte-r05.dtsi 1280-1305):
+ *   INT  TLMM 34   output of the controller, active low, falling-edge IRQ
+ *                  (wacom,irq_type = <2> = IRQF_TRIGGER_FALLING); input, no pull
+ *   PDCT TLMM 117  "pen detect" output of the controller (low = pen in range);
+ *                  only a sanity gate in the vendor driver; input, no pull
+ *   FWE  TLMM 24   firmware-write-enable, sampled at controller power-up:
+ *                  low = application firmware at 0x56, high = bootloader at
+ *                  0x09. Stock: gpio, drive 2, pull-down, output-low.
+ *   VDD  3.3 V     regulator-fixed "wacom_3.3v", enable TLMM 126 active high,
+ *                  regulator-boot-on (left on by the bootloader).
+ *
+ * Needs wacom_i2c.patch (adds the "wacom,w9019" Samsung-protocol variant,
+ * vdd-supply and touchscreen-* orientation properties) on top of the
+ * mainline drivers/input/touchscreen/wacom_i2c.c (CONFIG_TOUCHSCREEN_WACOM_I2C).
+ */
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+
+/ {
+	vreg_wacom_3p3: regulator-wacom-3p3 {
+		compatible = "regulator-fixed";
+		regulator-name = "vreg_wacom_3p3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		gpio = <&tlmm 126 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+		regulator-boot-on;
+		pinctrl-names = "default";
+		pinctrl-0 = <&wacom_ldo_en_default>;
+	};
+};
+
+&blsp2_i2c6 {
+	status = "okay";
+	/* stock qcom,clk-freq-out = <400000> */
+	clock-frequency = <400000>;
+
+	digitizer@56 {
+		compatible = "wacom,w9019";
+		reg = <0x56>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <34 IRQ_TYPE_EDGE_FALLING>;
+		vdd-supply = <&vreg_wacom_3p3>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&wacom_int_default>, <&wacom_fwe_default>;
+
+		/*
+		 * Raw digitizer axes (query reply / stock wacom,max_coords):
+		 * X 0..19661 along the long edge, growing toward the front-camera
+		 * edge; Y 0..14746 along the short edge. 9.6 units per panel pixel
+		 * (0.01 mm). With no orientation property this is a 2048x1536
+		 * landscape frame whose origin is the corner on the home-button
+		 * edge, i.e. the front camera on the RIGHT. If the native frame
+		 * has the camera on the LEFT, enable both of these:
+		 */
+		/* touchscreen-inverted-x; */
+		/* touchscreen-inverted-y; */
+		/*
+		 * The stock Android portrait mapping (wacom,invert = <1 0 1>:
+		 * ABS_X = Y, ABS_Y = 19661 - X) would instead be:
+		 * touchscreen-inverted-x; touchscreen-swapped-x-y;
+		 */
+	};
+};
+
+/* Stock i2c_12_active/i2c_12_sleep: drive-strength 2, no pull, I2C function
+ * kept in sleep. msm8996.dtsi defaults to drive-strength 16 and a GPIO
+ * sleep function.
+ */
+&blsp2_i2c6_default {
+	drive-strength = <2>;
+};
+
+&blsp2_i2c6_sleep {
+	function = "blsp_i2c12";
+};
+
+/* The stock bus node sets qcom,disable-dma; mirror what the project already
+ * does for the touchscreen bus and keep this QUP off the BLSP2 DMA engine.
+ */
+&blsp2_i2c6 {
+	/delete-property/ dmas;
+	/delete-property/ dma-names;
+};
+
+&tlmm {
+	/* stock epen_int_active: INT (gpio34) and PDCT (gpio117), inputs */
+	wacom_int_default: wacom-int-default-state {
+		pins = "gpio34", "gpio117";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	/*
+	 * stock epen_fwel_active: FWE driven low so that every power-up of the
+	 * controller runs the application firmware (0x56), never the
+	 * bootloader (0x09). Applied by the driver core right before the
+	 * digitizer probes, i.e. before the driver enables vdd.
+	 */
+	wacom_fwe_default: wacom-fwe-default-state {
+		pins = "gpio24";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-pull-down;
+		output-low;
+	};
+
+	wacom_ldo_en_default: wacom-ldo-en-default-state {
+		pins = "gpio126";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	/*
+	 * Belt-and-braces alternative: claim FWE as soon as the TLMM probes,
+	 * independent of the digitizer driver being built/loaded. The
+	 * msm pinctrl is "strict", but its gpio function is flagged with
+	 * function_is_gpio, so this hog and the wacom_fwe_default state above
+	 * can coexist on gpio24; using only one of them is cleaner.
+	 */
+	/*
+	wacom-fwe-hog {
+		gpio-hog;
+		gpios = <24 GPIO_ACTIVE_HIGH>;
+		output-low;
+		line-name = "wacom-fwe";
+	};
+	*/
+};
+
+/*
+ * PDCT (TLMM 117) is deliberately not exposed as a gpio-keys SW_PEN_INSERTED
+ * switch: on this tablet it is the controller's pen-in-range output (low =
+ * pen detected, see wacom_tab/wacom.h PDCT_DETECT_PEN 0), not a silo/garage
+ * switch (the Tab S3 has no pen silo and the stock DT has no
+ * wacom,sense-gpio, so the vendor driver never reports SW_PEN_INSERT here).
+ * Proximity is already conveyed by BTN_TOOL_PEN/BTN_TOOL_RUBBER from the
+ * controller's own reports.
+ */

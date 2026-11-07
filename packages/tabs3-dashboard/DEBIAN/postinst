@@ -1,0 +1,19 @@
+#!/bin/sh
+set -e
+if [ "$1" = configure ]; then
+    if [ -z "$2" ]; then
+        systemctl enable tabs3-dashboard.service >/dev/null 2>&1 || true
+    fi
+    if [ -d /run/systemd/system ]; then
+        systemctl daemon-reload >/dev/null 2>&1 || true
+        # Apply the udev rule to a framebuffer that already exists, so that
+        # dev-fb0.device (which the service binds to) is there before the
+        # service starts.
+        udevadm control --reload >/dev/null 2>&1 || true
+        udevadm trigger --action=add --subsystem-match=graphics >/dev/null 2>&1 || true
+        udevadm settle --timeout=5 >/dev/null 2>&1 || true
+        if systemctl is-enabled --quiet tabs3-dashboard.service 2>/dev/null; then
+            systemctl restart tabs3-dashboard.service >/dev/null 2>&1 || true
+        fi
+    fi
+fi

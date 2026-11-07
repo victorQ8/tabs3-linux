@@ -1,0 +1,56 @@
+--- a/drivers/clk/qcom/gcc-msm8996.c
++++ b/drivers/clk/qcom/gcc-msm8996.c
+@@ -1061,7 +1061,7 @@
+ 		.name = "gp1_clk_src",
+ 		.parent_data = gcc_xo_gpll0_sleep_clk_gpll0_early_div,
+ 		.num_parents = ARRAY_SIZE(gcc_xo_gpll0_sleep_clk_gpll0_early_div),
+-		.ops = &clk_rcg2_ops,
++		.ops = &clk_rcg2_gp_ops,
+ 	},
+ };
+ 
+@@ -1075,7 +1075,7 @@
+ 		.name = "gp2_clk_src",
+ 		.parent_data = gcc_xo_gpll0_sleep_clk_gpll0_early_div,
+ 		.num_parents = ARRAY_SIZE(gcc_xo_gpll0_sleep_clk_gpll0_early_div),
+-		.ops = &clk_rcg2_ops,
++		.ops = &clk_rcg2_gp_ops,
+ 	},
+ };
+ 
+@@ -1089,7 +1089,7 @@
+ 		.name = "gp3_clk_src",
+ 		.parent_data = gcc_xo_gpll0_sleep_clk_gpll0_early_div,
+ 		.num_parents = ARRAY_SIZE(gcc_xo_gpll0_sleep_clk_gpll0_early_div),
+-		.ops = &clk_rcg2_ops,
++		.ops = &clk_rcg2_gp_ops,
+ 	},
+ };
+ 
+@@ -2349,7 +2349,7 @@
+ 				&gp1_clk_src.clkr.hw,
+ 			},
+ 			.num_parents = 1,
+-			.flags = CLK_SET_RATE_PARENT,
++			.flags = CLK_SET_RATE_PARENT | CLK_DUTY_CYCLE_PARENT,
+ 			.ops = &clk_branch2_ops,
+ 		},
+ 	},
+@@ -2366,7 +2366,7 @@
+ 				&gp2_clk_src.clkr.hw,
+ 			},
+ 			.num_parents = 1,
+-			.flags = CLK_SET_RATE_PARENT,
++			.flags = CLK_SET_RATE_PARENT | CLK_DUTY_CYCLE_PARENT,
+ 			.ops = &clk_branch2_ops,
+ 		},
+ 	},
+@@ -2383,7 +2383,7 @@
+ 				&gp3_clk_src.clkr.hw,
+ 			},
+ 			.num_parents = 1,
+-			.flags = CLK_SET_RATE_PARENT,
++			.flags = CLK_SET_RATE_PARENT | CLK_DUTY_CYCLE_PARENT,
+ 			.ops = &clk_branch2_ops,
+ 		},
+ 	},

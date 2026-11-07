@@ -1,0 +1,69 @@
+# tracer: nop
+#
+# entries-in-buffer/entries-written: 57/57   #P:4
+#
+#                                _-----=> irqs-off/BH-disabled
+#                               / _----=> need-resched
+#                              | / _---=> hardirq/softirq
+#                              || / _--=> preempt-depth
+#                              ||| / _-=> migrate-disable
+#                              |||| /     delay
+#           TASK-PID     CPU#  |||||  TIMESTAMP  FUNCTION
+#              | |         |   |||||     |         |
+              sh-12157   [002] ...1.   571.209783: tracing_mark_write: PASSIVE_BASELINE_START
+   kworker/u16:1-76      [002] .....   574.192200: dpu_crtc_vblank: id:95 enable:true state{enabled:true}
+     kworker/3:0-33      [003] .....   574.196611: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   574.222002: dpu_enc_frame_done_cb: id=33, idx=0, frame_busy_mask=1
+          <idle>-0       [000] d.h2.   574.222051: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   574.222067: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+   crtc_event:95-144     [003] .....   574.222189: dpu_crtc_frame_event_done: id=95, event=1
+     kworker/3:0-33      [003] .....   574.227826: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   574.255599: dpu_enc_frame_done_cb: id=33, idx=0, frame_busy_mask=1
+          <idle>-0       [000] d.h2.   574.255626: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   574.255641: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+   crtc_event:95-144     [003] .....   574.255734: dpu_crtc_frame_event_done: id=95, event=1
+   kworker/u16:1-76      [002] .....   574.261111: dpu_crtc_vblank: id:95 enable:false state{enabled:true}
+   kworker/u16:1-76      [002] .....   578.300345: dpu_crtc_vblank: id:95 enable:true state{enabled:true}
+     kworker/1:3-4788    [001] .....   578.312286: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   578.339474: dpu_enc_frame_done_cb: id=33, idx=0, frame_busy_mask=1
+          <idle>-0       [000] d.h2.   578.339524: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   578.339546: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+   crtc_event:95-144     [003] .....   578.339628: dpu_crtc_frame_event_done: id=95, event=1
+     kworker/1:3-4788    [001] .....   578.345409: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   578.373074: dpu_enc_frame_done_cb: id=33, idx=0, frame_busy_mask=1
+          <idle>-0       [000] d.h2.   578.373111: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   578.373129: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+   crtc_event:95-144     [003] .....   578.373182: dpu_crtc_frame_event_done: id=95, event=1
+   kworker/u16:1-76      [002] .....   578.378704: dpu_crtc_vblank: id:95 enable:false state{enabled:true}
+   kworker/u16:1-76      [003] .....   582.340241: dpu_crtc_vblank: id:95 enable:true state{enabled:true}
+     kworker/2:0-28      [002] .....   582.345393: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   582.372914: dpu_enc_frame_done_cb: id=33, idx=0, frame_busy_mask=1
+          <idle>-0       [000] d.h2.   582.372966: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   582.372983: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+   crtc_event:95-144     [003] .....   582.373092: dpu_crtc_frame_event_done: id=95, event=1
+     kworker/2:0-28      [002] .....   582.378741: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   582.406503: dpu_enc_frame_done_cb: id=33, idx=0, frame_busy_mask=1
+          <idle>-0       [000] d.h2.   582.406532: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   582.406548: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+   crtc_event:95-144     [003] .....   582.406644: dpu_crtc_frame_event_done: id=95, event=1
+   kworker/u16:1-76      [003] .....   582.412080: dpu_crtc_vblank: id:95 enable:false state{enabled:true}
+   kworker/u16:1-76      [003] .....   586.252244: dpu_crtc_vblank: id:95 enable:true state{enabled:true}
+     kworker/1:3-4788    [001] .....   586.261248: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   586.288726: dpu_enc_frame_done_cb: id=33, idx=0, frame_busy_mask=1
+          <idle>-0       [000] d.h2.   586.288777: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   586.288801: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+   crtc_event:95-144     [003] .....   586.288873: dpu_crtc_frame_event_done: id=95, event=1
+     kworker/1:3-4788    [001] .....   586.294695: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   586.322310: dpu_enc_frame_done_cb: id=33, idx=0, frame_busy_mask=1
+          <idle>-0       [000] d.h2.   586.322348: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   586.322367: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+   crtc_event:95-144     [003] .....   586.322419: dpu_crtc_frame_event_done: id=95, event=1
+   kworker/u16:1-76      [003] .....   586.327821: dpu_crtc_vblank: id:95 enable:false state{enabled:true}
+   kworker/u16:1-76      [003] .....   590.329452: dpu_crtc_vblank: id:95 enable:true state{enabled:true}
+     kworker/0:4-125     [000] .....   590.345130: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   590.372569: dpu_enc_frame_done_cb: id=33, idx=0, frame_busy_mask=1
+          <idle>-0       [000] d.h2.   590.372615: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] dNh2.   590.372650: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+   crtc_event:95-144     [003] .....   590.372722: dpu_crtc_frame_event_done: id=95, event=1
+   kworker/u16:1-76      [003] .....   590.394855: dpu_crtc_vblank: id:95 enable:false state{enabled:true}
+              sh-12157   [002] ...1.   591.216885: tracing_mark_write: PASSIVE_BASELINE_END

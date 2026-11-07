@@ -1,0 +1,57 @@
+#!/bin/sh
+# Keep the battery of an always-charging tablet between TABS3_BATTERY_LOW and
+# TABS3_BATTERY_HIGH percent. Well above the high mark (three points or more,
+# a full battery for instance) the tablet runs from its battery although it is
+# plugged in (the charger's force-discharge behaviour, kernel package 68) until
+# the high mark; at the high mark charging is inhibited and the system runs
+# from the charger with the cell resting; below the low mark charging resumes.
+# On battery nothing is inhibited. Run by tabs3-battery-keeper.timer every
+# minute; a change is logged, silence means no change. A kernel floor at 15 %
+# ends a forced discharge even if this script never runs again.
+set -u
+high=${TABS3_BATTERY_HIGH:-80}
+low=${TABS3_BATTERY_LOW:-65}
+bat=${TABS3_BATTERY_PSY:-/sys/class/power_supply/sm5705-battery}
+chg=${TABS3_CHARGER_PSY:-/sys/class/power_supply/sm5705-charger}
+[ -r "$bat/capacity" ] && [ -w "$chg/charge_behaviour" ] || exit 0
+# A window that makes no sense falls back to the defaults
+# Reject non-decimal values before numeric tests or shell arithmetic. Leading
+# zeroes otherwise become octal in arithmetic on some /bin/sh implementations.
+valid_percent() {
+    case "$1" in [1-9][0-9]|100) return 0 ;; *) return 1 ;; esac
+}
+if ! valid_percent "$low" || ! valid_percent "$high"; then
+    high=80
+    low=65
+fi
+if [ "$low" -lt 20 ] || [ "$high" -gt 100 ] || [ "$high" -lt "$low" ]; then
+    high=80
+    low=65
+fi
+cap=$(cat "$bat/capacity")
+case "$cap" in [0-9]|[1-9][0-9]|100) ;; *) echo 'battery capacity unavailable or invalid' >&2; exit 1 ;; esac
+online=$(cat "$chg/online" 2>/dev/null || echo 0)
+current=$(sed -n 's/.*\[\([a-z-]*\)\].*/\1/p' "$chg/charge_behaviour")
+case "$current" in auto|inhibit-charge|force-discharge) ;; *) echo 'unknown charge behaviour' >&2; exit 1 ;; esac
+can_discharge=0
+grep -q force-discharge "$chg/charge_behaviour" && can_discharge=1
+wanted=$current
+if [ "$online" != 1 ]; then
+    wanted=auto
+elif [ "$cap" -ge $((high + 3)) ] && [ "$can_discharge" = 1 ] && [ "$high" -lt 100 ]; then
+    wanted=force-discharge
+elif [ "$cap" -ge "$high" ]; then
+    wanted=inhibit-charge
+elif [ "$cap" -le "$low" ]; then
+    wanted=auto
+elif [ "$current" = force-discharge ]; then
+    wanted=inhibit-charge
+fi
+if [ "$wanted" != "$current" ]; then
+    if echo "$wanted" > "$chg/charge_behaviour"; then
+        echo "battery $cap %: charging $wanted (was $current)"
+    else
+        echo "battery $cap %: could not set charging $wanted" >&2
+        exit 1
+    fi
+fi

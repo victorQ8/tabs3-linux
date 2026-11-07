@@ -1,0 +1,66 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/* microSD slot. */
+#include <dt-bindings/gpio/gpio.h>
+
+/*
+ * microSD (SDHC2), from this tablet's stock DTB: card power PM8994 L21
+ * (2.95 V), I/O PM8994 L13 (1.8-2.95 V for UHS-I), card detect TLMM 95
+ * (active low, external pull-up), 4-bit bus up to SDR104. Stock gives
+ * L13/L21 no other consumers apart from disabled debug blocks (TPIU, QPDI).
+ */
+&sdhc2 {
+	pinctrl-names = "default", "sleep";
+	pinctrl-0 = <&sdc2_state_on &sdc2_cd_default>;
+	pinctrl-1 = <&sdc2_state_off &sdc2_cd_default>;
+	cd-gpios = <&tlmm 95 GPIO_ACTIVE_LOW>;
+	vmmc-supply = <&vreg_l21a_2p95>;
+	vqmmc-supply = <&vreg_l13a_2p95>;
+	/*
+	 * UHS-I: packages 45 to 63 carried no-1-8-v because on 2026-10-13 the
+	 * first 4-bit transfer after the 1.8 V switch never delivered its data.
+	 * On 2026-10-14 (package 64 tree) the same card initialised at SDR104,
+	 * 200 MHz, 1.8 V on a RAM boot and on five host re-initialisations in a
+	 * row without an error, reading at 59 MB/s; the earlier failure was
+	 * never reproduced again, so 1.8 V signalling stays enabled.
+	 */
+	status = "okay";
+};
+
+/* Stock drive strengths: clock 16 mA, command and data 8 mA */
+&sdc2_state_on {
+	cmd-pins {
+		drive-strength = <8>;
+	};
+
+	data-pins {
+		drive-strength = <8>;
+	};
+};
+
+&rpm_requests {
+	regulators-0 {
+		vreg_l13a_2p95: l13 {
+			regulator-name = "vreg_l13a_2p95";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <2950000>;
+			regulator-allow-set-load;
+		};
+
+		vreg_l21a_2p95: l21 {
+			regulator-name = "vreg_l21a_2p95";
+			regulator-min-microvolt = <2950000>;
+			regulator-max-microvolt = <2950000>;
+			regulator-allow-set-load;
+			regulator-system-load = <200000>;
+		};
+	};
+};
+
+&tlmm {
+	sdc2_cd_default: sdc2-cd-default-state {
+		pins = "gpio95";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+};

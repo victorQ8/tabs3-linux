@@ -1,0 +1,13 @@
+Package: tabs3-base
+Version: 0.1.35
+Architecture: all
+Maintainer: tabS3 Project <root@localhost>
+Depends: systemd, systemd-resolved, openssh-server, iproute2, kmod, e2fsprogs, rmtfs, qrtr-tools, libqmi-utils, util-linux-extra, python3, unattended-upgrades
+Recommends: iwd, bluez, firmware-atheros, wireless-regdb, iw, dmsetup, v4l-utils, python3-pil, python3-numpy
+Section: admin
+Priority: optional
+Description: Debian userspace defaults for experimental Tab S3 LTE bring-up
+ Provides USB NCM networking, SSH defaults, Wi-Fi and Bluetooth setup, screen
+ sleep and power-key handling, camera snapshots (tabs3-snapshot) and project
+ metadata.
+ Requires a separately validated LTE kernel, device tree and boot integration.

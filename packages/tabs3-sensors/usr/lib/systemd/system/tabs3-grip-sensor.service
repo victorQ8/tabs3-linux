@@ -1,0 +1,19 @@
+[Unit]
+Description=Bind the grip sensor (SX9310) once the sensor DSP is up
+Documentation=file:/usr/libexec/tabs3-grip-bind
+ConditionPathExists=/sys/bus/i2c/devices/3-0028
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/tabs3-grip-bind 3-0028
+TimeoutStartSec=90
+# root only for the driver's bind file in sysfs
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateNetwork=yes
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target

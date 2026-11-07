@@ -1,0 +1,25 @@
+{
+ "schema_version": 1,
+ "recorded_utc": "2026-10-13T05:29:31+00:00",
+ "installed": {
+  "linux-tabs3": "6.18.56-46",
+  "tabs3-base": "0.1.12"
+ },
+ "setup": "owner's VIA Labs USB 2.0 hub on the USB-C port through an OTG adapter, PC cable unplugged, hub without its own power; `sudo tabs3-usb-host host` over Wi-Fi SSH",
+ "checks": {
+  "role_and_vbus": "host; SM5705 OTG VBUS enabled; battery 100%",
+  "devices": [
+   "2109:2813 VIA Labs USB2.0 Hub, 4 ports, 480 Mb/s",
+   "0bda:8153 Realtek RTL8153 Gigabit Ethernet (built into the hub), r8152 bound, systemd-networkd waiting for a cable",
+   "0781:55a1 SanDisk Cruzer Spark 16 GB, usb-storage as sda"
+  ],
+  "usb_stick_raw_read_mb_s": 17.3,
+  "r8152_firmware": "without firmware-realtek the probe waited 61 s for rtl_nic/rtl8153a-4.fw (sysfs fallback, then -110); with firmware-realtek 20250410-2 installed it probed in 0.5 s",
+  "driver_rebind_side_effect": "a manual r8152 unbind reset the device; xHCI reported 'unexpected setup address command completion code 0x11' four times before the device re-enumerated and probed",
+  "back_to_device_mode": "`sudo tabs3-usb-host device`: VBUS off, USB networking back after the PC cable was reconnected"
+ },
+ "not_done": [
+  "Ethernet with a cable (owner skipped)",
+  "hub with its own power supply"
+ ]
+}

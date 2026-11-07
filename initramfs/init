@@ -1,0 +1,155 @@
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# RAM diagnostic, recovery, and checked handoff to an installed Debian filesystem.
+export PATH=/bin:/usr/bin:/usr/sbin
+/usr/bin/busybox --install -s /bin
+mount -t devtmpfs devtmpfs /dev
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t tmpfs tmpfs /run
+mkdir -p /run/sshd /run/log
+exec >/dev/console 2>&1
+echo 'tabS3 Debian initramfs'
+fail() {
+    echo "Bring-up stopped: $*"
+    while :; do sleep 10; done
+}
+tr '\000' '\n' </proc/device-tree/compatible | grep -Fxq samsung,gts3llte || fail 'wrong board'
+mode=diagnostic
+root_uuid=
+root_extend=
+# The kernel command line is intentionally split into whitespace-separated words.
+# shellcheck disable=SC2013
+for arg in $(cat /proc/cmdline); do
+    case "$arg" in
+        tabs3.mode=*) mode=${arg#*=} ;;
+        tabs3.root_uuid=*) root_uuid=${arg#*=} ;;
+        tabs3.root_extend=*) root_extend=${arg#*=} ;;
+    esac
+done
+case "$mode" in diagnostic|storage-probe|installed|recovery) ;; *) fail 'unknown boot mode' ;; esac
+case "$root_extend" in ''|system) ;; *) fail 'unknown root extension' ;; esac
+# shellcheck source=initramfs/rootmap.sh
+. /usr/lib/tabs3/rootmap.sh
+# shellcheck source=initramfs/rootcheck.sh
+. /usr/lib/tabs3/rootcheck.sh
+extend_root() {
+    [ -n "$root_extend" ] || return 0
+    map_root_system || return 1
+    rootdev=/dev/mapper/tabs3root
+}
+# Diagnostics stay bounded; installed systems and recovery own their shutdown policy.
+case "$mode" in diagnostic|storage-probe)
+    (sleep 300; echo 'Five-minute diagnostic limit reached'; reboot -f) & ;;
+esac
+if [ "$mode" = diagnostic ]; then
+    [ ! -e /sys/class/block/mmcblk0 ] || fail 'RAM diagnostic unexpectedly has storage'
+else
+    attempt=0
+    while [ ! -e /dev/mmcblk0p47 ]; do
+        attempt=$((attempt + 1))
+        [ "$attempt" -lt 30 ] || break
+        sleep 1
+    done
+    if [ "$mode" = storage-probe ]; then
+        # No automounter is present. Set all MMC block devices read-only before
+        # exposing SSH; a missing controller remains diagnosable over USB.
+        for block in /sys/class/block/mmcblk*; do
+            [ -e "$block" ] || continue
+            blockdev --setro "/dev/${block##*/}" || fail 'cannot protect storage'
+            [ "$(blockdev --getro "/dev/${block##*/}")" = 1 ] || fail 'storage is writable'
+        done
+        echo 'Storage probe: MMC block devices read-only; no filesystems mounted.'
+    elif [ "$mode" = recovery ]; then
+        # Nothing is mounted; tabs3-recovery does that on request. Kernel
+        # messages stay off the recovery screen.
+        echo N >/sys/module/printk/parameters/ignore_loglevel
+        echo 4 >/proc/sys/kernel/printk
+    else
+        rootdev=/dev/mmcblk0p47
+        # This installer targets the existing userdata partition, never GPT.
+        if grep -qx PARTNAME=userdata /sys/class/block/mmcblk0p47/uevent &&
+           [ -n "$root_uuid" ] && extend_root &&
+           [ "$(/usr/sbin/blkid -s UUID -o value "$rootdev")" = "$root_uuid" ]; then
+            mkdir -p /newroot
+            if check_root_filesystem "$rootdev" && mount -t ext4 -o ro "$rootdev" /newroot; then
+                if [ -f /newroot/etc/tabs3-release ] && [ -x /newroot/sbin/init ] &&
+                   mount -o remount,rw /newroot; then
+                    mkdir -p /newroot/dev /newroot/proc /newroot/sys /newroot/run
+                    mount --move /dev /newroot/dev || fail 'move dev'
+                    mount --move /proc /newroot/proc || fail 'move proc'
+                    mount --move /sys /newroot/sys || fail 'move sys'
+                    mount --move /run /newroot/run || fail 'move run'
+                    exec switch_root /newroot /sbin/init
+                fi
+                umount /newroot || fail 'unmount invalid root'
+            fi
+        fi
+        echo 'Installed Debian root check failed; starting recovery screen and USB rescue SSH.'
+        mode=recovery
+        echo N >/sys/module/printk/parameters/ignore_loglevel
+        echo 4 >/proc/sys/kernel/printk
+    fi
+fi
+# The recovery screen does not need USB: start it first so a failed USB
+# controller still leaves a working touch menu (check, reboot, power off).
+if [ "$mode" = recovery ]; then
+    # The command line can still say installed after a failed root check.
+    : > /run/tabs3-recovery-mode
+    /usr/sbin/tabs3-recovery _screen &
+fi
+return_fail() {
+    echo "USB setup failed: $*"
+    return 1
+}
+usb_setup() {
+    mount -t configfs configfs /sys/kernel/config || return_fail configfs
+    attempt=0
+    while [ -z "$(ls /sys/class/udc)" ]; do
+        attempt=$((attempt + 1))
+        [ "$attempt" -lt 60 ] || return_fail 'USB controller did not probe'
+        sleep 1
+    done
+    set -- /sys/class/udc/*
+    [ "$#" -eq 1 ] || return_fail 'ambiguous USB controller'
+    udc=${1##*/}
+    g=/sys/kernel/config/usb_gadget/tabs3
+    mkdir -p "$g"
+    echo 0x1d6b >"$g/idVendor"
+    echo 0x0104 >"$g/idProduct"
+    echo 0x0200 >"$g/bcdUSB"
+    # Match the installed gadget's package-80 recovery from Rx.Detect: the
+    # USB rescue link must work after a host session with the USB 3 PHY on.
+    echo high-speed >"$g/max_speed" || return_fail 'USB 2 speed limit'
+    mkdir -p "$g/strings/0x409" "$g/configs/c.1/strings/0x409"
+    echo tabs3-diagnostic >"$g/strings/0x409/serialnumber"
+    echo tabS3 >"$g/strings/0x409/manufacturer"
+    echo "Debian SM-T825 $mode" >"$g/strings/0x409/product"
+    echo 'USB SSH' >"$g/configs/c.1/strings/0x409/configuration"
+    echo 250 >"$g/configs/c.1/MaxPower"
+    mkdir -p "$g/functions/ncm.usb0"
+    echo 02:54:53:33:00:02 >"$g/functions/ncm.usb0/dev_addr"
+    echo 02:54:53:33:00:01 >"$g/functions/ncm.usb0/host_addr"
+    echo 'usb%d' >"$g/functions/ncm.usb0/ifname" || return_fail 'USB interface naming'
+    ln -s "$g/functions/ncm.usb0" "$g/configs/c.1/"
+    echo "$udc" >"$g/UDC" || return_fail 'USB bind failed'
+    ip addr add 172.16.42.2/30 dev usb0 || return_fail 'USB address'
+    ip link set usb0 up || return_fail 'USB link'
+    ssh-keygen -q -t ed25519 -N '' -f /run/ssh_host_ed25519_key || return_fail 'SSH host key'
+    dmesg >/run/log/dmesg.txt
+    echo "USB SSH: root@172.16.42.2, public key only; mode=$mode."
+}
+if ! usb_setup; then
+    if [ "$mode" = recovery ]; then
+        echo 'Recovery continues on the screen only; no USB SSH.'
+    else
+        fail 'USB SSH unavailable'
+    fi
+fi
+if [ "$mode" = recovery ]; then
+    # Keep connection logs off the recovery screen.
+    /usr/sbin/sshd -D -e -f /etc/sshd_config >>/run/log/sshd.log 2>&1 &
+else
+    /usr/sbin/sshd -D -e -f /etc/sshd_config &
+fi
+while :; do wait; sleep 1; done

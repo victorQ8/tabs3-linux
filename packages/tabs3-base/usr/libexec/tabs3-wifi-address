@@ -1,0 +1,91 @@
+#!/bin/sh
+# Recover this board's factory address without mounting or writing EFS.
+set -eu
+tr '\000' '\n' < /sys/firmware/devicetree/base/compatible |
+    grep -qx 'samsung,gts3llte' || exit 0
+umask 077
+cache=/etc/tabs3/wifi-address
+valid_address() {
+    [ "${#1}" = 17 ] || return 1
+    printf '%s\n' "$1" | grep -qE '^([0-9a-f]{2}:){5}[0-9a-f]{2}$' || return 1
+    [ "$1" != 00:00:00:00:00:00 ] || return 1
+    first=${1%%:*}
+    [ "$((0x$first & 1))" = 0 ]
+}
+addr=$(cat "$cache" 2>/dev/null || :)
+if ! valid_address "$addr"; then
+    # The by-partlabel link can appear after udev-trigger.service completes.
+    # Do not skip the entire service on that race, particularly on first boot.
+    attempts=0
+    while [ ! -e /dev/disk/by-partlabel/efs ] && [ "$attempts" -lt 20 ]; do
+        sleep 0.25
+        attempts=$((attempts + 1))
+    done
+    addr=$(debugfs -c -R 'cat /wifi/.mac.info' /dev/disk/by-partlabel/efs 2>/dev/null |
+        tr -d '\r\n ' | tr 'A-F' 'a-f')
+    valid_address "$addr" || { echo 'No valid factory Wi-Fi address in EFS.' >&2; exit 1; }
+    install -d -m 0755 /etc/tabs3
+    printf '%s\n' "$addr" > "$cache.tmp"
+    mv "$cache.tmp" "$cache"
+fi
+
+# .link applies at device creation; NetworkManager's default also survives
+# disconnect/reconnect. An explicit per-connection setting takes precedence.
+install -d /etc/systemd/network /etc/NetworkManager/conf.d
+cat > /etc/systemd/network/10-tabs3-wifi.link.tmp <<EOF
+[Match]
+Driver=ath10k_pci
+OriginalName=wlan0
+[Link]
+NamePolicy=keep kernel
+MACAddressPolicy=none
+MACAddress=$addr
+EOF
+mv /etc/systemd/network/10-tabs3-wifi.link.tmp /etc/systemd/network/10-tabs3-wifi.link
+cat > /etc/NetworkManager/conf.d/30-tabs3-wifi-address.conf.tmp <<EOF
+[connection-tabs3-wifi-address]
+match-device=interface-name:wlan0
+wifi.cloned-mac-address=$addr
+EOF
+mv /etc/NetworkManager/conf.d/30-tabs3-wifi-address.conf.tmp /etc/NetworkManager/conf.d/30-tabs3-wifi-address.conf
+udevadm control --reload
+
+# IWD otherwise recreates wlan0 with the board-data MAC, bypassing the
+# NetworkManager cloned-MAC setting on this backend. Preserve the netdev
+# configured by udev. Keep all other IWD options and driver quirks intact.
+if [ -d /etc/iwd ]; then
+    python3 - <<'PY'
+import configparser
+import os
+from pathlib import Path
+path = Path('/etc/iwd/main.conf')
+config = configparser.ConfigParser(interpolation=None)
+config.optionxform = str
+if path.exists():
+    config.read(path)
+if not config.has_section('DriverQuirks'):
+    config.add_section('DriverQuirks')
+drivers = [s.strip() for s in config.get('DriverQuirks', 'DefaultInterface', fallback='').split(',') if s.strip()]
+if 'ath10k_pci' not in drivers:
+    drivers.append('ath10k_pci')
+    config.set('DriverQuirks', 'DefaultInterface', ','.join(drivers))
+    if path.exists() and not path.with_suffix('.conf.pre-tabs3-address').exists():
+        path.with_suffix('.conf.pre-tabs3-address').write_bytes(path.read_bytes())
+    temporary = path.with_suffix('.conf.tabs3-tmp')
+    with temporary.open('w') as out:
+        config.write(out)
+    os.chmod(temporary, 0o600)
+    temporary.replace(path)
+PY
+fi
+
+# First boot after installation may have created wlan0 before this service.
+# Only configure an interface that is down; never interrupt a live connection.
+if [ -r /sys/class/net/wlan0/flags ] &&
+    [ "$(basename "$(readlink -f /sys/class/net/wlan0/device/driver)")" = ath10k_pci ]; then
+    flags=$(cat /sys/class/net/wlan0/flags)
+    if [ "$((flags & 1))" = 0 ]; then
+        ip link set dev wlan0 address "$addr"
+    fi
+fi
+echo 'Factory Wi-Fi address configured (address omitted).'

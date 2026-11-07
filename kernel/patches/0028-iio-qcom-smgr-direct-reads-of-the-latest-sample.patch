@@ -1,0 +1,320 @@
+Subject: [PATCH] iio: qcom_smgr: direct reads of the latest sample
+
+The Sensor Manager only streams samples, so the accelerometer offered a
+buffer and no raw channels. iio-sensor-proxy cannot use that buffer: it has
+no trigger, and the proxy's buffer driver needs one. Its polling driver
+reads in_accel_{x,y,z}_raw instead.
+
+Keep the latest sample of every report, and add smgr_sensor_read(): when
+no stream runs, it requests one at up to 10 Hz (or the lower sampling
+frequency) and waits for its first sample; later reads return the latest
+sample at once. The stream stops 3 s after the last read. A buffer enable
+replaces the polling stream, and a buffer disable ends any stream, so the
+two cannot leave a report running behind each other. Give the
+accelerometer's x, y and z channels a raw value that reads in direct mode.
+
+Also skip reports without samples and the buffer push while no IIO device
+is bound.
+
+Assisted-by: Claude:claude-opus-5-5
+
+--- a/drivers/iio/accel/smgr_accel.c
++++ b/drivers/iio/accel/smgr_accel.c
+@@ -17,8 +17,15 @@
+ 			       int *val2, long mask)
+ {
+ 	struct smgr_iio_priv *priv = iio_priv(iio_dev);
++	int ret;
+ 
+ 	switch (mask) {
++	case IIO_CHAN_INFO_RAW:
++		if (!iio_device_claim_direct(iio_dev))
++			return -EBUSY;
++		ret = smgr_sensor_read(priv->sensor, chan->scan_index, val);
++		iio_device_release_direct(iio_dev);
++		return ret;
+ 	case IIO_CHAN_INFO_SAMP_FREQ:
+ 		*val = priv->sensor->data_types[0].cur_sample_rate;
+ 		return IIO_VAL_INT;
+@@ -121,6 +128,7 @@
+ 			.storagebits = 32,
+ 			.endianness = IIO_LE,
+ 		},
++		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
+ 		.info_mask_shared_by_type = BIT(IIO_CHAN_INFO_SCALE) |
+ 					    BIT(IIO_CHAN_INFO_SAMP_FREQ),
+ 		.ext_info = smgr_accel_ext_info
+@@ -136,6 +144,7 @@
+ 			.storagebits = 32,
+ 			.endianness = IIO_LE,
+ 		},
++		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
+ 		.info_mask_shared_by_type = BIT(IIO_CHAN_INFO_SCALE) |
+ 					    BIT(IIO_CHAN_INFO_SAMP_FREQ),
+ 		.ext_info = smgr_accel_ext_info
+@@ -151,6 +160,7 @@
+ 			.storagebits = 32,
+ 			.endianness = IIO_LE,
+ 		},
++		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
+ 		.info_mask_shared_by_type = BIT(IIO_CHAN_INFO_SCALE) |
+ 					    BIT(IIO_CHAN_INFO_SAMP_FREQ),
+ 		.ext_info = smgr_accel_ext_info
+--- a/drivers/iio/common/qcom_smgr/smgr.c
++++ b/drivers/iio/common/qcom_smgr/smgr.c
+@@ -21,6 +21,11 @@
+ 
+ #define SMGR_REPORT_RATE_IN_HZ		0xf000
+ 
++/* Direct reads stream at up to this rate and stop after this idle time */
++#define SMGR_POLL_RATE_HZ		10
++#define SMGR_POLL_IDLE_MS		3000
++#define SMGR_POLL_START_MS		500
++
+ struct smgr {
+ 	struct device *dev;
+ 
+@@ -194,7 +199,7 @@
+ }
+ 
+ static int smgr_request_buffering(struct smgr *smgr, struct smgr_sensor *sensor,
+-				  bool enable)
++				  bool enable, u16 rate)
+ {
+ 	struct sns_smgr_buffering_req req = {
+ 		/*
+@@ -216,10 +221,8 @@
+ 		req.items[0].data_type = SNS_SMGR_DATA_TYPE_PRIMARY;
+ 		req.items[0].decimation = 0x3;
+ 		req.items[0].calibration = 0xf;
+-		req.report_rate = sensor->data_types[0].cur_sample_rate *
+-				  SMGR_REPORT_RATE_IN_HZ;
+-		req.items[0].sampling_rate =
+-			sensor->data_types[0].cur_sample_rate;
++		req.report_rate = rate * SMGR_REPORT_RATE_IN_HZ;
++		req.items[0].sampling_rate = rate;
+ 
+ 		dev_dbg(smgr->dev,
+ 			"Requesting buffering for sensor 0x%02x, report rate: %d, sample rate: %d",
+@@ -278,10 +281,24 @@
+ 		if (sensor->id != ind->report_id)
+ 			continue;
+ 
++		if (!ind->samples_len)
++			break;
++
++		/* Keep the latest sample for direct reads */
++		spin_lock(&sensor->sample_lock);
++		memcpy(sensor->sample,
++		       ind->samples[ind->samples_len - 1].values,
++		       sizeof(sensor->sample));
++		sensor->sample_time = jiffies;
++		sensor->sample_seq++;
++		spin_unlock(&sensor->sample_lock);
++		wake_up_all(&sensor->sample_wq);
++
+ 		// TODO: handle multiple samples
+-		iio_push_to_buffers_with_timestamp(sensor->iio_dev,
+-						   ind->samples[0].values,
+-						   ind->metadata.timestamp);
++		if (sensor->iio_dev)
++			iio_push_to_buffers_with_timestamp(sensor->iio_dev,
++							   ind->samples[0].values,
++							   ind->metadata.timestamp);
+ 
+ 		break;
+ 	}
+@@ -298,13 +315,113 @@
+ 	{}
+ };
+ 
++static u16 smgr_poll_rate(struct smgr_sensor *sensor)
++{
++	return min_not_zero(sensor->data_types[0].cur_sample_rate,
++			    (u16)SMGR_POLL_RATE_HZ);
++}
++
++static unsigned long smgr_poll_timeout(u16 rate)
++{
++	return msecs_to_jiffies(SMGR_POLL_START_MS + 2 * MSEC_PER_SEC / rate);
++}
++
++static void smgr_poll_stop(struct work_struct *work)
++{
++	struct smgr_sensor *sensor = container_of(to_delayed_work(work),
++						  struct smgr_sensor,
++						  poll_stop_work);
++
++	guard(mutex)(&sensor->poll_lock);
++	if (!sensor->polling)
++		return;
++
++	smgr_request_buffering(sensor->smgr, sensor, false, 0);
++	sensor->polling = false;
++}
++
++/**
++ * smgr_sensor_read() - read one value of the latest sample of a sensor
++ * @sensor: the sensor
++ * @index: index of the value in the sample (the axis)
++ * @val: the value
++ *
++ * Starts a stream when none is running and waits for a fresh sample. The
++ * stream stops SMGR_POLL_IDLE_MS after the last read. The caller keeps the
++ * buffer disabled meanwhile, for example with iio_device_claim_direct().
++ *
++ * Return: IIO_VAL_INT or a negative error code.
++ */
++int smgr_sensor_read(struct smgr_sensor *sensor, unsigned int index, int *val)
++{
++	u16 rate = smgr_poll_rate(sensor);
++	unsigned long timeout = smgr_poll_timeout(rate);
++	unsigned int seq;
++	bool fresh;
++	long left;
++	int ret;
++
++	if (index >= ARRAY_SIZE(sensor->sample))
++		return -EINVAL;
++
++	scoped_guard(mutex, &sensor->poll_lock) {
++		spin_lock(&sensor->sample_lock);
++		seq = sensor->sample_seq;
++		fresh = sensor->polling &&
++			time_before(jiffies, sensor->sample_time + timeout);
++		spin_unlock(&sensor->sample_lock);
++
++		if (!sensor->polling) {
++			ret = smgr_request_buffering(sensor->smgr, sensor,
++						     true, rate);
++			if (ret)
++				return ret;
++			sensor->polling = true;
++		}
++
++		mod_delayed_work(system_power_efficient_wq,
++				 &sensor->poll_stop_work,
++				 msecs_to_jiffies(SMGR_POLL_IDLE_MS));
++	}
++
++	if (!fresh) {
++		left = wait_event_interruptible_timeout(sensor->sample_wq,
++				READ_ONCE(sensor->sample_seq) != seq, timeout);
++		if (left < 0)
++			return left;
++		if (!left)
++			return -ETIMEDOUT;
++	}
++
++	spin_lock(&sensor->sample_lock);
++	*val = (s32)sensor->sample[index];
++	spin_unlock(&sensor->sample_lock);
++
++	return IIO_VAL_INT;
++}
++EXPORT_SYMBOL_GPL(smgr_sensor_read);
++
++static void smgr_cancel_polling(void *data)
++{
++	struct smgr *smgr = data;
++	u8 i;
++
++	for (i = 0; i < smgr->sensor_count; i++)
++		cancel_delayed_work_sync(&smgr->sensors[i].poll_stop_work);
++}
++
+ static int smgr_sensor_postenable(struct iio_dev *iio_dev)
+ {
+ 	struct smgr *smgr = dev_get_drvdata(iio_dev->dev.parent->parent);
+ 	struct smgr_iio_priv *priv = iio_priv(iio_dev);
+ 	struct smgr_sensor *sensor = priv->sensor;
+ 
+-	return smgr_request_buffering(smgr, sensor, true);
++	guard(mutex)(&sensor->poll_lock);
++	/* The buffer's request replaces a stream started for direct reads */
++	sensor->polling = false;
++
++	return smgr_request_buffering(smgr, sensor, true,
++				      sensor->data_types[0].cur_sample_rate);
+ }
+ 
+ static int smgr_sensor_postdisable(struct iio_dev *iio_dev)
+@@ -313,7 +430,10 @@
+ 	struct smgr_iio_priv *priv = iio_priv(iio_dev);
+ 	struct smgr_sensor *sensor = priv->sensor;
+ 
+-	return smgr_request_buffering(smgr, sensor, false);
++	guard(mutex)(&sensor->poll_lock);
++	sensor->polling = false;
++
++	return smgr_request_buffering(smgr, sensor, false, 0);
+ }
+ 
+ struct iio_buffer_setup_ops smgr_buffer_ops = {
+@@ -358,6 +478,21 @@
+ 	}
+ 	smgr->sensor_count = ret;
+ 
++	for (i = 0; i < smgr->sensor_count; i++) {
++		struct smgr_sensor *sensor = &smgr->sensors[i];
++
++		sensor->smgr = smgr;
++		mutex_init(&sensor->poll_lock);
++		INIT_DELAYED_WORK(&sensor->poll_stop_work, smgr_poll_stop);
++		spin_lock_init(&sensor->sample_lock);
++		init_waitqueue_head(&sensor->sample_wq);
++	}
++
++	/* Runs after the sensor devices are gone, before the sensors are freed */
++	ret = devm_add_action_or_reset(smgr->dev, smgr_cancel_polling, smgr);
++	if (ret)
++		return ret;
++
+ 	/* Get primary and secondary sensors from each sensor ID */
+ 	for (i = 0; i < smgr->sensor_count; i++) {
+ 		if (smgr->sensors[i].type == SNS_SMGR_SENSOR_TYPE_UNKNOWN)
+--- a/include/linux/iio/common/qcom_smgr.h
++++ b/include/linux/iio/common/qcom_smgr.h
+@@ -4,7 +4,13 @@
+ #define __QCOM_SMGR_H__
+ 
+ #include <linux/iio/types.h>
++#include <linux/mutex.h>
++#include <linux/spinlock.h>
+ #include <linux/types.h>
++#include <linux/wait.h>
++#include <linux/workqueue.h>
++
++struct smgr;
+ 
+ enum smgr_sensor_type {
+ 	SNS_SMGR_SENSOR_TYPE_UNKNOWN,
+@@ -41,6 +47,21 @@
+ 	struct smgr_data_type_item *data_types;
+ 
+ 	struct iio_dev *iio_dev;
++
++	/*
++	 * Direct reads: the Sensor Manager only streams samples, so a read
++	 * starts a stream when the buffer is off (polling) and returns the
++	 * latest sample. The stream stops when reads stop.
++	 */
++	struct smgr *smgr;
++	struct mutex poll_lock;
++	bool polling;
++	struct delayed_work poll_stop_work;
++	spinlock_t sample_lock;
++	u32 sample[3];
++	unsigned long sample_time;
++	unsigned int sample_seq;
++	wait_queue_head_t sample_wq;
+ };
+ 
+ struct smgr_iio_priv
+@@ -50,4 +71,6 @@
+ 
+ extern struct iio_buffer_setup_ops smgr_buffer_ops;
+ 
++int smgr_sensor_read(struct smgr_sensor *sensor, unsigned int index, int *val);
++
+ #endif /* __QCOM_SMGR_H__ */

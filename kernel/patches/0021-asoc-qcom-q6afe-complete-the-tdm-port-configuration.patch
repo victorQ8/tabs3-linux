@@ -1,0 +1,85 @@
+Subject: [PATCH] ASoC: qcom: q6afe: complete the TDM port configuration
+
+q6afe-dai parses qcom,tdm-data-out, qcom,tdm-invert-sync and
+qcom,tdm-data-delay from the device tree, but the values never reach the
+DSP: struct q6afe_tdm_cfg has no fields for them and
+q6afe_tdm_port_prepare() leaves the corresponding AFE TDM config fields at
+zero. A board that needs an inverted sync pulse or a one-bit data delay
+(the SM-T825 speaker amplifiers need both) gets every frame shifted.
+Carry the three values from hw_params to the port configuration.
+
+The port start also always sends a slot mapping, built from whatever
+set_channel_map() stored or from zeros. The MSM8996 ADSP rejects it for a
+single TDM group (AFE_PORT_CMD_SET_PARAM_V2 fails with EBADPARAM and the
+port does not start); its vendor driver only sends one for more than one
+group. Send it only once a channel map has been set, which all existing
+TDM users do. Also free the previous slot mapping before building a new
+one; it leaked on every prepare.
+
+Assisted-by: Claude:claude-opus-5-5
+
+--- a/sound/soc/qcom/qdsp6/q6afe.c
++++ b/sound/soc/qcom/qdsp6/q6afe.c
+@@ -1366,9 +1366,17 @@
+ 	pcfg->tdm_cfg.sync_mode = cfg->sync_mode;
+ 	pcfg->tdm_cfg.sync_src = cfg->sync_src;
+ 	pcfg->tdm_cfg.nslots_per_frame = cfg->nslots_per_frame;
++	pcfg->tdm_cfg.ctrl_data_out_enable = cfg->data_out_enable;
++	pcfg->tdm_cfg.ctrl_invert_sync_pulse = cfg->invert_sync;
++	pcfg->tdm_cfg.ctrl_sync_data_delay = cfg->data_delay;
+ 
+ 	pcfg->tdm_cfg.slot_width = cfg->slot_width;
+ 	pcfg->tdm_cfg.slot_mask = cfg->slot_mask;
++	kfree(port->scfg);
++	port->scfg = NULL;
++	/* Older DSPs (MSM8996) reject a slot mapping for a single TDM group */
++	if (!cfg->slot_mapping)
++		return;
+ 	port->scfg = kzalloc(sizeof(*port->scfg), GFP_KERNEL);
+ 	if (!port->scfg)
+ 		return;
+--- a/sound/soc/qcom/qdsp6/q6afe-dai.c
++++ b/sound/soc/qcom/qdsp6/q6afe-dai.c
+@@ -234,6 +234,7 @@
+ 				tdm->ch_mapping[i] = Q6AFE_CMAP_INVALID;
+ 
+ 			tdm->num_channels = tx_num;
++			tdm->slot_mapping = true;
+ 		} else {
+ 			/* rx */
+ 			if (!rx_slot) {
+@@ -253,6 +254,7 @@
+ 				tdm->ch_mapping[i] = Q6AFE_CMAP_INVALID;
+ 
+ 			tdm->num_channels = rx_num;
++			tdm->slot_mapping = true;
+ 		}
+ 
+ 		break;
+@@ -278,6 +280,9 @@
+ 	tdm->data_align_type = dai_data->priv[dai->id].data_align;
+ 	tdm->sync_src = dai_data->priv[dai->id].sync_src;
+ 	tdm->sync_mode = dai_data->priv[dai->id].sync_mode;
++	tdm->data_out_enable = dai_data->priv[dai->id].data_out_enable;
++	tdm->invert_sync = dai_data->priv[dai->id].invert_sync;
++	tdm->data_delay = dai_data->priv[dai->id].data_delay;
+ 
+ 	return 0;
+ }
+--- a/sound/soc/qcom/qdsp6/q6afe.h
++++ b/sound/soc/qcom/qdsp6/q6afe.h
+@@ -189,10 +189,14 @@
+ 	u16	sync_mode;
+ 	u16	sync_src;
+ 	u16	nslots_per_frame;
++	u16	data_out_enable;
++	u16	invert_sync;
++	u16	data_delay;
+ 	u16	slot_width;
+ 	u16	slot_mask;
+ 	u32	data_align_type;
+ 	u16	ch_mapping[AFE_MAX_CHAN_COUNT];
++	bool	slot_mapping;	/* ch_mapping was set: send it to the DSP */
+ };
+ 
+ struct q6afe_cdc_dma_cfg {

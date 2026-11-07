@@ -1,0 +1,14 @@
+[Unit]
+Description=Tab S3 LTE USB networking
+After=systemd-modules-load.service
+ConditionPathExists=/sys/firmware/devicetree/base/compatible
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/tabs3-usb-gadget
+RemainAfterExit=yes
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

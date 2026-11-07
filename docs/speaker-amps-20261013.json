@@ -1,0 +1,31 @@
+{
+ "schema_version": 1,
+ "recorded_utc": "2026-10-13T05:29:31+00:00",
+ "installed": {
+  "linux-tabs3": "6.18.56-48"
+ },
+ "stock_device_tree": {
+  "bus": "BLSP1 QUP3 I2C (0x7577000), 400 kHz, GPIO 47/48, function blsp_i2c3, 2 mA, bias disabled, DMA disabled",
+  "amplifiers": {
+   "0x34": "rt,tdm_mode, chan_sel 2, tdm_dac_slot 1, tdm_adc_slot 1",
+   "0x35": "rt,tdm_mode, chan_sel 2, tdm_dac_slot 0, tdm_adc_slot 0",
+   "0x36": "rt,tdm_mode, chan_sel 0, tdm_dac_slot 1, tdm_adc_slot 1, rt,do_enable",
+   "0x37": "rt,tdm_mode, chan_sel 0, tdm_dac_slot 0, tdm_adc_slot 0"
+  },
+  "power": "no reset, enable or supply properties"
+ },
+ "path": [
+  "package 47 enabled BLSP1 I2C3, but GPIO 47-50 were still in gpio-reserved-ranges: 'could not request pin 47', the bus did not probe",
+  "package 48 released GPIO 47/48 (49/50 stay reserved); tools/check-dtbs now checks both"
+ ],
+ "chip_id": {
+  "method": "register 0x00 read with I2C_RDWR (tools/rt5508-id); nothing written",
+  "0x34": "0xe8",
+  "0x35": "0xe8",
+  "0x36": "0xe8",
+  "0x37": "0xe8",
+  "meaning": "upper nibble 0xE = RT5508; revision 8, newer than the last named revision (G = 6) in Samsung's driver"
+ },
+ "boot_check": "all PASS on package 48; 4 known clk-rcg2 update_config warnings",
+ "next": "port Samsung's RT5508 codec driver, then the primary TDM back-end and routing at a low volume limit"
+}

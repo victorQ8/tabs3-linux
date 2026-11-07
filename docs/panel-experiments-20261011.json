@@ -1,0 +1,258 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-11T08:03:38.891085+00:00",
+  "source_analysis_commit": "1acabcd",
+  "source_analysis_document": "docs/panel-ams968hh01.md",
+  "earlier_measurements": "docs/display-measurements-20261011.json",
+  "device": {
+    "model": "SM-T825 LTE rev05",
+    "kernel_package": "6.19.5-25",
+    "kernel_build": 10,
+    "environment": "Native Debian after reboot from recovery"
+  },
+  "scope": {
+    "new_driver_changes": false,
+    "new_images_flashed": false,
+    "clock_lane_writes": false,
+    "gpio_configuration_writes": false,
+    "display_power_cycles_tested": false,
+    "human_visual_confirmation": false,
+    "reason_no_visual_confirmation": "User is away from home."
+  },
+  "method": [
+    "Saved failed recovery state, then used the existing normal reboot path into installed Debian. No image was installed.",
+    "Stopped tabs3-screen.service temporarily so an automatic backlight transition could not interleave with measurements.",
+    "Read only the six proposed host-register addresses and GPIO configuration/input registers for panel-ready, supply enable, reset and error signal. Did not change pinmux, bias or output state.",
+    "A temporary userspace helper held tty1 in KD_GRAPHICS, without modifying pixels or panel power, while each read script ran. This prevents fbcon from submitting frames. The helper restored the original console mode on exit.",
+    "Each run enabled DPU kickoff, both pingpong transmit-done, timeout and underrun events in its own trace instance. Waited three seconds and required no kickoffs before reading; checked again before every packet. No frame event occurred during any read session.",
+    "Read DCS identity/status using the existing debugfs interface. Offset commands B0 selected the proposed read positions; no B1/B2 data writes, brightness writes, compression changes or display-on/off commands were sent in the read tests.",
+    "Used alternating identity bytes to test whether an apparently valid reply actually changes with the requested register. Captured raw RDBK_DATA0 and RDBK_DATA_CTRL after commands in the control runs.",
+    "Restored automatic screen blanking. All measurement trace instances were removed and no kprobes remain."
+  ],
+  "results": {
+    "E4_static_lp_identity_reads": {
+      "status": "passed_in_settled_static_state",
+      "sequence": [
+        {
+          "request": "06 da 1",
+          "reply": "42"
+        },
+        {
+          "request": "lp 06 db 1",
+          "reply": "40"
+        },
+        {
+          "request": "lp 06 dc 1",
+          "reply": "16"
+        },
+        {
+          "request": "lp 06 da 1",
+          "reply": "42"
+        },
+        {
+          "request": "06 db 1",
+          "reply": "40"
+        },
+        {
+          "request": "lp 06 da 1",
+          "reply": "42"
+        },
+        {
+          "request": "06 dc 1",
+          "reply": "16"
+        },
+        {
+          "request": "lp 06 db 1",
+          "reply": "40"
+        }
+      ],
+      "raw_replies": {
+        "42": "0x21420024",
+        "40": "0x21400038",
+        "16": "0x2116000b"
+      },
+      "rdbk_data_ctrl": "0x00040000",
+      "evidence": "private/panel-experiments-20261011/lp-id-controls-results.txt",
+      "conclusion": "LP DCS reads return changing, correct identity bytes after initialization/fixup with frame submissions stopped. LP reception is not globally broken.",
+      "limits": [
+        "Does not establish LP writes landing, especially during initialization.",
+        "Does not test LP or HS reads while streaming; streaming reads are intentionally excluded after the prior stall.",
+        "The first static test read the same ID in HS and LP and alone was insufficient; the alternating-register controls above provide the actual pass."
+      ]
+    },
+    "E2_E3_readback_method_validation": {
+      "status": "failed_validation_do_not_interpret_as_bank_values",
+      "initial_survey": {
+        "B1[51]": "80",
+        "B1[d9]": "80",
+        "B2[4d]": "80",
+        "B2[36]": "80",
+        "B2[67]": "80",
+        "preceding_DCS_0f": "80"
+      },
+      "controls": [
+        {
+          "preceding_read": "06 da 1 -> 42",
+          "B1[51]_generic": "42",
+          "B1[51]_dcs": "42",
+          "B2[67]_generic": "42",
+          "B2[67]_dcs": "42"
+        },
+        {
+          "preceding_read": "06 db 1 -> 40",
+          "B1[51]_generic": "40",
+          "B1[51]_dcs": "40",
+          "B2[67]_generic": "40",
+          "B2[67]_dcs": "40"
+        }
+      ],
+      "generic_read_requests": [
+        "15 b0 51; 24 b1 01 1",
+        "15 b0 67; 24 b2 01 1"
+      ],
+      "dcs_read_requests": [
+        "15 b0 51; 06 b1 1",
+        "15 b0 67; 06 b2 1"
+      ],
+      "raw_responses": {
+        "generic_after_DA": "0x11420022",
+        "generic_after_DB": "0x1140003e",
+        "dcs_after_DA": "0x21420024",
+        "dcs_after_DB": "0x21400038"
+      },
+      "evidence": "private/panel-experiments-20261011/read-controls-results.txt",
+      "conclusion": "The suggested B1/B2 read commands return the previous identity data under both read formats. Their payload cannot be trusted as the targeted bank register contents. Generic response headers differ from DCS headers, so this is not established to be merely an unchanged host debugfs result string.",
+      "limits": [
+        "This is validation of the proposed read method after fixup, not the requested pre-fixup E2 boot.",
+        "No conclusion about whether initialization landed or compression erased settings can be drawn from these bank replies.",
+        "The origin of the repeated payload is not established; the correct vendor read protocol must be found/validated."
+      ]
+    },
+    "host_register_snapshot": {
+      "DSI0": {
+        "CMD_DMA_CTRL": "0x14000000",
+        "TRIG_CTRL": "0x80001004",
+        "LANE_CTRL": "0x10000000"
+      },
+      "DSI1": {
+        "CMD_DMA_CTRL": "0x14000000",
+        "TRIG_CTRL": "0x80001004",
+        "LANE_CTRL": "0x10000000"
+      },
+      "evidence": "private/panel-experiments-20261011/debian-baseline-registers.txt",
+      "limits": "Shows current controller settings, not their ordering relative to reset at boot. E7/E8 have not been performed."
+    },
+    "error_signal_baseline": {
+      "GPIO121_CTL": "0x00000001",
+      "GPIO121_INOUT": "0x00000000",
+      "decode": "GPIO input, pull-down enabled, sampled low. Pin remains reserved in DTS; no edge interrupt monitor is installed.",
+      "other_inputs": {
+        "TCON_READY_GPIO45": 1,
+        "SUPPLY_GPIO46_output": 1,
+        "RESET_GPIO143_output": 1
+      },
+      "limits": "A low level with this configuration and no verified healthy visual baseline is not evidence of a protection trip. No failed-wake edge capture was performed."
+    },
+    "DCS_status_snapshot": {
+      "0a": "04",
+      "0e": "80",
+      "0f": "80",
+      "limits": "No before/after failed-wake comparison or physical observation; values are recorded without declaring a fault cause."
+    },
+    "frame_trace_controls": {
+      "static-read": {
+        "frame_kickoffs": 0,
+        "transmit_done_callbacks": 0,
+        "frame_timeouts": 0,
+        "underruns": 0,
+        "buffer_header": "# entries-in-buffer/entries-written: 20/20   #P:4"
+      },
+      "read-controls": {
+        "frame_kickoffs": 0,
+        "transmit_done_callbacks": 0,
+        "frame_timeouts": 0,
+        "underruns": 0,
+        "buffer_header": "# entries-in-buffer/entries-written: 27/27   #P:4"
+      },
+      "lp-id-controls": {
+        "frame_kickoffs": 0,
+        "transmit_done_callbacks": 0,
+        "frame_timeouts": 0,
+        "underruns": 0,
+        "buffer_header": "# entries-in-buffer/entries-written: 10/10   #P:4"
+      }
+    },
+    "kernel_messages": "No new dmesg lines appeared during the three static read sessions."
+  },
+  "corrections_needed_in_source_report": [
+    {
+      "location": "docs/panel-ams968hh01/transport.md, summary item 6 and section F(1)",
+      "claim": "Separating normal conditions into step 3 (0026) fixed it.",
+      "correction": "Package 25, including 0026/0027, produced a totally black fresh recovery boot. The same failed boot stayed black after a traced replay and manual normal-condition sequence. The timing-only change is not a verified fix."
+    },
+    {
+      "location": "docs/panel-ams968hh01.md section 4, E2/E3",
+      "claim": "B1/B2 readback can distinguish applied values from reset defaults.",
+      "correction": "The proposed generic and DCS read commands failed the alternating-ID controls. Replace/validate the read protocol before interpreting register values."
+    },
+    {
+      "location": "Causal interpretation of E7 and ESD",
+      "correction": "A live clock restart recovering the picture would support a clock/input-state hypothesis but would not alone prove the original reset ordering caused the failure. A falling error line would show an error event, not specifically supply sag. Neither has been observed in these experiments."
+    }
+  ],
+  "deferred_experiments": {
+    "E1": "LP brightness-write A/B needs a visually confirmed stable baseline and user observation. Not run.",
+    "E2": "Requires a verified read protocol and a controlled fixup-disabled boot. Neither done.",
+    "E3": "Requires a correct visible baseline and either valid bank readback or an independently measured outcome. No compression toggle performed.",
+    "E7": "Requires a confirmed garbled state and controlled clock intervention. No clock writes performed.",
+    "E8": "Requires a targeted host/panel instrumentation change from the source-analysis owner, with measurable reset/ready/clock order. No new driver change made.",
+    "E13": "ACL-only versus ELVSS-only effects require controlled visual/current measurements; not run.",
+    "ESD": "Needs correctly configured error input/edge capture and a verified healthy baseline before a wake trial.",
+    "Race": "Source shows missing sequence-wide exclusion; no deliberate runtime race was induced and no interleaving trace has yet proved symptom causality."
+  },
+  "final_state": {
+    "environment": "Debian",
+    "automatic_screen_blanking": "restored and active",
+    "battery_percent": 62,
+    "battery_temp_C": 21.8,
+    "battery_status": "Charging",
+    "charger_health": "Good",
+    "usb_type": "SDP",
+    "input_limit_mA": 500,
+    "failed_systemd_units": 0,
+    "trace_instances_remaining": 0,
+    "kprobes_remaining": 0,
+    "display_visually_verified": false
+  },
+  "evidence_directory": "private/panel-experiments-20261011",
+  "evidence_sha256": {
+    "after-lp-id-controls-dmesg.txt": "fadcfa33ca7fb7f3ab3cb699d9aa5a5f715e7f7a6c453b8a12c01eda45da7ce6",
+    "after-read-controls-dmesg.txt": "fadcfa33ca7fb7f3ab3cb699d9aa5a5f715e7f7a6c453b8a12c01eda45da7ce6",
+    "after-static-read-dmesg.txt": "fadcfa33ca7fb7f3ab3cb699d9aa5a5f715e7f7a6c453b8a12c01eda45da7ce6",
+    "debian-baseline-dmesg.txt": "fadcfa33ca7fb7f3ab3cb699d9aa5a5f715e7f7a6c453b8a12c01eda45da7ce6",
+    "debian-baseline-drm.txt": "5901171c31019a34ceab281273d7e389bcccb5ca285ad9ffa738f850da6c5032",
+    "debian-baseline-registers.txt": "df053b790e9bd0284ad25aa170de20fcf6a1ae2e41066a23bb9446fe94bb9c2c",
+    "final-state.txt": "8677255426c4544c0dc3993ed82cccd6ef2333cfbcd156bee2114eebe5eca37e",
+    "lp-id-controls-results.txt": "99619792a2defaffd48af2e7d214fb1022502362ec93f079139bc1f16cba3bd9",
+    "lp-id-controls.trace": "684961fb0f150a5f92c58184931bdea9561c99412e8c616be44bed5308cad399",
+    "panel-lp-id-controls.sh": "40cd2744a3639174fd3bb9a02e75e9fd9051ba1cce90891eb308fa4940dedb50",
+    "panel-read-controls.sh": "7b62f1455752535845611118182b0862bb0b2cc1dc7b8151e8c03bd4c8fcc5be",
+    "panel-static-probe.sh": "07f4ad6605d52525b8636d8c74694fb911c282e0d2969cf5908a8c22b1bf84a0",
+    "panel-static-run.c": "c5a8b8958722e1fd4e43618ccedd3cf9562ea21c98a36bfb15f8054c9caa5d0a",
+    "read-controls-results.txt": "91046a110e2cdac77a74e7cb608f749ffe06eb87bd72e4c4545a0299457403bd",
+    "read-controls.trace": "e1c2b7ef2373e7d79ea1c881d8b69b8205bfd1849df611b8a5df501676c13b24",
+    "recovery-before-dmesg.txt": "3760df3655533b13354399d1d68032142d93185c0f4278ead6bffc89bbc9c9f8",
+    "recovery-before.txt": "1023936b9df20156b469a87fbe59610e66a680b3c8c8589a8908b87322aa800c",
+    "static-read-results.txt": "e997d09d1385d585e9719bb17fc2625f2eecf15d83d5c71baa9859585ad62fb1",
+    "static-read.trace": "b3539b563bd090e60d7611dd5e86bd99727ba47c8ed75d40396e721a64705f10"
+  },
+  "committed_evidence": {
+    "static-read-results.txt": "docs/panel-measurements-20261011/static-read-results.txt",
+    "static-read.trace": "docs/panel-measurements-20261011/static-read.trace",
+    "read-controls-results.txt": "docs/panel-measurements-20261011/read-controls-results.txt",
+    "read-controls.trace": "docs/panel-measurements-20261011/read-controls.trace",
+    "lp-id-controls-results.txt": "docs/panel-measurements-20261011/lp-id-controls-results.txt",
+    "lp-id-controls.trace": "docs/panel-measurements-20261011/lp-id-controls.trace"
+  },
+  "evidence_availability": "The listed committed evidence files are included in the repository. Full dmesg, framebuffer and other device snapshots remain in the local private evidence directory."
+}

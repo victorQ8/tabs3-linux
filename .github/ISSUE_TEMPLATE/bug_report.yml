@@ -1,0 +1,35 @@
+name: Hardware or system bug
+description: Report a reproducible problem with the SM-T825 port.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Read the hardware status first. Do not attach private backups, firmware,
+        passwords, keys, Wi-Fi profiles, IMEI/IMSI/ICCID, serial numbers or MAC addresses.
+  - type: input
+    id: device
+    attributes:
+      label: Model and board revision
+      placeholder: SM-T825, rev05
+    validations:
+      required: true
+  - type: textarea
+    id: versions
+    attributes:
+      label: Kernel and package versions
+      description: Include uname -r and the versions of linux-tabs3, tabs3-base and the affected package.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction and observed result
+      description: Include power source, cable/accessory, boot mode, and the shortest reproduction. What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Selected, redacted logs
+      description: Include relevant errors rather than an unreviewed full device dump.
+      render: text

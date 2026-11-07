@@ -1,0 +1,59 @@
+From 4773208d54412f0f90cf1bcc4da0698aad4b5a58 Mon Sep 17 00:00:00 2001
+From: dexq8 <dexq8@proton.me>
+Date: Mon, 12 Oct 2026 16:18:57 +0300
+Subject: [PATCH] ASoC: qcom: q6asm-dai: pause and flush capture on stop
+
+Stopping a stream sends ASM_DATA_CMD_EOS in both directions. On the SM-T825
+(Samsung's MSM8996 ADSP firmware), a capture stream that received EOS then
+fails ASM_STREAM_CMD_CLOSE with ADSP_EFAILED, so re-preparing the PCM (as
+PipeWire does between recordings) fails in a loop. Qualcomm's downstream
+msm-pcm-q6-v2 never sends EOS to capture streams; it pauses and flushes
+them. Do the same and keep EOS for playback.
+
+Assisted-by: Claude:claude-opus-5-5
+---
+
+Notes:
+    Testing: on 6.19.5 SM-T825 this lets PipeWire re-prepare a stopped capture
+    stream, but repeated recording sessions are still not reliable (an occasional
+    ASM_STREAM_CMD_CLOSE timeout remains), so this is a partial fix. On v7.3-rc7
+    build-tested only (arm64, W=1).
+
+ sound/soc/qcom/qdsp6/q6asm-dai.c | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/sound/soc/qcom/qdsp6/q6asm-dai.c b/sound/soc/qcom/qdsp6/q6asm-dai.c
+index 4f09fdd4090..1e1ca956d5d 100644
+--- a/sound/soc/qcom/qdsp6/q6asm-dai.c
++++ b/sound/soc/qcom/qdsp6/q6asm-dai.c
+@@ -347,6 +347,20 @@ static int q6asm_dai_trigger(struct snd_soc_component *component,
+ 				       0, 0, 0);
+ 		break;
+ 	case SNDRV_PCM_TRIGGER_STOP:
++		/*
++		 * EOS only makes sense for playback. Samsung's MSM8996 ADSP
++		 * then refuses to close a capture stream, so stop capture
++		 * like the downstream driver does: pause, then flush.
++		 */
++		if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
++			ret = q6asm_cmd_nowait(prtd->audio_client,
++					       prtd->stream_id, CMD_PAUSE);
++			if (!ret)
++				ret = q6asm_cmd_nowait(prtd->audio_client,
++						       prtd->stream_id,
++						       CMD_FLUSH);
++			break;
++		}
+ 		ret = q6asm_cmd_nowait(prtd->audio_client, prtd->stream_id,
+ 				       CMD_EOS);
+ 		break;
+
+base-commit: 24a19b953e2a3d0ea5a8c4951a0ab8f32720c907
+prerequisite-patch-id: 2da9c8bae64730101265a5c55198287e1668add4
+prerequisite-patch-id: c89cbe55b9750a512fe420b0754920c8f65e8e2e
+prerequisite-patch-id: 02cb0d8f83b4e3dc0b97bea740ed6ed00486fe88
+prerequisite-patch-id: 13e502ac3b20f05743386d8e3c82b12901dd3970
+prerequisite-patch-id: 0011ed70070544e57ec4d4635c37fa02337201d1
+-- 
+2.55.0
+

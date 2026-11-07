@@ -1,0 +1,17 @@
+170.89 624.73
+/sys/devices/system/cpu/cpu0/cpuidle/state1
+4823
+155856657
+0
+/sys/devices/system/cpu/cpu1/cpuidle/state1
+3068
+157596388
+0
+/sys/devices/system/cpu/cpu2/cpuidle/state1
+3394
+153588576
+0
+/sys/devices/system/cpu/cpu3/cpuidle/state1
+3990
+157137175
+0

@@ -1,0 +1,52 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Vibration motor. The stock tree ("samsung_vib", chip model 4) drives a
+ * haptic driver chip with an enable pin on TLMM 120 and a bidirectional
+ * PWM input on TLMM 57, fed by the GCC GP1 clock: XO 19.2 MHz / 16, M = 3,
+ * N = 137, that is 26.28 kHz. The chip is idle at a 50 % duty cycle; stock
+ * lowers it to 3 % at full strength (motor_strength 94, support_avoid_FF).
+ */
+#include <dt-bindings/clock/qcom,gcc-msm8996.h>
+#include <dt-bindings/clock/qcom,rpmcc.h>
+#include <dt-bindings/gpio/gpio.h>
+
+/ {
+	pwm_vibrator: pwm {
+		compatible = "clk-pwm";
+		#pwm-cells = <2>;
+		clocks = <&gcc GCC_GP1_CLK>;
+		assigned-clocks = <&gcc GP1_CLK_SRC>;
+		assigned-clock-parents = <&rpmcc RPM_SMD_XO_CLK_SRC>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&motor_pwm_default>;
+	};
+
+	vibrator {
+		compatible = "pwm-vibrator";
+		pwms = <&pwm_vibrator 0 38052>;
+		pwm-names = "enable";
+		enable-gpios = <&tlmm 120 GPIO_ACTIVE_HIGH>;
+		idle-duty-cycle-percent = <50>;
+		max-duty-cycle-percent = <3>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&motor_en_default>;
+	};
+};
+
+&tlmm {
+	/* stock tlmm_motor_active */
+	motor_pwm_default: motor-pwm-default-state {
+		pins = "gpio57";
+		function = "gcc_gp1_clk_a";
+		drive-strength = <2>;
+		bias-pull-down;
+	};
+
+	/* stock tlmm_motor_en: output, no pull */
+	motor_en_default: motor-en-default-state {
+		pins = "gpio120";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+};

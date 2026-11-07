@@ -1,0 +1,207 @@
+Subject: [PATCH] drm/msm: keep shared global-VM mappings until the last user
+
+GPUs without per-process pagetables (a2xx..a5xx) give every context the
+global VM. A buffer shared through dma-buf, such as a Wayland client's
+window buffer imported by the compositor, is the same GEM object in both
+contexts and has a single VMA in that VM. Userspace caches its iova.
+
+Since the drm_gpuvm conversion, closing a handle unmaps and frees the
+object's VMA in the closing context's VM. On a5xx that is the shared VM,
+so a client freeing an old window buffer removes the compositor's mapping
+too: the iova is handed to the next allocation, and the compositor's later
+submits read unmapped (or reused) addresses. On the SM-T825 this produced
+repeatable phoc TRANSLATION read faults when GTK GL windows opened.
+
+Keep the global-VM mapping when a handle is closed. Leaving it until GEM
+destruction would leak instead, because the drm_gpuvm_bo holds the GEM
+object alive (1.93 GB stayed resident after a desktop session). Use the
+existing vma_ref accounting, which covers handles, dma-buf exports and
+framebuffers, for the global GPU VM as well as the KMS VM: after the last
+external user, wait for submitted work and release the mapping under the
+VM and object locks. Private GPU VMs and VM_BIND close paths are
+unchanged.
+
+Formerly 0032 and its follow-up 0033.
+
+Fixes: 111fdd2198e6 ("drm/msm: drm_gpuvm conversion")
+
+--- a/drivers/gpu/drm/msm/msm_gem.c
++++ b/drivers/gpu/drm/msm/msm_gem.c
+@@ -34,96 +34,120 @@
+ 	uint64_t ctx_mem = atomic64_add_return(size, &ctx->ctx_mem);
+ 
+ 	rcu_read_lock(); /* Locks file->pid! */
+ 	trace_gpu_mem_total(0, pid_nr(rcu_dereference(file->pid)), ctx_mem);
+ 	rcu_read_unlock();
+ 
+ }
+ 
+ static int msm_gem_open(struct drm_gem_object *obj, struct drm_file *file)
+ {
+ 	msm_gem_vma_get(obj);
+ 	update_ctx_mem(file, obj->size);
+ 	return 0;
+ }
+ 
+ static void put_iova_spaces(struct drm_gem_object *obj, struct drm_gpuvm *vm,
+ 			    bool close, const char *reason);
+ 
+ static void msm_gem_close(struct drm_gem_object *obj, struct drm_file *file)
+ {
++	struct msm_drm_private *priv = obj->dev->dev_private;
+ 	struct msm_context *ctx = file->driver_priv;
+ 	struct drm_exec exec;
+ 
+ 	update_ctx_mem(file, -obj->size);
+ 	msm_gem_vma_put(obj);
+ 
+ 	/*
+ 	 * If VM isn't created yet, nothing to cleanup.  And in fact calling
+ 	 * put_iova_spaces() with vm=NULL would be bad, in that it will tear-
+ 	 * down the mappings of shared buffers in other contexts.
+ 	 */
+ 	if (!ctx->vm)
+ 		return;
+ 
+ 	/*
+ 	 * VM_BIND does not depend on implicit teardown of VMAs on handle
+ 	 * close, but instead on implicit teardown of the VM when the device
+ 	 * is closed (see msm_gem_vm_close())
+ 	 */
+ 	if (msm_context_is_vmbind(ctx))
+ 		return;
+ 
+ 	/*
++	 * Without per-process pagetables every context shares the global VM,
++	 * so a buffer shared through dma-buf has a single VMA there, and other
++	 * contexts still holding the buffer keep using its iova.  The final
++	 * external VMA reference tears it down in msm_gem_vma_put().
++	 */
++	if (ctx->vm == priv->gpu->vm)
++		return;
++
++	/*
+ 	 * TODO we might need to kick this to a queue to avoid blocking
+ 	 * in CLOSE ioctl
+ 	 */
+ 	dma_resv_wait_timeout(obj->resv, DMA_RESV_USAGE_BOOKKEEP, false,
+ 			      MAX_SCHEDULE_TIMEOUT);
+ 
+ 	msm_gem_lock_vm_and_obj(&exec, obj, ctx->vm);
+ 	put_iova_spaces(obj, ctx->vm, true, "close");
+ 	drm_exec_fini(&exec);     /* drop locks */
+ }
+ 
+ /*
+- * Get/put for kms->vm VMA
++ * Get/put for shared GPU and display VMAs
+  */
+ 
+ void msm_gem_vma_get(struct drm_gem_object *obj)
+ {
+ 	atomic_inc(&to_msm_bo(obj)->vma_ref);
+ }
+ 
+ void msm_gem_vma_put(struct drm_gem_object *obj)
+ {
+ 	struct msm_drm_private *priv = obj->dev->dev_private;
++	struct drm_exec exec;
+ 
+ 	if (atomic_dec_return(&to_msm_bo(obj)->vma_ref))
+ 		return;
+ 
++	/*
++	 * A global GPU mapping must outlive every handle, dma-buf export and
++	 * framebuffer using the object, but must not keep the object alive
++	 * after all those references are gone.  The vm_bo itself holds a
++	 * GEM reference, so waiting for msm_gem_free_object() would leak it.
++	 * Finish outstanding GPU work before removing its mapping.
++	 */
++	if (priv->gpu && priv->gpu->vm) {
++		dma_resv_wait_timeout(obj->resv, DMA_RESV_USAGE_BOOKKEEP, false,
++				      MAX_SCHEDULE_TIMEOUT);
++		msm_gem_lock_vm_and_obj(&exec, obj, priv->gpu->vm);
++		put_iova_spaces(obj, priv->gpu->vm, true, "last-vma-ref");
++		drm_exec_fini(&exec);
++	}
++
+ 	if (!priv->kms)
+ 		return;
+ 
+ #ifdef CONFIG_DRM_MSM_KMS
+-	struct drm_exec exec;
+-
+ 	msm_gem_lock_vm_and_obj(&exec, obj, priv->kms->vm);
+ 	put_iova_spaces(obj, priv->kms->vm, true, "vma_put");
+ 	drm_exec_fini(&exec);     /* drop locks */
+ #endif
+ }
+ 
+ /*
+  * Cache sync.. this is a bit over-complicated, to fit dma-mapping
+  * API.  Really GPU cache is out of scope here (handled on cmdstream)
+  * and all we need to do is invalidate newly allocated pages before
+  * mapping to CPU as uncached/writecombine.
+  *
+  * On top of this, we have the added headache, that depending on
+  * display generation, the display's iommu may be wired up to either
+  * the toplevel drm device (mdss), or to the mdp sub-node, meaning
+  * that here we either have dma-direct or iommu ops.
+  *
+  * Let this be a cautionary tail of abstraction gone wrong.
+  */
+ 
+--- a/drivers/gpu/drm/msm/msm_gem.h
++++ b/drivers/gpu/drm/msm/msm_gem.h
+@@ -229,48 +229,49 @@
+ 	 * pin_count: Number of times the pages are pinned
+ 	 *
+ 	 * Protected by LRU lock.
+ 	 */
+ 	int pin_count;
+ 
+ 	/**
+ 	 * @vma_ref: Reference count of VMA users.
+ 	 *
+ 	 * With the vm_bo/vma holding a reference to the GEM object, we'd
+ 	 * otherwise have to actively tear down a VMA when, for example,
+ 	 * a buffer is unpinned for scanout, vs. the pre-drm_gpuvm approach
+ 	 * where a VMA did not hold a reference to the BO, but instead was
+ 	 * implicitly torn down when the BO was freed.
+ 	 *
+ 	 * To regain the lazy VMA teardown, we use the @vma_ref.  It is
+ 	 * incremented for any of the following:
+ 	 *
+ 	 * 1) the BO is exported as a dma_buf
+ 	 * 2) the BO has open userspace handle
++	 * 3) the BO is held by a framebuffer
+ 	 *
+ 	 * All of those conditions will hold an reference to the BO,
+ 	 * preventing it from being freed.  So lazily keeping around the
+ 	 * VMA will not prevent the BO from being freed.  (Or rather, the
+ 	 * reference loop is harmless in this case.)
+ 	 *
+-	 * When the @vma_ref drops to zero, then kms->vm VMA will be
+-	 * torn down.
++	 * When the @vma_ref drops to zero, mappings in kms->vm and the
++	 * global GPU VM are torn down.
+ 	 */
+ 	atomic_t vma_ref;
+ };
+ #define to_msm_bo(x) container_of(x, struct msm_gem_object, base)
+ 
+ void msm_gem_vma_get(struct drm_gem_object *obj);
+ void msm_gem_vma_put(struct drm_gem_object *obj);
+ 
+ uint64_t msm_gem_mmap_offset(struct drm_gem_object *obj);
+ int msm_gem_prot(struct drm_gem_object *obj);
+ int msm_gem_pin_vma_locked(struct drm_gem_object *obj, struct drm_gpuva *vma);
+ void msm_gem_unpin_locked(struct drm_gem_object *obj);
+ void msm_gem_unpin_active(struct drm_gem_object *obj);
+ struct drm_gpuva *msm_gem_get_vma_locked(struct drm_gem_object *obj,
+ 					 struct drm_gpuvm *vm);
+ int msm_gem_get_iova(struct drm_gem_object *obj, struct drm_gpuvm *vm,
+ 		     uint64_t *iova);
+ int msm_gem_set_iova(struct drm_gem_object *obj, struct drm_gpuvm *vm,
+ 		     uint64_t iova);
+ int msm_gem_get_and_pin_iova_range(struct drm_gem_object *obj,

@@ -1,0 +1,21 @@
+---
+kernel: 6.19.5-gts3l1
+module: msm
+time: 1791715517.409376398
+comm: phoc
+cmdline: /usr/bin/phoc -v -S -C /etc/phosh/phoc.ini -E bash -lc 'exec gnome-session --disable-acceleration-check --session=phosh'
+revision: 530 (5.3.0.2)
+fault-info:
+  - ttbr0=000000010a86f000
+  - iova=0000000009d5a600
+  - dir=READ
+  - type=TRANSLATION
+  - source=
+pgtable-fault-info:
+  - ttbr0: 0000000000000000
+  - asid: 0
+  - ptes: 0000000000000000 0000000000000000 0000000000000000 0000000000000000
+rbbm-status: 0xef0093c3
+
+Full dump retained privately. Fault was in phoc; no captured BO covered the fault IOVA.
+This does not establish whether the cause is a layout, lifetime, or context-switch error.

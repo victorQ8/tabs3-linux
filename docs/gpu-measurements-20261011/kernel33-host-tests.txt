@@ -1,0 +1,39 @@
+test_bad_id_detected (test_boot_images.BootImageTests.test_bad_id_detected) ... ok
+test_modern_header_not_mistaken_for_legacy_dt_size (test_boot_images.BootImageTests.test_modern_header_not_mistaken_for_legacy_dt_size) ... ok
+test_page_aligned_payloads (test_boot_images.BootImageTests.test_page_aligned_payloads) ... ok
+test_reject_missing_legacy_dt_area (test_boot_images.BootImageTests.test_reject_missing_legacy_dt_area) ... ok
+test_reject_truncated_payload (test_boot_images.BootImageTests.test_reject_truncated_payload) ... ok
+test_samsung_legacy_dtb_location (test_boot_images.BootImageTests.test_samsung_legacy_dtb_location) ... ok
+test_existing_profile_preserved (test_desktop_wifi.WifiMigrationTests.test_existing_profile_preserved) ... ok
+test_secrets_ssid_permissions_and_repeat (test_desktop_wifi.WifiMigrationTests.test_secrets_ssid_permissions_and_repeat) ... ok
+test_multiple_tablets_are_ambiguous (test_device_selection.DeviceSelectionTests.test_multiple_tablets_are_ambiguous) ... ok
+test_only_tablet_is_inspected_when_phone_also_connected (test_device_selection.DeviceSelectionTests.test_only_tablet_is_inspected_when_phone_also_connected) ... ok
+test_unauthorized_tablet_is_not_inspected (test_device_selection.DeviceSelectionTests.test_unauthorized_tablet_is_not_inspected) ... ok
+test_unrelated_phone_receives_no_shell_commands (test_device_selection.DeviceSelectionTests.test_unrelated_phone_receives_no_shell_commands) ... ok
+test_wifi_model_is_not_accepted_as_lte (test_device_selection.DeviceSelectionTests.test_wifi_model_is_not_accepted_as_lte) ... ok
+test_shared_references_and_final_cleanup_with_and_without_kms (test_gpu_cleanup.GpuCleanupTests.test_shared_references_and_final_cleanup_with_and_without_kms) ... ok
+test_handle_close_keeps_global_vm_mappings (test_gpu_shared_vm.SharedVmPatchTests.test_handle_close_keeps_global_vm_mappings) ... ok
+test_gpu_cannot_be_diagnostic_or_storage_probe (test_pack_variants.PackVariantTests.test_gpu_cannot_be_diagnostic_or_storage_probe) ... ok
+test_gpu_cannot_be_recovery (test_pack_variants.PackVariantTests.test_gpu_cannot_be_recovery) ... ok
+test_gpu_enabled_only_in_gpu_variant (test_pack_variants.PackVariantTests.test_gpu_enabled_only_in_gpu_variant) ... ok
+test_gpu_requires_full_image_and_root_uuid (test_pack_variants.PackVariantTests.test_gpu_requires_full_image_and_root_uuid) ... ok
+test_gpu_variant_rejects_disabled_gpu (test_pack_variants.PackVariantTests.test_gpu_variant_rejects_disabled_gpu) ... ok
+test_tuple_errors_and_deferred_requests (test_panel_brightness.BrightnessCommandTests.test_tuple_errors_and_deferred_requests) ... ok
+test_all_levels_match_original_samsung_code (test_panel_dimming.PanelDimmingTests.test_all_levels_match_original_samsung_code) ... ok
+test_complete_stock_level_mapping (test_panel_dimming.PanelDimmingTests.test_complete_stock_level_mapping) ... ok
+test_invalid_vt_calibration_is_rejected (test_panel_dimming.PanelDimmingTests.test_invalid_vt_calibration_is_rejected) ... ok
+test_checker_status_reaches_the_ui (test_recovery_fsck.RecoveryFsckTests.test_checker_status_reaches_the_ui) ... ok
+test_preflight_refusals_are_not_reported_as_repairs (test_recovery_fsck.RecoveryFsckTests.test_preflight_refusals_are_not_reported_as_repairs) ... ok
+test_repair_is_explicit_and_preserves_repaired_status (test_recovery_fsck.RecoveryFsckTests.test_repair_is_explicit_and_preserves_repaired_status) ... ok
+test_signalled_process_is_not_reported_clean (test_recovery_fsck.RecoveryFsckTests.test_signalled_process_is_not_reported_clean) ... ok
+test_complete_wake_gesture_is_consumed_including_failed_wake (test_recovery_wake.RecoveryWakeTests.test_complete_wake_gesture_is_consumed_including_failed_wake) ... ok
+test_failed_writes_retry_and_require_correct_readback (test_sm5705_policy.ChargingSafetyTests.test_failed_writes_retry_and_require_correct_readback) ... ok
+test_source_limits_unknown_ports_and_manual_controls (test_sm5705_policy.ChargingSafetyTests.test_source_limits_unknown_ports_and_manual_controls) ... ok
+test_stock_temperature_conversion_and_sensor_faults (test_sm5705_policy.ChargingSafetyTests.test_stock_temperature_conversion_and_sensor_faults) ... ok
+test_temperature_cutoffs_hysteresis_and_missing_readings (test_sm5705_policy.ChargingSafetyTests.test_temperature_cutoffs_hysteresis_and_missing_readings) ... ok
+test_unknown_source_is_distinct_from_i2c_failure (test_sm5705_source.ChargerSourceTests.test_unknown_source_is_distinct_from_i2c_failure) ... ok
+
+----------------------------------------------------------------------
+Ran 34 tests in 0.616s
+
+OK

@@ -1,0 +1,81 @@
+before-session uptime=120.17
+Total:       20 objects,  13082624 bytes
+Resident:    20 objects,  13082624 bytes
+fault_lines=0
+package=6.19.5-33
+mode=default phoc_pid=675
+Running as unit: tabs3-cleanup-default-1.service; invocation ID: b1881f258aa74a1f866df3671c476520
+cycle-1-closed uptime=148.62
+Total:       79 objects, 159158272 bytes
+Resident:    78 objects, 159154176 bytes
+fault_lines=0
+Running as unit: tabs3-cleanup-default-2.service; invocation ID: f7d0c2573bab4291b8a37e242791f83f
+cycle-2-closed uptime=156.59
+Total:       79 objects, 159158272 bytes
+Resident:    78 objects, 159154176 bytes
+fault_lines=0
+Running as unit: tabs3-cleanup-default-3.service; invocation ID: 5792b1b7bb4543cab630115857d82929
+Using renderer 'GskGLRenderer' for surface 'GdkWaylandToplevel'
+cycle-3-closed uptime=163.84
+Total:       82 objects, 159281152 bytes
+Resident:    81 objects, 159277056 bytes
+fault_lines=0
+Running as unit: tabs3-cleanup-default-4.service; invocation ID: 9ea7be4f20934268ac9be560870f9362
+Using renderer 'GskGLRenderer' for surface 'GdkWaylandToplevel'
+cycle-4-closed uptime=170.70
+Total:       87 objects, 146862080 bytes
+Resident:    86 objects, 146857984 bytes
+fault_lines=0
+Running as unit: tabs3-cleanup-default-5.service; invocation ID: d1a1a517b15945808ade9dd5c206568a
+Using renderer 'GskGLRenderer' for surface 'GdkWaylandToplevel'
+cycle-5-closed uptime=177.63
+Total:       82 objects, 159281152 bytes
+Resident:    81 objects, 159277056 bytes
+fault_lines=0
+Running as unit: tabs3-cleanup-default-6.service; invocation ID: 4da38b1eee2b4980ad66c874061f443c
+Using renderer 'GskCairoRenderer' for surface 'GdkWaylandToplevel'
+cycle-6-closed uptime=184.49
+Total:       83 objects, 167669760 bytes
+Resident:    82 objects, 167665664 bytes
+fault_lines=0
+Running as unit: tabs3-cleanup-default-7.service; invocation ID: deafc823e770470da31f6a130775049e
+Using renderer 'GskGLRenderer' for surface 'GdkWaylandToplevel'
+cycle-7-closed uptime=191.29
+Total:       82 objects, 159281152 bytes
+Resident:    81 objects, 159277056 bytes
+fault_lines=0
+Running as unit: tabs3-cleanup-default-8.service; invocation ID: 97c44229f2654bdc856ebbe9903df7fe
+Using renderer 'GskGLRenderer' for surface 'GdkWaylandToplevel'
+cycle-8-closed uptime=198.15
+Total:       82 objects, 159281152 bytes
+Resident:    81 objects, 159277056 bytes
+fault_lines=0
+Running as unit: tabs3-cleanup-default-9.service; invocation ID: 8db4e2e7683546c28e25e18f60bb453f
+Using renderer 'GskGLRenderer' for surface 'GdkWaylandToplevel'
+cycle-9-closed uptime=205.03
+Total:       82 objects, 146731008 bytes
+Resident:    81 objects, 146726912 bytes
+fault_lines=0
+Running as unit: tabs3-cleanup-default-10.service; invocation ID: 2c104e37ffa7499595ef1459b346fdd5
+Using renderer 'GskGLRenderer' for surface 'GdkWaylandToplevel'
+cycle-10-closed uptime=211.87
+Total:       81 objects, 146698240 bytes
+Resident:    80 objects, 146694144 bytes
+fault_lines=0
+Running as unit: tabs3-cleanup-default-11.service; invocation ID: 3c5dfdb24fb842b79fd306dfdefc9da3
+Using renderer 'GskGLRenderer' for surface 'GdkWaylandToplevel'
+cycle-11-closed uptime=218.79
+Total:       82 objects, 159281152 bytes
+Resident:    81 objects, 159277056 bytes
+fault_lines=0
+Running as unit: tabs3-cleanup-default-12.service; invocation ID: c4dff00c63824ef0be6cd1de36c933af
+Using renderer 'GskGLRenderer' for surface 'GdkWaylandToplevel'
+cycle-12-closed uptime=225.73
+Total:       82 objects, 159281152 bytes
+Resident:    81 objects, 159277056 bytes
+fault_lines=0
+phoc_pid_end=675
+after-session uptime=232.29
+Total:       20 objects,  13082624 bytes
+Resident:    20 objects,  13082624 bytes
+fault_lines=0

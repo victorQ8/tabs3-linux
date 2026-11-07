@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-12T14:03:20+00:00",
+  "change": "CONFIG_QCOM_TSENS=m (kernel package 6.19.5-43); module qcom_tsens loads at boot",
+  "register_access": "stock Samsung DT maps tsens_physical 0x4a8000+0x2000 and 0x4ac000+0x2000 (SROT and TM) with the same interrupts (458/445, 184/430) and sensor counts (13, 8)",
+  "live_test_on_package_41": "insmod of the package-43 module into the running 6.19.5-41 kernel: 14 zones registered, no kernel messages",
+  "idle_c": {
+    "cpu0": 37,
+    "cpu1": 36,
+    "cpu2": 36,
+    "cpu3": 35,
+    "gpu_top": 27,
+    "pmic_die": 26,
+    "battery": 21
+  },
+  "load_test_short": "4 busy loops, 75 s from cold: CPUs 35-37 -> 68-73 C at 1593/2150 MHz, no trip; back to 38 C 20 s after",
+  "load_test_sustained": {
+    "duration_s": 420,
+    "peak_c": 91,
+    "behaviour": "86 C within 20 s; passive trips at 85/90 C held the CPUs at 88-91 C",
+    "cpufreq_cooling_states": "little cluster 0-9 of 15, big cluster 3-16 of 24",
+    "frequencies_mhz": "little 960-1593, big 940-1824 (unthrottled 1593/2150)",
+    "after_30_s_idle_c": 45
+  },
+  "package_43_boot": "qcom_tsens autoloaded, 17 thermal zones (14 SoC), cooling devices cpufreq-cpu0, cpufreq-cpu2, devfreq-b00000.gpu, ath10k_thermal; tools/boot-check passed",
+  "kill_switch": "/etc/modprobe.d/tabs3-no-tsens.conf with 'blacklist qcom_tsens', then reboot",
+  "not_tested": [
+    "GPU thermal throttling under a sustained GPU load",
+    "behaviour in a hot environment",
+    "the 110 C critical shutdown path"
+  ]
+}

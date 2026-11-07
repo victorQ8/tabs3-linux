@@ -1,0 +1,63 @@
+{
+ "schema_version": 1,
+ "recorded_utc": "2026-10-13T09:35:58+00:00",
+ "installed": {
+  "linux-tabs3": "6.18.56-55",
+  "tabs3-base": "0.1.12",
+  "tabs3-desktop": "0.1.10",
+  "tabs3-sensors": "0.1.0",
+  "iio-sensor-proxy": "3.7-3"
+ },
+ "previous": "6.18.56-54",
+ "artifacts_sha256": {
+  "linux-tabs3_6.18.56-55_arm64.deb": "ac85673606a13091b16bc08f00fd1a48ea44df20bdfc8c2b72e8390c3708e074",
+  "tabs3-internal-gpu-boot.img (package 55)": "e13c9e4c36d1e7aa43b99deab638a1c61b6170121f200f36026b465c3f503694",
+  "tabs3-sensors_0.1.0_arm64.deb": "fa0d85106663cced0896e05fb79952357bc2e985267917fc576d7dd2f6e9c20e",
+  "registry.bin (private, Samsung-derived; hash only)": "381ca9df9d7eff5cdf356ecb6179fe6333c1413fd82b9820b03a16bc9ed5db51"
+ },
+ "path": [
+  "packages 52-54: SLPI boots inside the peripheral region; Sensor Manager drivers; crash fix 0027",
+  "registry: Samsung's sns.reg image rebuilt by emulating sensors.qti's sns_group_data_init(); make-registry.py reproduces it byte for byte from the system backup",
+  "package 55: patch 0028, in_accel_{x,y,z}_raw with an on-demand 10 Hz stream",
+  "first Phosh test with the driver's placeholder in_mount_matrix 0,-1,0;-1,0,0;0,0,1: a constant 90-degree error",
+  "61-tabs3-sensors.rules: ACCEL_MOUNT_MATRIX 1,0,0;0,-1,0;0,0,-1 and 10 Hz",
+  "tabs3-sensors 0.1.0: sns-reg (C, image-mode patch) replaces the hand-installed server, DynamicUser"
+ ],
+ "checks": {
+  "cold_boot_package_55_tabs3_sensors": {
+   "slpi_up_s": 7.47,
+   "registry_serving_s": 9.55,
+   "group_requests": 57,
+   "smgr_sensors_s": 9.96,
+   "sensors": [
+    "0x00 ACCEL K6DS3TR",
+    "0x0a GYRO K6DS3TR",
+    "0x14 MAG AK09916",
+    "0x28 PROX_LIGHT CM3323"
+   ],
+   "accel_rate_hz": 10,
+   "ACCEL_MOUNT_MATRIX": "1, 0, 0; 0, -1, 0; 0, 0, -1",
+   "slpi_crashes": 0
+  },
+  "raw_reads": "x -10938 y 524079 z -289992 (Q16 m/s^2; resting in landscape, tilted back about 30 degrees)",
+  "vendor_hal": "sensors.ssc.so Accelerometer::processReportInd: X = sample[1], Y = sample[0], Z = -sample[2], each times 0.000015259",
+  "panel_mode": "2048x1536 (native landscape, Home key on the right)",
+  "owner_orientation_placeholder_matrix": {
+   "Home bottom": "picture top points right",
+   "Home right": "right",
+   "Home top": "right",
+   "Home left": "right"
+  },
+  "owner_orientation_final_matrix": {
+   "Home bottom": "up",
+   "Home right": "up",
+   "Home top": "up",
+   "Home left": "up"
+  },
+  "owner_touch_rotated": "taps land correctly in all positions",
+  "owner_flat": "screen up while the raw z axis read -9.56 m/s^2; iio-sensor-proxy tilt face-up with the final matrix",
+  "cpu": "buffered at the driver default 416 Hz: a kworker at about 13 % of a core; 10 Hz since the udev rule",
+  "registry_server_tools": "install-registry.sh copy verified by SHA-256 on the tablet; server restarted"
+ },
+ "shell": "Phosh 0.46 (phoc 0.46); Recent key: phoc refuses to let Phosh grab XF86AppSelect"
+}

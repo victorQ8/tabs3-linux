@@ -1,0 +1,70 @@
+--- a/drivers/input/misc/pwm-vibra.c
++++ b/drivers/input/misc/pwm-vibra.c
+@@ -32,6 +32,8 @@
+ 	struct work_struct play_work;
+ 	u16 level;
+ 	u32 direction_duty_cycle;
++	u32 idle_duty_percent;
++	u32 max_duty_percent;
+ 	bool vcc_on;
+ };
+ 
+@@ -53,7 +55,15 @@
+ 	gpiod_set_value_cansleep(vibrator->enable_gpio, 1);
+ 
+ 	pwm_get_state(vibrator->pwm, &state);
+-	pwm_set_relative_duty_cycle(&state, vibrator->level, 0xffff);
++	/*
++	 * Move the duty cycle from the idle value towards the full-strength
++	 * value with the level. The defaults (0 % and 100 %) give the usual
++	 * duty cycle proportional to the level.
++	 */
++	state.duty_cycle = DIV_ROUND_CLOSEST_ULL(state.period *
++			((u64)vibrator->idle_duty_percent * (0xffff - vibrator->level) +
++			 (u64)vibrator->max_duty_percent * vibrator->level),
++			100ULL * 0xffff);
+ 	state.enabled = true;
+ 
+ 	err = pwm_apply_might_sleep(vibrator->pwm, &state);
+@@ -166,6 +176,16 @@
+ 			err);
+ 		return err;
+ 	}
++
++	vibrator->idle_duty_percent = 0;
++	vibrator->max_duty_percent = 100;
++	device_property_read_u32(&pdev->dev, "idle-duty-cycle-percent",
++				 &vibrator->idle_duty_percent);
++	device_property_read_u32(&pdev->dev, "max-duty-cycle-percent",
++				 &vibrator->max_duty_percent);
++	if (vibrator->idle_duty_percent > 100 || vibrator->max_duty_percent > 100)
++		return dev_err_probe(&pdev->dev, -EINVAL,
++				     "duty cycle percentages above 100\n");
+ 
+ 	vibrator->pwm_dir = devm_pwm_get(&pdev->dev, "direction");
+ 	err = PTR_ERR_OR_ZERO(vibrator->pwm_dir);
+--- a/Documentation/devicetree/bindings/input/pwm-vibrator.yaml
++++ b/Documentation/devicetree/bindings/input/pwm-vibrator.yaml
+@@ -41,6 +41,22 @@
+       Duty cycle of the direction PWM channel in nanoseconds,
+       defaults to 50% of the channel's period.
+ 
++  idle-duty-cycle-percent:
++    description: >
++      Duty cycle of the enable PWM channel at which the motor driver is
++      idle, for drivers with a bidirectional PWM input (typically 50).
++      The duty cycle moves from here to max-duty-cycle-percent with the
++      requested strength. Defaults to 0.
++    minimum: 0
++    maximum: 100
++
++  max-duty-cycle-percent:
++    description: >
++      Duty cycle of the enable PWM channel at full strength. Defaults
++      to 100.
++    minimum: 0
++    maximum: 100
++
+ required:
+   - compatible
+   - pwm-names

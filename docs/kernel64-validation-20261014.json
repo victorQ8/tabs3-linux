@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-14T12:05:00+00:00",
+  "installed": {
+    "linux-tabs3": "6.18.56-63 (package 64 built and packed, not installed or flashed: the owner was away)",
+    "tabs3-base": "0.1.21",
+    "tabs3-dashboard": "0.1.4",
+    "tabs3-sensors": "0.1.1",
+    "boot_partition": "package 63 combined image; package 64's images are under private/images/package64/ (combined image sha256 fe24f67f3e10ce60...)",
+    "recovery": "unchanged (recovery-fastboot build, kernel 6.19.5-29)"
+  },
+  "previous": "6.18.56-63",
+  "change": "device tree only: no-1-8-v removed from the microSD slot (kernel/msm8996-samsung-gts3llte-sdcard.dtsi), so UHS-I signalling at 1.8 V is allowed again; kernel, modules and patches unchanged",
+  "build": "incremental from the warm object cache; the package's GPU device tree is byte-identical (sha256 2b7ec76170b6ebaf...) to the one RAM-tested before the package was built",
+  "path": [
+    "14:55: RAM boot of the test image through recovery's software fastboot (SSH after 21 s); the card (Samsung EVO Plus 128 GB, exFAT, inserted before boot) initialised at 4.15 s as UHS-I SDR104 SDXC",
+    "ios: 200 MHz actual, 4-bit, timing 6 (sd uhs SDR104), 1.80 V signalling; no mmc error, no register dump in the log",
+    "1 GiB raw read with direct I/O: 58.8 MB/s (High Speed on package 63: 21.6-23.3 MB/s)",
+    "five unbind/bind cycles of the sdhci_msm host, each repeating the CMD11 voltage switch: SDR104 at 200 MHz every time, 0 errors",
+    "plain reboot landed in recovery (software fastboot entry flag), tabs3-recovery reboot returned to Debian on the package 63 image: High Speed again, dashboard, screen and grip services up",
+    "kernel package 64 built from the same tree, images packed; nothing written to the tablet"
+  ],
+  "checks": {
+    "uhs_init": "SDR104, 200 MHz, 1.8 V, 4-bit at boot and on five re-initialisations",
+    "read_throughput_MBps": 58.8,
+    "errors": "none (dmesg: no mmc error, timeout, tuning failure or register dump)",
+    "card_contents": "not touched: the partition is exFAT with the owner's files and stayed unmounted",
+    "services_on_ram_boot": "dashboard, screen sleep, grip bind, sensor registry all up"
+  },
+  "unknown": "why the 2026-10-13 initialisation failed at the first 4-bit transfer after the voltage switch (docs/sdcard-validation-20261013.json); that failure did not reproduce in six initialisations today",
+  "pending_on_hardware": [
+    "install linux-tabs3_6.18.56-64_arm64.deb and flash private/images/package64/tabs3-internal-gpu-boot.img from recovery with the owner present, then check the card from disk",
+    "hot insertion (ACMD41 busy on about half the insertions) needs cards inserted by hand",
+    "owner's checks from package 63 still pending: vibration buzz, cover magnet, tilt, headphones, SIM"
+  ]
+}

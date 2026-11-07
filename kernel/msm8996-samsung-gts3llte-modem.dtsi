@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/* Modem (MSS): MBA and MPSS images; started by rmtfs. */
+
+/*
+ * Modem. The stock MBA authenticates modem.mdt (qcom,pil-self-auth).
+ * The driver never boots it on its own: rmtfs (or a manual start) must,
+ * after the EFS partitions are served.
+ */
+&mss_pil {
+	pll-supply = <&vreg_l12a_1p8>;
+	firmware-name = "qcom/msm8996/samsung/gts3llte/mba.mbn",
+			"qcom/msm8996/samsung/gts3llte/modem.mdt";
+	status = "okay";
+};

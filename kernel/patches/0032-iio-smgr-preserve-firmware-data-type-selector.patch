@@ -1,0 +1,44 @@
+Subject: [PATCH] iio: smgr: preserve the firmware data type selector
+
+The only CM3323 entry is ALS, but its firmware selector is secondary.
+Array index zero does not imply the primary (proximity) selector. Keep
+the selector from sensor discovery and use it in buffering requests.
+
+--- a/include/linux/iio/common/qcom_smgr.h
++++ b/include/linux/iio/common/qcom_smgr.h
+@@ -33,6 +33,7 @@
+ 
+ struct smgr_data_type_item
+ {
++	u8 id; /* Firmware selector, not the position in the response array */
+ 	const char *name;
+ 	const char *vendor;
+ 	u16 max_sample_rate;
+--- a/drivers/iio/common/qcom_smgr/smgr.c
++++ b/drivers/iio/common/qcom_smgr/smgr.c
+@@ -186,6 +186,7 @@
+ 		return -ENOMEM;
+ 
+ 	for (i = 0; i < sensor->data_type_count; ++i) {
++		sensor->data_types[i].id = resp.data_types[i].data_type;
+ 		sensor->data_types[i].name = devm_kstrdup_const(
+ 			smgr->dev, resp.data_types[i].name, GFP_KERNEL);
+ 		sensor->data_types[i].vendor = devm_kstrdup_const(
+@@ -218,7 +219,7 @@
+ 		/* TODO: Replace hardcoded values */
+ 		req.item_len = 1;
+ 		req.items[0].sensor_id = sensor->id;
+-		req.items[0].data_type = SNS_SMGR_DATA_TYPE_PRIMARY;
++		req.items[0].data_type = sensor->data_types[0].id;
+ 		req.items[0].decimation = 0x3;
+ 		req.items[0].calibration = 0xf;
+ 		req.report_rate = rate * SMGR_REPORT_RATE_IN_HZ;
+@@ -512,7 +513,7 @@
+ 				smgr->sensors[i].data_types[j].max_sample_rate;
+ 
+ 			dev_info(smgr->dev, "0x%02x,%d: %s %s\n",
+-				smgr->sensors[i].id, j,
++				smgr->sensors[i].id, smgr->sensors[i].data_types[j].id,
+ 				smgr->sensors[i].data_types[j].vendor,
+ 				smgr->sensors[i].data_types[j].name);
+ 		}

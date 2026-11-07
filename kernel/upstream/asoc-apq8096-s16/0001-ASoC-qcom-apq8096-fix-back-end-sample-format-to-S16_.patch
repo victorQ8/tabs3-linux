@@ -1,0 +1,55 @@
+From e685235371fb5622d29f0db99bc9a0ea7da24f18 Mon Sep 17 00:00:00 2001
+From: dexq8 <dexq8@proton.me>
+Date: Mon, 12 Oct 2026 16:18:57 +0300
+Subject: [PATCH] ASoC: qcom: apq8096: fix back-end sample format to S16_LE
+
+The back-end fixup fixes rate and channels but leaves the format to the
+front end. Samsung's MSM8996 ADSP firmware (Galaxy Tab S3) rejects
+AFE_PORT_CMD_DEVICE_START for 24-bit SLIMbus ports, so any client choosing
+S24_LE, PipeWire included, fails with "AFE enable for port ... failed".
+Fix the back end at S16_LE, as sdm845 does; the DSP converts the stream.
+
+Assisted-by: Claude:claude-opus-5-5
+---
+
+Notes:
+    Testing: runtime-tested on 6.19.5 (msm8996-mainline community patches) on
+    SM-T825: headphone playback and microphone capture through PipeWire, which
+    picks S24_LE without this change. On v7.3-rc7 build-tested only (arm64, W=1).
+
+ sound/soc/qcom/apq8096.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/sound/soc/qcom/apq8096.c b/sound/soc/qcom/apq8096.c
+index cfd6438dbcb..c0d0e815b29 100644
+--- a/sound/soc/qcom/apq8096.c
++++ b/sound/soc/qcom/apq8096.c
+@@ -6,6 +6,7 @@
+ #include <sound/soc.h>
+ #include <sound/soc-dapm.h>
+ #include <sound/pcm.h>
++#include <sound/pcm_params.h>
+ #include "common.h"
+ 
+ #define SLIM_MAX_TX_PORTS 16
+@@ -19,9 +20,11 @@ static int apq8096_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
+ 					SNDRV_PCM_HW_PARAM_RATE);
+ 	struct snd_interval *channels = hw_param_interval(params,
+ 					SNDRV_PCM_HW_PARAM_CHANNELS);
++	struct snd_mask *fmt = hw_param_mask(params, SNDRV_PCM_HW_PARAM_FORMAT);
+ 
+ 	rate->min = rate->max = 48000;
+ 	channels->min = channels->max = 2;
++	snd_mask_set_format(fmt, SNDRV_PCM_FORMAT_S16_LE);
+ 
+ 	return 0;
+ }
+
+base-commit: 24a19b953e2a3d0ea5a8c4951a0ab8f32720c907
+prerequisite-patch-id: 2da9c8bae64730101265a5c55198287e1668add4
+prerequisite-patch-id: c89cbe55b9750a512fe420b0754920c8f65e8e2e
+prerequisite-patch-id: 02cb0d8f83b4e3dc0b97bea740ed6ed00486fe88
+prerequisite-patch-id: 13e502ac3b20f05743386d8e3c82b12901dd3970
+-- 
+2.55.0
+

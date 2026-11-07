@@ -1,0 +1,68 @@
+#!/usr/bin/python3
+"""Select a persistent dashboard design and show it on the panel.
+
+The choice is saved in /var/lib/tabs3-dashboard/theme; THEME in
+/etc/tabs3/dashboard.conf is only the default when nothing was saved, so
+package upgrades never find a modified configuration file."""
+import argparse
+import os
+from pathlib import Path
+import re
+import subprocess
+import sys
+import tempfile
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'libexec'))
+from tabs3_dashboard_themes import THEMES
+
+CONF = Path('/etc/tabs3/dashboard.conf')
+STATE = Path('/var/lib/tabs3-dashboard/theme')
+WAKE = '/run/tabs3-screen/wake'
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('theme', nargs='?', choices=THEMES, help='omit to show the saved choice and available designs')
+    args = parser.parse_args()
+    content = CONF.read_text() if CONF.exists() else ''
+    saved = re.findall(r'^\s*THEME\s*=\s*([^\s#]+)', content, re.MULTILINE)
+    current = saved[-1] if saved else 'original'
+    if STATE.exists():
+        chosen = STATE.read_text().strip()
+        if chosen in THEMES:
+            current = chosen
+    if args.theme is None:
+        print(f'Saved theme: {current}')
+        print('Available: ' + ', '.join(THEMES))
+        print('Switch: sudo tabs3-dashboard-theme THEME')
+        return 0
+    if os.geteuid() != 0:
+        parser.error('switching designs requires sudo')
+    STATE.parent.mkdir(parents=True, exist_ok=True)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode='w', dir=STATE.parent, prefix='.theme-', delete=False) as stream:
+            temporary = Path(stream.name)
+            stream.write(args.theme + '\n')
+            os.fchmod(stream.fileno(), 0o644)
+        os.replace(temporary, STATE)
+    finally:
+        if temporary:
+            temporary.unlink(missing_ok=True)
+    subprocess.run(['systemctl', 'restart', 'tabs3-dashboard.service'], check=True)
+    # The screen daemon treats opening and closing this pipe like a touch.
+    # Nonblocking: a stopped screen service must not hang the switch command.
+    try:
+        fd = os.open(WAKE, os.O_WRONLY | os.O_NONBLOCK)
+        try:
+            os.write(fd, b'wake\n')
+        finally:
+            os.close(fd)
+    except OSError as exc:
+        print(f'Theme saved; touch the screen to wake it ({exc.strerror}).', file=sys.stderr)
+    print(f'Dashboard theme: {args.theme} (saved across reboots)')
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

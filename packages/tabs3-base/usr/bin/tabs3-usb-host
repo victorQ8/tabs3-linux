@@ -1,0 +1,54 @@
+#!/bin/sh
+# Switch the SM-T825 USB-C port between "device" (USB networking to a PC)
+# and "host" (USB devices such as an Ethernet adapter, powered from the
+# tablet's battery, or from a hub's own charger once the USB-C controller
+# hands VBUS over, kernel package 71). Since kernel package 72 the
+# controller's driver sets the role itself as a partner attaches or leaves;
+# this tool shows the state and overrides until the next attach. Run with
+# sudo, over Wi-Fi SSH or on the tablet: host mode ends USB networking.
+set -eu
+sw=$(ls -d /sys/class/usb_role/*-role-switch 2>/dev/null | head -n1)
+[ -n "$sw" ] || { echo 'No USB role switch: needs linux-tabs3 6.19.5-40 or later.' >&2; exit 1; }
+reg=$(grep -lx sm5705_otg_vbus /sys/class/regulator/*/name 2>/dev/null | head -n1) || true
+battery=/sys/class/power_supply/sm5705-battery/capacity
+need_root() { [ "$(id -u)" = 0 ] || { echo 'Run with sudo.' >&2; exit 1; }; }
+case "${1:-status}" in
+host)
+    need_root
+    cap=$(cat "$battery" 2>/dev/null || echo 0)
+    [ "$cap" -ge 30 ] || { echo "Battery at ${cap}%: charge to 30% or more first." >&2; exit 1; }
+    if [ "$(cat /sys/class/power_supply/sm5705-charger/online 2>/dev/null)" = 1 ]; then
+        # A partner that supplies the port and lets the tablet be the host
+        # (a hub with its own charger, kernel package 71) needs no boost.
+        case " $(cat /sys/bus/i2c/devices/*-0033/state 2>/dev/null) " in
+            *" host "*) echo 'The partner supplies the port; the tablet stays its host without the boost.' ;;
+            *) echo 'A charger or PC is connected: unplug it, then plug in the USB device.' >&2; exit 1 ;;
+        esac
+    fi
+    echo host > "$sw/role"
+    sleep 4
+    ;;
+device)
+    need_root
+    echo device > "$sw/role"
+    sleep 2
+    ;;
+status) ;;
+*) echo "Usage: ${0##*/} [host|device|status]" >&2; exit 2 ;;
+esac
+echo "USB role: $(cat "$sw/role")"
+for t in /sys/bus/i2c/devices/*-0033/state; do [ -r "$t" ] && echo "USB-C: $(cat "$t")"; done
+[ -z "$reg" ] || echo "VBUS from tablet: $(cat "${reg%/name}/state")"
+echo "Battery: $(cat "$battery" 2>/dev/null)%"
+for d in /sys/bus/usb/devices/[0-9]*-[0-9]*; do
+    [ -e "$d/idVendor" ] || continue
+    echo "USB device: $(cat "$d/idVendor"):$(cat "$d/idProduct") $(cat "$d/manufacturer" 2>/dev/null) $(cat "$d/product" 2>/dev/null) ($(cat "$d/speed") Mb/s)"
+done
+for n in /sys/class/net/*; do
+    drv=$(basename "$(readlink -f "$n/device/driver" 2>/dev/null)")
+    case "$drv" in
+    r8152|ax88179_178a|asix|cdc_ether|cdc_ncm|cdc_eem)
+        echo "Ethernet: ${n##*/} ($drv) $(cat "$n/operstate") $(ip -4 -brief address show "${n##*/}" | awk '{print $3}')"
+        ;;
+    esac
+done

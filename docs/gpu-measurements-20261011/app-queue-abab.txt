@@ -1,0 +1,56 @@
+tabs3-queue-app-default-18313-before uptime=2804.00
+101
+MainPID=16062
+Started tabs3-queue-app-default-18313.service - [systemd-run] /usr/bin/gnome-text-editor --new-window /tmp/tabs3-graphics-check.txt.
+Environment variable GSK_RENDERER=ngl set, trying GskGLRenderer
+tabs3-queue pid=16062 fd=15 flags=0 priority=1 id=1 ret=0
+tabs3-queue pid=16062 fd=15 flags=0 priority=1 id=2 ret=0
+tabs3-queue pid=16062 fd=15 flags=0 priority=6 id=3 ret=0
+tabs3-queue pid=16062 fd=15 flags=0 priority=6 id=4 ret=0
+Using renderer 'GskGLRenderer' for surface 'GdkWaylandToplevel'
+tabs3-queue-app-default-18313-open uptime=2807.49
+101
+tabs3-queue-app-default-18313-close uptime=2811.06
+101
+tabs3-queue-app-hiprio-9253-before uptime=2811.20
+101
+MainPID=16118
+Started tabs3-queue-app-hiprio-9253.service - [systemd-run] /usr/bin/gnome-text-editor --new-window /tmp/tabs3-graphics-check.txt.
+Environment variable GSK_RENDERER=ngl set, trying GskGLRenderer
+tabs3-queue pid=16118 fd=15 flags=0 priority=1 id=1 ret=0
+tabs3-queue pid=16118 fd=15 flags=0 priority=1 id=2 ret=0
+tabs3-queue pid=16118 fd=15 flags=0 priority=0 id=3 ret=0
+tabs3-queue pid=16118 fd=15 flags=0 priority=0 id=4 ret=0
+Using renderer 'GskGLRenderer' for surface 'GdkWaylandToplevel'
+tabs3-queue-app-hiprio-9253-open uptime=2814.57
+101
+tabs3-queue-app-hiprio-9253-close uptime=2818.02
+101
+tabs3-queue-app-default-24664-before uptime=2818.15
+101
+MainPID=16172
+Started tabs3-queue-app-default-24664.service - [systemd-run] /usr/bin/gnome-text-editor --new-window /tmp/tabs3-graphics-check.txt.
+Environment variable GSK_RENDERER=ngl set, trying GskGLRenderer
+tabs3-queue pid=16172 fd=15 flags=0 priority=1 id=1 ret=0
+tabs3-queue pid=16172 fd=15 flags=0 priority=1 id=2 ret=0
+tabs3-queue pid=16172 fd=15 flags=0 priority=6 id=3 ret=0
+tabs3-queue pid=16172 fd=15 flags=0 priority=6 id=4 ret=0
+Using renderer 'GskGLRenderer' for surface 'GdkWaylandToplevel'
+tabs3-queue-app-default-24664-open uptime=2821.57
+101
+tabs3-queue-app-default-24664-close uptime=2825.06
+101
+tabs3-queue-app-hiprio-14214-before uptime=2825.19
+101
+MainPID=16222
+Started tabs3-queue-app-hiprio-14214.service - [systemd-run] /usr/bin/gnome-text-editor --new-window /tmp/tabs3-graphics-check.txt.
+Environment variable GSK_RENDERER=ngl set, trying GskGLRenderer
+tabs3-queue pid=16222 fd=15 flags=0 priority=1 id=1 ret=0
+tabs3-queue pid=16222 fd=15 flags=0 priority=1 id=2 ret=0
+tabs3-queue pid=16222 fd=15 flags=0 priority=0 id=3 ret=0
+tabs3-queue pid=16222 fd=15 flags=0 priority=0 id=4 ret=0
+Using renderer 'GskGLRenderer' for surface 'GdkWaylandToplevel'
+tabs3-queue-app-hiprio-14214-open uptime=2828.65
+101
+tabs3-queue-app-hiprio-14214-close uptime=2832.08
+101

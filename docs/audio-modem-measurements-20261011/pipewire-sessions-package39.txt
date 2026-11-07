@@ -1,0 +1,13 @@
+kernel #25, audio devices after 1s
+ │  *   54. Built-in Audio Headphones           [vol: 0.40]
+ │  *   55. Built-in Audio Internal Microphone  [vol: 1.00]
+recording 1: 0.00 s, rms 0.0 (-inf dBFS)
+recording 2: 2.20 s, rms 15.2 (-66.6 dBFS)
+recording 3: 0.80 s, rms 15.1 (-66.7 dBFS)
+playback 1 exit=0
+playback 2 exit=0
+playback 3 exit=0
+DSP errors: 1
+PipeWire ALSA errors: 1
+    api.alsa.disable-tsched = "true"
+    audio.format = "S16LE"

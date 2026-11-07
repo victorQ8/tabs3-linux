@@ -1,0 +1,4 @@
+# The data disk (microSD labelled tabs3-srv, /srv in fstab with nofail): mount
+# it again whenever the card is inserted, without an automount (autofs oopsed
+# at boot on this tablet once).
+SUBSYSTEM=="block", ENV{ID_FS_LABEL}=="tabs3-srv", TAG+="systemd", ENV{SYSTEMD_WANTS}+="srv.mount"

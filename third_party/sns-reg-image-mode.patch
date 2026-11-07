@@ -1,0 +1,157 @@
+Subject: [PATCH] main: serve a binary registry image
+
+Samsung's MSM8996 devices do not ship a plain-text registry, and the SLPI on
+the SM-T825 crashes on a registry assembled from the vendor
+sensor_def_qcomdev.conf alone: it needs Samsung's own groups and defaults.
+Android's sensors.qti kept them in sns.reg, one byte image of groups at fixed
+offsets.
+
+When /etc/sns-reg.d/registry.bin exists, serve each group as its bytes from
+that image, located through /etc/sns-reg.d/groups.conf ("group size offset"
+lines). An unknown group gets a failure result. Without the image the server
+reads registry.conf as before.
+
+The tabS3 project builds the image from the tablet's own Android software
+(tools/sensor-registry/make-registry.py); the image is vendor-derived data
+and is not distributed.
+
+License: GPL-3.0-or-later, as sns-reg
+Assisted-by: Claude:claude-opus-5-5
+
+--- a/main.c
++++ b/main.c
+@@ -33,6 +33,66 @@
+ 
+ static unsigned long registry[KEY_MAX] = { };
+ 
++/*
++ * Image mode: serve each group as the raw bytes of a registry image (the
++ * layout Android's sensors.qti keeps in sns.reg), located with a table of
++ * "group size offset" lines. Used when /etc/sns-reg.d/registry.bin exists.
++ */
++#define IMAGE_MAX	0x10000
++#define IMAGE_GROUPS_MAX	512
++
++struct image_group {
++	unsigned short id;
++	unsigned short size;
++	unsigned short offset;
++};
++
++static unsigned char image[IMAGE_MAX];
++static size_t image_len;
++static struct image_group image_groups[IMAGE_GROUPS_MAX];
++static int image_group_count;
++
++static bool load_image(void)
++{
++	FILE *file;
++	char line[LINE_SIZE];
++	unsigned int id, size, offset;
++
++	file = fopen("/etc/sns-reg.d/registry.bin", "rb");
++	if (!file)
++		return false;
++	image_len = fread(image, 1, IMAGE_MAX, file);
++	fclose(file);
++
++	file = fopen("/etc/sns-reg.d/groups.conf", "r");
++	if (!file) {
++		fprintf(stderr, "registry.bin without groups.conf\n");
++		return false;
++	}
++	while (fgets(line, LINE_SIZE, file) && image_group_count < IMAGE_GROUPS_MAX) {
++		if (sscanf(line, "%u %u %u", &id, &size, &offset) != 3)
++			continue;
++		if (size > SNS_REG_GROUP_DATA_MAX_LEN || offset + size > image_len) {
++			fprintf(stderr, "group %u outside the image, skipped\n", id);
++			continue;
++		}
++		image_groups[image_group_count++] = (struct image_group){ id, size, offset };
++	}
++	fclose(file);
++	printf("Serving %d groups from a %zu-byte registry image\n", image_group_count, image_len);
++	return image_group_count > 0;
++}
++
++static const struct image_group *image_group_by_id(unsigned short id)
++{
++	int i;
++
++	for (i = 0; i < image_group_count; i++)
++		if (image_groups[i].id == id)
++			return &image_groups[i];
++	return NULL;
++}
++
+ unsigned long *parse_registry(int fd)
+ {
+ 	FILE *file = fdopen(fd, "r");
+@@ -80,12 +140,26 @@
+ 		return ret;
+ 	}
+ 
++	response.id = request.id;
++
++	if (image_group_count) {
++		const struct image_group *g = image_group_by_id(request.id);
++
++		printf("Requested group %04d%s\n", request.id, !g ? " not in the image!" : "");
++		if (!g) {
++			response.result = QMI_RESULT_FAILURE_V01;
++		} else {
++			response.result = QMI_RESULT_SUCCESS_V01;
++			memcpy(response.data, image + g->offset, g->size);
++			response.data_len = g->size;
++		}
++		goto encode;
++	}
++
+ 	group = group_by_id(request.id);
+ 
+ 	printf("Requested group %04d%s\n", request.id, !group ? " unmapped!" : "");
+ 
+-	response.id = request.id;
+-
+ 	if (!group) {
+ 		response.result = QMI_RESULT_FAILURE_V01;
+ 	} else {
+@@ -103,6 +177,7 @@
+ 		response.data_len = size;
+ 	}
+ 
++encode:
+ 	out_packet.data = malloc(BUFFER_LEN);
+ 	out_packet.data_len = BUFFER_LEN;
+ 
+@@ -143,16 +218,20 @@
+ 	struct sns_reg_group_req request;
+ 	int ret;
+ 
+-	fd = open("/etc/sns-reg.d/registry.conf", O_RDONLY);
+-	if (fd < 0) {
+-		fprintf(stderr, "Failed to open registry: %s\n", strerror(errno));
+-		return 1;
+-	}
+-	registry = parse_registry(fd);
+-	close(fd);
+-	if (!registry) {
+-		fprintf(stderr, "Failed to parse registry\n");
+-		return 1;
++	if (load_image()) {
++		registry = NULL;
++	} else {
++		fd = open("/etc/sns-reg.d/registry.conf", O_RDONLY);
++		if (fd < 0) {
++			fprintf(stderr, "Failed to open registry: %s\n", strerror(errno));
++			return 1;
++		}
++		registry = parse_registry(fd);
++		close(fd);
++		if (!registry) {
++			fprintf(stderr, "Failed to parse registry\n");
++			return 1;
++		}
+ 	}
+ 
+ 	sock = socket(AF_QIPCRTR, SOCK_DGRAM, 0);

@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-15T09:30:00+00:00",
+  "installed": {
+    "linux-tabs3": "6.18.56-71 (modules installed, boot partition written from recovery at 12:12 local, readback verified)",
+    "boot_partition": "package 71 combined image, sha256 16a4d4c28634b0dd30d57c1cf89c3aa32c538b57a32e377b0435667d2b9f3edb (private/images/package71/)",
+    "tabs3-base": "0.1.29 (tabs3-usb-host accepts a partner-powered port; the health check knows the keeper's forced descent)",
+    "tabs3-dashboard": "0.1.8 (Codex's work in progress)"
+  },
+  "previous": "6.18.56-68",
+  "change": "usbpd.dtsi (package 69): BLSP1 QUP5 i2c@7579000 and the S2MM005 at usbpd@33 with its interrupt on TLMM 73; patch 0042 (packages 70 and 71): the s2mm005 driver reads the controller's state on the interrupt and a poll, pauses the SM5705 boost when the partner takes over VBUS and resumes it when the tablet sources again, holds the MUIC's D+/D- switch on USB while the host role is held, and uses the partner's contract current as the charger's input limit (1.5 A cap); sysfs state, version and source_capabilities",
+  "why": "the owner's hub with a wall charger on its Type-C input should charge the tablet while the tablet hosts the hub's USB ports; without the controller driver the hub never fed the tablet (docs/usbc-controller-20261015.json)",
+  "path": [
+    "12:04: RAM boot of package 71 with the PC cable: the driver probed (firmware boot 6 main 00.00.d5), attached sink device, charger online at 500 mA, the keeper's descent running at 94 %",
+    "12:12: boot partition written from recovery, Debian on package 71 from disk at 12:12:19, the s2mm005 probed at 8.5 s; the four pclk0_clk_src warnings at 11 s are the display's pixel clock at panel power-on, seen before on package 68 (journal boot -3), the panel works",
+    "12:19:13: PC cable out, the hub (14cd:8601, wall charger on its Type-C input) in: the controller reported attached, source, host, policy state 14 (source wait new capabilities): the hub waits for VBUS, the charger offline, the tablet on its battery",
+    "12:20:18: sudo tabs3-usb-host host: boost on (USB OTG VBUS on 5.1 V); 19 ms later the controller detached, at 69 ms attached sink device waiting for capabilities, at 77 ms the charger 'USB OTG VBUS off: the partner supplies the port' and 'the partner supplies 3000 mA'; 276 ms: sink ready with the hub's capabilities (fixed 5 V 3 A, dual-role power and data); 690 ms: data-role swap, attached sink host; 1.2 s: the hub enumerated by itself (4 ports) with its billboard device 343c:0000 at 1-1.4; charger online, Charging, input limit 1500000, +1.0 to +1.1 A into the battery",
+    "12:20:33: the keeper's next run put force-discharge back (94 % is above 83): Discharging at -450 mA with the hub enumerated and the charger online; the health check reported no drain",
+    "12:22:20: reboot with the hub attached: the PD contract survived (probe at 9 s: attached, sink, host, sink ready, 'the partner supplies 3000 mA'), charger online and Charging at the 1.5 A limit, +0.69 A; the USB role was the boot default (device), so the hub was not enumerated until tabs3-usb-host host at 12:24, then within a second"
+  ],
+  "unknown": [
+    "the hub's USB-A ports with other devices (only the hub's own billboard device was seen)",
+    "a cold attach of the hub while the port already hosts on battery (the Ethernet adapter never swaps, it has no PD)"
+  ],
+  "pending_on_hardware": [
+    "the driver should set the USB role from the controller's data role, so that the hub hosts without the tool after a reboot or a plug (next, package 72)"
+  ]
+}

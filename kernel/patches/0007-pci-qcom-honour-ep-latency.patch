@@ -1,0 +1,30 @@
+Subject: [PATCH] PCI: qcom: wait qcom,ep-latency after PERST# deassert (bring-up)
+
+The downstream MSM PCIe driver waits qcom,ep-latency milliseconds after
+releasing PERST# before starting link training; the SM-T825 stock DT
+sets 10 ms for the QCA6174 on RC0. Honour the property if present.
+Bring-up patch: the property is not in the mainline binding.
+
+--- a/drivers/pci/controller/dwc/pcie-qcom.c
++++ b/drivers/pci/controller/dwc/pcie-qcom.c
+@@ -307,9 +307,20 @@
+ 
+ static void qcom_ep_reset_deassert(struct qcom_pcie *pcie)
+ {
++	u32 ep_latency_ms = 0;
++
+ 	/* Ensure that PERST has been asserted for at least 100 ms */
+ 	msleep(PCIE_T_PVPERL_MS);
+ 	qcom_perst_assert(pcie, false);
++
++	/*
++	 * Downstream qcom,ep-latency: time the endpoint needs after PERST#
++	 * before link training. Without it the SM-T825 QCA6174 left the LTSSM
++	 * in Polling.Compliance.
++	 */
++	of_property_read_u32(pcie->pci->dev->of_node, "qcom,ep-latency", &ep_latency_ms);
++	if (ep_latency_ms)
++		msleep(ep_latency_ms);
+ }
+ 
+ static int qcom_pcie_start_link(struct dw_pcie *pci)

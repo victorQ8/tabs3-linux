@@ -1,0 +1,59 @@
+#!/bin/sh
+# Explicit activation after installing the GPU boot image and desktop package.
+set -eu
+[ "$(id -u)" = 0 ] || { echo 'Run with sudo on the tablet.' >&2; exit 1; }
+[ "$(tr -d '\000' </proc/device-tree/model)" = 'Samsung Galaxy Tab S3 LTE (SM-T825)' ] || exit 1
+# Network configuration changes can disconnect Wi-Fi. Use the USB SSH link.
+command -v nmcli >/dev/null
+systemctl cat NetworkManager.service >/dev/null
+[ "$(tr -d '\000' </proc/device-tree/soc@0/gpu@b00000/status)" = okay ] || {
+    echo 'Boot the GPU-enabled Debian image first.' >&2; exit 1;
+}
+/usr/libexec/tabs3-install-gpu-firmware
+mesa=$(dpkg-query -W -f='${Version}' mesa-libgallium)
+dpkg --compare-versions "$mesa" ge 26.1.6 || {
+    echo 'Install the Mesa backports used for bring-up using tools/install-desktop first.' >&2
+    exit 1
+}
+[ -e /etc/default/locale ] || printf 'LANG=C.UTF-8\n' >/etc/default/locale
+backup=/var/lib/tabs3/desktop-backup
+mkdir -p "$backup"
+chmod 700 "$backup"
+if [ -d /var/lib/iwd ] && [ ! -e "$backup/iwd" ]; then
+    cp -a /var/lib/iwd "$backup/iwd"
+fi
+if [ ! -e "$backup/iwd-main.conf" ]; then
+    cp -a /etc/iwd/main.conf "$backup/iwd-main.conf"
+fi
+/usr/libexec/tabs3-import-iwd
+# Keep IWD's existing saved networks. NetworkManager now owns DHCP/DNS.
+python3 - <<'PY'
+import configparser
+from pathlib import Path
+p = Path('/etc/iwd/main.conf')
+c = configparser.ConfigParser()
+c.optionxform = str
+c.read(p)
+if not c.has_section('General'):
+    c.add_section('General')
+c.set('General', 'EnableNetworkConfiguration', 'false')
+with p.open('w') as out:
+    c.write(out)
+PY
+dconf update
+udevadm control --reload
+udevadm trigger --subsystem-match=input --action=change
+systemctl daemon-reload
+# Newly installed service users and D-Bus ownership policies must be reloaded
+# before the greeter asks PolicyKit, AccountsService or UPower for their names.
+systemctl reload dbus.service
+systemctl restart polkit.service accounts-daemon.service upower.service
+systemctl restart iwd.service
+systemctl enable --now NetworkManager.service
+nmcli connection reload
+systemctl disable phosh.service
+systemctl disable greetd.service
+systemctl set-default multi-user.target
+systemctl restart greetd.service
+echo 'Phosh test login started; reboot still returns to the console until GPU faults are resolved.'
+echo 'Console fallback: stop greetd phosh; start tabs3-screen and getty@tty1.'

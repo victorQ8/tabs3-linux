@@ -1,0 +1,191 @@
+Subject: [PATCH] power: supply: sm5705: set the input limit from the charger type
+
+The input current limit stays at whatever the bootloader left, 475 mA for
+a PC port, so a wall charger charged slowly. Read the BC1.2 result from
+the SM5705 MUIC and set 500 mA (SDP), 1500 mA (CDP) or 1800 mA (DCP) when
+the charger type changes, as Samsung's driver does. Report it as usb_type,
+make the limit writable, and allow turning the automatic setting off
+with auto_input_limit=0.
+
+diff -ruN a/drivers/power/supply/sm5705_charger.c b/drivers/power/supply/sm5705_charger.c
+--- a/drivers/power/supply/sm5705_charger.c
++++ b/drivers/power/supply/sm5705_charger.c
+@@ -2,10 +2,13 @@
+ /*
+  * Silicon Mitus SM5705 charger
+  *
+- * Read-only for now: reports cable and charging state and the limits the
+- * chip currently uses, without changing them. Register layout follows
+- * Samsung's GPL sm5705.h and sm5705_charger.c. The chip has no usable
+- * interrupt here yet, so its status is polled.
++ * Reports cable and charging state and the limits the chip uses. The only
++ * setting it changes is the input current limit, from the charger type the
++ * SM5705 MUIC detected (BC1.2): 500 mA for a PC port, 1500 mA for a
++ * charging port, 1800 mA for a dedicated charger, as Samsung's driver does.
++ * auto_input_limit=0 leaves the limit alone. Register layout follows
++ * Samsung's GPL sm5705.h, sm5705_charger.c and muic_regmap_sm5705.c. The
++ * chip has no usable interrupt here yet, so its status is polled.
+  */
+ #include <linux/i2c.h>
+ #include <linux/module.h>
+@@ -34,11 +37,25 @@
+ 
+ #define SM5705_POLL_MS		5000
+ 
++/* MUIC part of the SM5705, same bus */
++#define SM5705_MUIC_ADDR	0x25
++#define SM5705_MUIC_DEVICEID	0x01
++#define SM5705_MUIC_DEVT1	0x0a
++#define SM5705_MUIC_DEVT1_SDP		BIT(2)
++#define SM5705_MUIC_DEVT1_CDP		BIT(5)
++#define SM5705_MUIC_DEVT1_DCP		BIT(6)
++
++static bool auto_input_limit = true;
++module_param(auto_input_limit, bool, 0644);
++MODULE_PARM_DESC(auto_input_limit, "Set the input current limit from the detected charger type");
++
+ struct sm5705_chg {
+ 	struct i2c_client *client;
++	struct i2c_client *muic;
+ 	struct power_supply *psy;
+ 	struct delayed_work poll;
+ 	int last_status;
++	int last_type;
+ };
+ 
+ static int sm5705_chg_read(struct sm5705_chg *chg, u8 reg, u8 *val)
+@@ -62,6 +79,29 @@
+ 	return ret;
+ }
+ 
++static enum power_supply_usb_type sm5705_chg_usb_type(struct sm5705_chg *chg)
++{
++	int devt1 = i2c_smbus_read_byte_data(chg->muic, SM5705_MUIC_DEVT1);
++
++	if (devt1 < 0)
++		return POWER_SUPPLY_USB_TYPE_UNKNOWN;
++	if (devt1 & SM5705_MUIC_DEVT1_DCP)
++		return POWER_SUPPLY_USB_TYPE_DCP;
++	if (devt1 & SM5705_MUIC_DEVT1_CDP)
++		return POWER_SUPPLY_USB_TYPE_CDP;
++	if (devt1 & SM5705_MUIC_DEVT1_SDP)
++		return POWER_SUPPLY_USB_TYPE_SDP;
++	return POWER_SUPPLY_USB_TYPE_UNKNOWN;
++}
++
++/* VBUSCNTL: 100 mA + 25 mA steps, 7 bits */
++static int sm5705_chg_set_input_limit(struct sm5705_chg *chg, int ua)
++{
++	int ma = clamp(ua / 1000, 100, 100 + 0x7f * 25);
++
++	return i2c_smbus_write_byte_data(chg->client, SM5705_VBUSCNTL, (ma - 100) / 25);
++}
++
+ static int sm5705_chg_get_property(struct power_supply *psy,
+ 				   enum power_supply_property psp,
+ 				   union power_supply_propval *val)
+@@ -112,6 +152,9 @@
+ 		else
+ 			val->intval = POWER_SUPPLY_HEALTH_GOOD;
+ 		return 0;
++	case POWER_SUPPLY_PROP_USB_TYPE:
++		val->intval = sm5705_chg_usb_type(chg);
++		return 0;
+ 	case POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT:
+ 		ret = sm5705_chg_read(chg, SM5705_VBUSCNTL, &reg);
+ 		val->intval = ((reg & 0x7f) * 25 + 100) * 1000;
+@@ -132,8 +175,26 @@
+ 	}
+ }
+ 
++static int sm5705_chg_set_property(struct power_supply *psy,
++				   enum power_supply_property psp,
++				   const union power_supply_propval *val)
++{
++	struct sm5705_chg *chg = power_supply_get_drvdata(psy);
++
++	if (psp != POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT)
++		return -EINVAL;
++	return sm5705_chg_set_input_limit(chg, val->intval);
++}
++
++static int sm5705_chg_property_is_writeable(struct power_supply *psy,
++					    enum power_supply_property psp)
++{
++	return psp == POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT;
++}
++
+ static const enum power_supply_property sm5705_chg_properties[] = {
+ 	POWER_SUPPLY_PROP_ONLINE,
++	POWER_SUPPLY_PROP_USB_TYPE,
+ 	POWER_SUPPLY_PROP_STATUS,
+ 	POWER_SUPPLY_PROP_CHARGE_TYPE,
+ 	POWER_SUPPLY_PROP_HEALTH,
+@@ -147,9 +208,46 @@
+ 	.type = POWER_SUPPLY_TYPE_USB,
+ 	.properties = sm5705_chg_properties,
+ 	.num_properties = ARRAY_SIZE(sm5705_chg_properties),
++	.usb_types = BIT(POWER_SUPPLY_USB_TYPE_UNKNOWN) | BIT(POWER_SUPPLY_USB_TYPE_SDP) |
++		     BIT(POWER_SUPPLY_USB_TYPE_CDP) | BIT(POWER_SUPPLY_USB_TYPE_DCP),
+ 	.get_property = sm5705_chg_get_property,
++	.set_property = sm5705_chg_set_property,
++	.property_is_writeable = sm5705_chg_property_is_writeable,
+ };
+ 
++/* Apply the input limit for a newly detected charger type, once per change. */
++static void sm5705_chg_update_input_limit(struct sm5705_chg *chg, bool vbus)
++{
++	enum power_supply_usb_type type;
++	int ua;
++
++	if (!vbus) {
++		chg->last_type = -1;
++		return;
++	}
++	type = sm5705_chg_usb_type(chg);
++	if ((int)type == chg->last_type)
++		return;
++	chg->last_type = type;
++	if (!auto_input_limit)
++		return;
++	switch (type) {
++	case POWER_SUPPLY_USB_TYPE_DCP:
++		ua = 1800000;
++		break;
++	case POWER_SUPPLY_USB_TYPE_CDP:
++		ua = 1500000;
++		break;
++	case POWER_SUPPLY_USB_TYPE_SDP:
++		ua = 500000;
++		break;
++	default:
++		return;
++	}
++	if (!sm5705_chg_set_input_limit(chg, ua))
++		dev_info(&chg->client->dev, "charger type %d: input limit %d mA\n", type, ua / 1000);
++}
++
+ /* Tell the battery and user space when the cable or charging state changes. */
+ static void sm5705_chg_poll(struct work_struct *work)
+ {
+@@ -159,6 +257,8 @@
+ 	if (!sm5705_chg_status(chg, &s1, &s2, NULL)) {
+ 		int status = (s1 << 8) | s2;
+ 
++		sm5705_chg_update_input_limit(chg, s1 & SM5705_STATUS1_VBUSPOK);
++
+ 		if (status != chg->last_status) {
+ 			chg->last_status = status;
+ 			power_supply_changed(chg->psy);
+@@ -184,6 +284,11 @@
+ 		return -ENOMEM;
+ 	chg->client = client;
+ 	chg->last_status = -1;
++	chg->last_type = -1;
++
++	chg->muic = devm_i2c_new_dummy_device(dev, client->adapter, SM5705_MUIC_ADDR);
++	if (IS_ERR(chg->muic))
++		return dev_err_probe(dev, PTR_ERR(chg->muic), "cannot reach the MUIC\n");
+ 
+ 	id = i2c_smbus_read_byte_data(client, SM5705_DEVICEID);
+ 	if (id < 0)

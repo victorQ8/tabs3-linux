@@ -1,0 +1,180 @@
+{
+  "schema": 1,
+  "time_utc": "2026-11-05T10:20:58.551422+00:00",
+  "kernel": "6.18.56-gts3l1",
+  "all_drivers_qualified": false,
+  "sensor_readings": {
+    "sx9310": {
+      "scale": {},
+      "samples": [
+        {
+          "in_proximity0_raw": "4",
+          "in_proximity1_raw": "0",
+          "in_proximity2_raw": "0",
+          "in_proximity3_comb_raw": "-1"
+        },
+        {
+          "in_proximity0_raw": "3",
+          "in_proximity1_raw": "0",
+          "in_proximity2_raw": "0",
+          "in_proximity3_comb_raw": "0"
+        },
+        {
+          "in_proximity0_raw": "0",
+          "in_proximity1_raw": "0",
+          "in_proximity2_raw": "0",
+          "in_proximity3_comb_raw": "0"
+        }
+      ],
+      "all_reads_numeric": true
+    },
+    "qcom-smgr-gyro": {
+      "scale": {
+        "in_anglvel_scale": "0.000015258"
+      },
+      "samples": [
+        {
+          "in_anglvel_x_raw": "-3984",
+          "in_anglvel_y_raw": "-1160",
+          "in_anglvel_z_raw": "-1922"
+        },
+        {
+          "in_anglvel_x_raw": "-3964",
+          "in_anglvel_y_raw": "-1140",
+          "in_anglvel_z_raw": "-1942"
+        },
+        {
+          "in_anglvel_x_raw": "-3964",
+          "in_anglvel_y_raw": "-1120",
+          "in_anglvel_z_raw": "-1942"
+        }
+      ],
+      "all_reads_numeric": true
+    },
+    "qcom-smgr-accel": {
+      "scale": {
+        "in_accel_scale": "0.000015258"
+      },
+      "samples": [
+        {
+          "in_accel_x_raw": "-9253",
+          "in_accel_y_raw": "570105",
+          "in_accel_z_raw": "-270116"
+        },
+        {
+          "in_accel_x_raw": "-6939",
+          "in_accel_y_raw": "569556",
+          "in_accel_z_raw": "-275369"
+        },
+        {
+          "in_accel_x_raw": "-8704",
+          "in_accel_y_raw": "568733",
+          "in_accel_z_raw": "-275800"
+        }
+      ],
+      "all_reads_numeric": true
+    },
+    "qcom-smgr-light": {
+      "scale": {
+        "in_illuminance_scale": "1"
+      },
+      "samples": [
+        {
+          "in_illuminance_raw": "60"
+        },
+        {
+          "in_illuminance_raw": "60"
+        },
+        {
+          "in_illuminance_raw": "60"
+        }
+      ],
+      "all_reads_numeric": true
+    },
+    "qcom-smgr-mag": {
+      "scale": {
+        "in_magn_scale": "0.000015258"
+      },
+      "samples": [
+        {
+          "in_magn_x_raw": "-49497",
+          "in_magn_y_raw": "-33521",
+          "in_magn_z_raw": "116904"
+        },
+        {
+          "in_magn_x_raw": "-50106",
+          "in_magn_y_raw": "-34064",
+          "in_magn_z_raw": "117459"
+        },
+        {
+          "in_magn_x_raw": "-50704",
+          "in_magn_y_raw": "-33294",
+          "in_magn_z_raw": "116523"
+        }
+      ],
+      "all_reads_numeric": true
+    }
+  },
+  "storage": [
+    {
+      "directory": "/var/tmp",
+      "passed": true,
+      "source": "/dev/mapper/tabs3root",
+      "bytes": 33554432,
+      "expected_sha256": "ceec63377d182281cdab11b1e2c9826a6dd18e893d57b9ab5ba06a0798d9331e",
+      "readback_sha256": "ceec63377d182281cdab11b1e2c9826a6dd18e893d57b9ab5ba06a0798d9331e",
+      "write_fsync_seconds": 1.227,
+      "read_seconds": 0.324
+    },
+    {
+      "directory": "/srv",
+      "passed": true,
+      "source": "/dev/mmcblk1p1",
+      "bytes": 33554432,
+      "expected_sha256": "c848a893815ec38c59325ff59ad252a48849a48339281f80fd4f27c2f4566a4b",
+      "readback_sha256": "c848a893815ec38c59325ff59ad252a48849a48339281f80fd4f27c2f4566a4b",
+      "write_fsync_seconds": 1.194,
+      "read_seconds": 0.556
+    }
+  ],
+  "limits": [
+    "Stationary sensor reads do not validate calibration or physical response.",
+    "Scratch checks cover 32 MiB per filesystem, not all media or power-loss recovery.",
+    "DONTNEED requests cache eviction; this is not a direct-I/O or endurance benchmark."
+  ],
+  "remoteproc": {
+    "adsp": "running",
+    "2080000.remoteproc": "running",
+    "slpi": "running"
+  },
+  "deferred_probes": "",
+  "failed_services": "",
+  "battery": {
+    "capacity": "33",
+    "current_now": "140625",
+    "voltage_now": "3835937",
+    "temp": "228"
+  },
+  "thermals_mc": {
+    "pa-thermal": "24626",
+    "mem-thermal": "31500",
+    "sm5705-charger": "28000",
+    "camera-thermal": "32100",
+    "cpu1-thermal": "36300",
+    "cpu3-thermal": "33700",
+    "l3-or-venus-thermal": "32700",
+    "cluster0-l2-thermal": "35000",
+    "skin-thermal": "29129",
+    "gpu-bottom-thermal": "30500",
+    "xo-thermal": "27857",
+    "modemtx-thermal": "30800",
+    "pm8994-thermal": "30075",
+    "q6-dsp-thermal": "31100",
+    "cluster1-l2-thermal": "35300",
+    "cpu0-thermal": "35300",
+    "cpu2-thermal": "34000",
+    "m4m-thermal": "34000",
+    "sm5705-battery": "22800",
+    "gpu-top-thermal": "29200"
+  }
+}

@@ -1,0 +1,54 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * USB 3 SuperSpeed on the USB-C port (package 77): the QMP USB 3 PHY
+ * (stock ssphy@7410000, pm8994_l28 at 0.925 V and pm8994_l12 at 1.8 V,
+ * the supplies the Wi-Fi model's tree already routes), the dwc3 at
+ * super-speed on both PHYs, and the SuperSpeed redriver enabled through
+ * PM8994 GPIO 14 (stock usb-notifier qcom,gpios_redriver_en) by the
+ * s2mm005 driver while a partner is attached. The stock tree selects no
+ * lane on the AP side: the plug orientation is handled off the processor,
+ * so nothing here depends on the controller's cc1/cc2 reading.
+ */
+#include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
+
+/ {
+	usb3_redriver: regulator-usb3-redriver {
+		compatible = "regulator-fixed";
+		regulator-name = "usb3_redriver";
+		gpio = <&pm8994_gpios 14 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+		pinctrl-names = "default";
+		pinctrl-0 = <&usb3_redriver_en_default>;
+	};
+};
+
+&pm8994_gpios {
+	/* an output the usb-notifier drove; no pull, low drive, VIN S4 */
+	usb3_redriver_en_default: usb3-redriver-en-default-state {
+		pins = "gpio14";
+		function = PMIC_GPIO_FUNC_NORMAL;
+		output-low;
+		bias-disable;
+		qcom,drive-strength = <PMIC_GPIO_STRENGTH_LOW>;
+		power-source = <PM8994_GPIO_S4>;
+	};
+};
+
+&usb3phy {
+	status = "okay";
+};
+
+&usb3 {
+	/* the PHY's pipe clock clocks the core again */
+	/delete-property/ qcom,select-utmi-as-pipe-clk;
+};
+
+&usb3_dwc3 {
+	maximum-speed = "super-speed";
+	phys = <&hsusb_phy1>, <&usb3phy>;
+	phy-names = "usb2-phy", "usb3-phy";
+};
+
+&usbpd {
+	redriver-supply = <&usb3_redriver>;
+};

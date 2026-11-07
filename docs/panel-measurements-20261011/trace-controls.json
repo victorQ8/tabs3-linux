@@ -1,0 +1,59 @@
+{
+  "M1_M2": {
+    "frame_kickoffs": 5,
+    "pp0_tx_done": 5,
+    "pp1_tx_done": 5,
+    "negative_host_returns": 0,
+    "captured_host_returns": 193,
+    "enabled_timeout_or_underrun_events": 0,
+    "snapshot_windows_without_kickoffs": [
+      "BEFORE_RAW_DISPLAY_ON",
+      "M1_BASELINE",
+      "M1_AFTER_COMP_ZERO",
+      "M1_AFTER_COMP_EIGHT",
+      "M2_BASELINE",
+      "M2_AFTER_ON_BEFORE_FRAME",
+      "M2_AFTER_ON_AFTER_FRAME"
+    ]
+  },
+  "M3": {
+    "frame_kickoffs": 40,
+    "pp0_tx_done": 40,
+    "pp1_tx_done": 40,
+    "negative_host_returns": 0,
+    "captured_host_returns": 62,
+    "enabled_timeout_or_underrun_events": 0,
+    "snapshot_windows_without_kickoffs": [
+      "M3_BEFORE_FIXUP",
+      "M3_AFTER_FIXUP"
+    ],
+    "manual_fixup_B2_data_writes": 6,
+    "note": "The manual fixup includes gamma/update and normal-condition writes; it is not a compression-only test."
+  },
+  "R4": {
+    "frame_kickoffs": 0,
+    "pp0_tx_done": 0,
+    "pp1_tx_done": 0,
+    "negative_host_returns": 0,
+    "captured_host_returns": 0,
+    "enabled_timeout_or_underrun_events": 0,
+    "snapshot_windows_without_kickoffs": []
+  },
+  "M3_REPEAT": {
+    "frame_kickoffs": 0,
+    "pp0_tx_done": 0,
+    "pp1_tx_done": 0,
+    "negative_host_returns": 0,
+    "captured_host_returns": 0,
+    "enabled_timeout_or_underrun_events": 0,
+    "snapshot_windows_without_kickoffs": []
+  },
+  "M1": {
+    "B2_data_writes_during_test": 0,
+    "all_host_packets_HS": true
+  },
+  "M2": {
+    "B2_data_writes_during_test": 0,
+    "all_host_packets_HS": true
+  }
+}

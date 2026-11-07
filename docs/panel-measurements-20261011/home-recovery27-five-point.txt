@@ -1,0 +1,11 @@
+Recovery action: Check filesystem
+Screen off requested
+Screen on requested
+Recovery action: Check filesystem
+Touch test: ready for five points
+Touch test 1: target=128,128 actual=93,141 PASS
+Touch test 2: target=1919,128 actual=1932,129 PASS
+Touch test 3: target=1024,768 actual=1035,783 PASS
+Touch test 4: target=128,1407 actual=146,1402 PASS
+Touch test 5: target=1919,1407 actual=1910,1402 PASS
+Touch test: all five points passed

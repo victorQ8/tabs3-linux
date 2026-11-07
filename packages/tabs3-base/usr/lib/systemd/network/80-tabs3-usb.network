@@ -1,0 +1,10 @@
+[Match]
+MACAddress=02:54:53:33:00:02
+
+[Network]
+Address=172.16.42.2/30
+LinkLocalAddressing=no
+IPv6AcceptRA=no
+
+[Link]
+RequiredForOnline=no

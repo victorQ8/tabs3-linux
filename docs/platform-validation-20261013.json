@@ -1,0 +1,328 @@
+{
+  "date": "2026-10-13",
+  "device": "SM-T825 rev05",
+  "source_commit": "d5296e779e865bed318e68381434616b09fe6984",
+  "kernel_package": "6.18.56-61",
+  "base_package": "0.1.19",
+  "state": "Installed and verified across recovery return and a normal reboot",
+  "ci": {
+    "passed": true,
+    "tests": 63,
+    "dtb_guards": 4,
+    "patched_files_without_compiler_warnings": 64,
+    "source_files_matching_clean_tree": 97,
+    "log_sha256": "995cda6df17705014ba723a6cb42d2d120e3baad00c007419cfc586f60b504e8"
+  },
+  "rtc": {
+    "allow_set_time": false,
+    "offline_boot_checked": true,
+    "agreement_with_host_s": "less than 1",
+    "limitations": [
+      "RTC counter reset invalidates saved offset",
+      "firmware reset mechanism not proven"
+    ]
+  },
+  "storage": {
+    "mode": "HS400",
+    "actual_hz": 192000000,
+    "read_probe_MB_per_s": 113,
+    "file_write_bytes_verified": 1073741824,
+    "direct_file_reread_bytes": 2147483648,
+    "recovery_cap_hz": 52000000
+  },
+  "memory": {
+    "mem_total_kib": 3700632,
+    "released_camera_pool_mib": 328,
+    "verified_load_mib": 1024,
+    "verified_seconds": 304.2
+  },
+  "cpu_idle_watchdog": {
+    "psci_idle": true,
+    "deep_idle_cpus": [
+      1,
+      2,
+      3
+    ],
+    "cpu0_deep_idle_disabled": true,
+    "timeout_s": 20,
+    "all_cpus_deep_idle_expiry_failed": true,
+    "stock_wake_bit_did_not_fix": true,
+    "cpu0_shallow_expiry_returned_recovery": true,
+    "expiry_test_filesystems_mounted": false
+  },
+  "full_server_soak": {
+    "samples": 58,
+    "maximum_cpu_mc": 62900,
+    "maximum_ap_mc": 43787,
+    "maximum_battery_deci_c": 268,
+    "min_cpu_frequencies_khz": {
+      "policy2": 307200,
+      "policy0": 307200
+    },
+    "max_cooling_states": {
+      "cooling_device1:cpufreq-cpu2": 24,
+      "cooling_device2:devfreq-b00000.gpu": 4,
+      "cooling_device0:cpufreq-cpu0": 15,
+      "cooling_device3:ath10k_thermal": 0
+    },
+    "boot_id": "31ca2e25-a7fa-4db3-b2a5-dbf7f2881390",
+    "reason": "completed",
+    "exit_code": 0,
+    "elapsed_s": 303.6,
+    "sample_count": 58,
+    "kernel": "Linux tabs3 6.18.56-gts3l1 #20 SMP PREEMPT 2026-10-10 00:00:00 UTC aarch64 GNU/Linux"
+  },
+  "video": {
+    "before_eos_fix_frames": 173,
+    "after_eos_fix_frames": [
+      180,
+      180
+    ],
+    "fakesink_eos_passed": true,
+    "cpu_conversion_pipeline_completes": false,
+    "cpu_frames_before_timeout": 169,
+    "captured_frames_bit_exact_against_software_decode": true,
+    "qualified_for_transcoding": false
+  },
+  "pending": [
+    "long 24/7 workload and power qualification",
+    "gyro/magnetometer/light physical response and calibration",
+    "hall and vibration physical checks",
+    "SX9310 WHOAMI ENXIO",
+    "camera, S Pen and fingerprint ports",
+    "USB3 and simultaneous USB host/charging",
+    "hardware RNG support",
+    "complete video conversion/encoding pipeline"
+  ],
+  "evidence": [
+    {
+      "private_path": "private/claude-handoff-20261013/inputs.json",
+      "sha256": "36581f646de947ff5f5e59a87327e900d19041bc729e82174ae17a4842485d88"
+    },
+    {
+      "private_path": "private/claude-handoff-20261013/offline-clock.json",
+      "sha256": "8b1eab57070248f2c7df3c78cde2d174b053b448388e9ea8e2a2eb93c9a60d25"
+    },
+    {
+      "private_path": "private/claude-handoff-20261013/memory-result.json",
+      "sha256": "50691b46f3ae165691066a9d06bc6c38795c03ada64d0e92c0a00271b81f0256"
+    },
+    {
+      "private_path": "private/claude-handoff-20261013/storage-hs200-read-test.txt",
+      "sha256": "56e6ffc0595aa4a92c72809e4c5a5f2c12d817737b7fb4d07ba107e507e1d6db"
+    },
+    {
+      "private_path": "private/claude-handoff-20261013/storage-hs400-read-test.txt",
+      "sha256": "9b128355fd7be4bc7675ed21c96f19972188ce6ea598e1329e8136b3337adbc2"
+    },
+    {
+      "private_path": "private/claude-handoff-20261013/storage-hs400-writes.txt",
+      "sha256": "4fc0174c0be1279d3cb6f7a95ee4702cf4afd3a5d50c63eacc2ec9c03fb37cf8"
+    },
+    {
+      "private_path": "private/claude-handoff-20261013/venus59-h264-0.txt",
+      "sha256": "33face0ab7497ec2e71023bc3aa3e4a2ae649b61e65b3d3c8d6b2066ba05d942"
+    },
+    {
+      "private_path": "private/claude-handoff-20261013/venus59-h264-1.txt",
+      "sha256": "e27a6e90969450e1cb9e7d6094108a1c61b9771120b1fa586725be1db7989df9"
+    },
+    {
+      "private_path": "private/claude-handoff-20261013/venus60-system-memory.txt",
+      "sha256": "ae1ec009d82fa9fec593bb04de1164ec6190f36caf852c71c957b91a6ad83f22"
+    },
+    {
+      "private_path": "private/claude-handoff-20261013/venus60-partial-quality.txt",
+      "sha256": "266c6c933430124eb4f20ea1c2835b03467805e36bf5682e17d404a9b628b055"
+    },
+    {
+      "private_path": "private/claude-handoff-20261013/watchdog60-result.json",
+      "sha256": "4acdff37830026e51278607734e0eea27b2fc7f5f94fc132c1b0c275a54d1aad"
+    },
+    {
+      "private_path": "private/claude-handoff-20261013/watchdog60-stock-wake-bite.json",
+      "sha256": "f6aa69b0baa1be50b6ff8d7595b0d5ada9018c00b11edfb879333999204368c7"
+    },
+    {
+      "private_path": "private/claude-handoff-20261013/watchdog60-cpu0-shallow.json",
+      "sha256": "fe8e78d83ee853ee6b32274f67bcccadbd5b736ed8ab9e538de2db9ab7bdb51c"
+    },
+    {
+      "private_path": "private/claude-handoff-20261013/platform61-initial.json",
+      "sha256": "498d2c8eb13b1cff5ba45c43893752c2950b29d3de4bf85c35407cba97be7413"
+    },
+    {
+      "private_path": "private/claude-handoff-20261013/platform61-after-soak.json",
+      "sha256": "797ad224ca521af1bf00893b017391193950a995ec7a9373587ddf5bec2ef929"
+    },
+    {
+      "private_path": "private/claude-handoff-20261013/platform61-soak-result.json",
+      "sha256": "85e6010617b499988b5f1d90791e0002b5e6083facb5365e5f7ca4575cede010"
+    },
+    {
+      "private_path": "private/claude-handoff-20261013/platform61-soak-summary.json",
+      "sha256": "3ec3f0df08db117029b4f9b8ebeaed02688ca8e05c6742923496dc6c1f1c43c9"
+    },
+    {
+      "private_path": "private/claude-handoff-20261013/source-comparison.json",
+      "sha256": "50520037e078365f7d72f3e1ab5c4240f7a6c441d8bdb6bdaa2417e24a7577b4"
+    },
+    {
+      "private_path": "private/claude-handoff-20261013/no-watchdog-monitor.json",
+      "sha256": "3008101ebea90b8d02ace7936cd99fb6d22f5ab108244dc8722589ac62ba89e4"
+    },
+    {
+      "private_path": "private/claude-handoff-20261013/no-watchdog-keep-camera-monitor.json",
+      "sha256": "310b2cffce8ccc45a9000370d46855cc9d37c63534ff6a5fa82b2c7689096c58"
+    },
+    {
+      "private_path": "private/claude-handoff-20261013/stock55-dtb-monitor.json",
+      "sha256": "470cd0a77b57529f22284e1af87c0f63d7b78cca1c3eafb3467fb9d2caaf09f8"
+    },
+    {
+      "private_path": "private/claude-handoff-20261013/no-rtc-write-monitor.json",
+      "sha256": "ca85128a793fd4ec315dd141948d3058fe634939afd6aef3b95daf3bf02948f3"
+    },
+    {
+      "private_path": "private/claude-handoff-20261013/platform61-monitor.json",
+      "sha256": "d03f9825be2a650a22e51631e5ae3d74d7e7fe36875c43eae5f99d4b6313c247"
+    },
+    {
+      "private_path": "private/claude-handoff-20261013/pre-install61-fsck.txt",
+      "sha256": "81eae2e480111137200bccf7ceb0439a7a9464a6a53190660ef54e3bdb788ffc"
+    },
+    {
+      "private_path": "private/claude-handoff-20261013/flash61.json",
+      "sha256": "0564925bd00a6cb598554a89029ff6797159a6d5c363aa87eddb51b620a40733"
+    },
+    {
+      "private_path": "private/claude-handoff-20261013/installed61-stable.json",
+      "sha256": "305cdb002d16126eb927481544f832ce11ebcee9c6605654e54534aebffbdb23"
+    },
+    {
+      "private_path": "private/claude-handoff-20261013/installed61-second-stable.json",
+      "sha256": "3fe864393219fbd37817578e66c97a4b9590ae01610db80e72a5bfacab2b1a6f"
+    },
+    {
+      "private_path": "private/claude-handoff-20261013/installed61-state.txt",
+      "sha256": "0af0dc8100f2cc09478da5b25e5260abaeb4d691f3c44d4bdc075ef3b3cbb84a"
+    },
+    {
+      "private_path": "private/claude-handoff-20261013/installed61-second-state.txt",
+      "sha256": "703ba8b2d6dd7a6f4e526737d7c28dc39da72804245f73ec86c5288c1899a381"
+    },
+    {
+      "private_path": "private/claude-handoff-20261013/installed61-final-log.txt",
+      "sha256": "6630a3d2da25b4b231fdc44c18eae3340f7974607f15c0f4a477926805ef3b72"
+    }
+  ],
+  "artifacts": {
+    "kernel_deb": {
+      "sha256": "afbe1a4858a478c45d4880234ae0c3f3034f12e717fe8e6604f36a7c0714b18a",
+      "bytes": 21085224
+    },
+    "base_deb": {
+      "sha256": "c726117451615c1a7ed6aaf91625d15ccc93fbade93c0358f98062edb6963d68",
+      "bytes": 18348
+    },
+    "ram_boot": {
+      "sha256": "f37e14c053d66f74c062b0f69c3e4e4e1c942f44ab1be8e7cffe30c214ce0304",
+      "bytes": 22294544
+    },
+    "normal_boot": {
+      "sha256": "3f82673eb9df03019b366778ddeda03235f5b4536d6753d4c51ef01c3887ff9f",
+      "bytes": 26488848
+    }
+  },
+  "flash": {
+    "normal_image_sha256": "3f82673eb9df03019b366778ddeda03235f5b4536d6753d4c51ef01c3887ff9f",
+    "written_bytes": 26488848,
+    "readback_verified": true,
+    "previous_full_boot_sha256": "bd2ebd8190e7a6c0cb1145be71733a7d03dd453c26ae8e7c952741f90ba6dc53",
+    "recovery_prefix_sha256_before_and_after": "dc8c4804ddd5e0dc9c7a781d5d3c20c6e0e66e59c38a18ce03e1a883a58125fb",
+    "recovery_bytes_checked": 26513424
+  },
+  "installed_boots": [
+    {
+      "boot_id": "e8c65a5d-01c1-4521-9717-b7a558b0b3fb",
+      "kernel": "Linux tabs3 6.18.56-gts3l1 #20 SMP PREEMPT 2026-10-10 00:00:00 UTC aarch64 GNU/Linux",
+      "uptime": "158.73 552.00",
+      "no_failed_units": true,
+      "usb_and_wifi_ssh_verified": true,
+      "watchdog": {
+        "identity": "qcom_wdt",
+        "state": "active",
+        "timeout": "20",
+        "pretimeout": "1",
+        "bootstatus": "0"
+      },
+      "cpu_deep_idle_disabled": {
+        "cpu3": false,
+        "cpu1": false,
+        "cpu2": false,
+        "cpu0": true
+      },
+      "temperatures_mc": {
+        "sm5705-battery": 27200,
+        "gpu-top-thermal": 34100,
+        "sm5705-charger": 31800,
+        "mem-thermal": 35700,
+        "cpu2-thermal": 38200,
+        "camera-thermal": 36000,
+        "cpu1-thermal": 39800,
+        "cpu3-thermal": 39200,
+        "l3-or-venus-thermal": 37200,
+        "skin-thermal": 33400,
+        "gpu-bottom-thermal": 35400,
+        "pm8994-thermal": 34300,
+        "modemtx-thermal": 35400,
+        "q6-dsp-thermal": 36000,
+        "cluster0-l2-thermal": 38200,
+        "cluster1-l2-thermal": 39200,
+        "cpu0-thermal": 38800,
+        "m4m-thermal": 37900
+      }
+    },
+    {
+      "boot_id": "1c5553e4-3cf9-4466-94c4-a990b1194991",
+      "kernel": "Linux tabs3 6.18.56-gts3l1 #20 SMP PREEMPT 2026-10-10 00:00:00 UTC aarch64 GNU/Linux",
+      "uptime": "70.95 219.98",
+      "no_failed_units": true,
+      "usb_and_wifi_ssh_verified": true,
+      "watchdog": {
+        "identity": "qcom_wdt",
+        "state": "active",
+        "timeout": "20",
+        "pretimeout": "1",
+        "bootstatus": "0"
+      },
+      "cpu_deep_idle_disabled": {
+        "cpu3": false,
+        "cpu1": false,
+        "cpu2": false,
+        "cpu0": true
+      },
+      "temperatures_mc": {
+        "sm5705-battery": 27300,
+        "gpu-top-thermal": 34100,
+        "sm5705-charger": 32000,
+        "mem-thermal": 36000,
+        "cpu2-thermal": 38500,
+        "camera-thermal": 36700,
+        "cpu1-thermal": 40400,
+        "cpu3-thermal": 39500,
+        "l3-or-venus-thermal": 37600,
+        "skin-thermal": 33996,
+        "gpu-bottom-thermal": 35700,
+        "pm8994-thermal": 34839,
+        "modemtx-thermal": 35700,
+        "q6-dsp-thermal": 36300,
+        "cluster0-l2-thermal": 39200,
+        "cluster1-l2-thermal": 39800,
+        "cpu0-thermal": 39500,
+        "m4m-thermal": 38500
+      }
+    }
+  ],
+  "filesystem_check_before_install": "e2fsck -fn exit 0, no repairs"
+}

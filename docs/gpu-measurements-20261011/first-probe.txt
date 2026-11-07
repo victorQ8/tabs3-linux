@@ -1,0 +1,38 @@
+Linux tabs3 6.19.5-gts3l1 #15 SMP PREEMPT 2026-10-10 00:00:00 UTC aarch64 GNU/Linux
+linux-tabs3	6.19.5-30
+[    0.000000] OF: reserved mem: initialized node gpu@90f00000, compatible id shared-dma-pool
+[    0.000000] OF: reserved mem: 0x0000000090f00000..0x0000000090ffffff (1024 KiB) nomap non-reusable gpu@90f00000
+[    0.000000] psci: PSCIv1.0 detected in firmware.
+[    0.000000] psci: [Firmware Bug]: failed to set PC mode: -1
+[    0.000000] GIC: enabling workaround for GICv3: Qualcomm MSM8996 broken firmware
+[    0.001373] pid_max: default: 32768 minimum: 301
+[    0.844154] iommu: Default domain type: Translated
+[    0.890060] PCI: CLS 0 bytes, default 64
+[    1.427073] platform b00000.gpu: Adding to iommu group 0
+[    2.265705] pci 0000:01:00.0: ASPM: default states L1
+[    4.102426] systemd[1]: Queued start job for default target multi-user.target.
+[    4.303214] systemd[1]: systemd-hibernate-clear.service - Clear Stale Hibernate Storage Info skipped, unmet condition check ConditionPathExists=/sys/firmware/efi/efivars/HibernateLocation-8cf2644b-4b0b-428f-9387-6d876050dc67
+[    6.717507] gpu_gx status stuck at 'off'
+[    6.717571] Modules linked in: ath10k_pci(+) ath10k_core msm(+) ath mac80211 ubwc_config libarc4 mdt_loader drm_dp_aux_bus drm_gpuvm hci_uart drm_exec btqca gpu_sched bluetooth drm_display_helper cec drm_client_lib drm_kms_helper socinfo cfg80211 rfkill evdev binfmt_misc pkcs8_key_parser drm drm_panel_orientation_quirks fuse nfnetlink ip_tables x_tables autofs4
+[    6.718388]  adreno_register+0x38/0x58 [msm]
+[    6.762241] gpu_gx status stuck at 'off'
+[    6.762306] Modules linked in: ath10k_pci(+) ath10k_core msm(+) ath mac80211 ubwc_config libarc4 mdt_loader drm_dp_aux_bus drm_gpuvm hci_uart drm_exec btqca gpu_sched bluetooth drm_display_helper cec drm_client_lib drm_kms_helper socinfo cfg80211 rfkill evdev binfmt_misc pkcs8_key_parser drm drm_panel_orientation_quirks fuse nfnetlink ip_tables x_tables autofs4
+[    6.772787] gpu_gx status stuck at 'off'
+[    6.772848] Modules linked in: ath10k_pci(+) ath10k_core msm(+) ath mac80211 ubwc_config libarc4 mdt_loader drm_dp_aux_bus drm_gpuvm hci_uart drm_exec btqca gpu_sched bluetooth drm_display_helper cec drm_client_lib drm_kms_helper socinfo cfg80211 rfkill evdev binfmt_misc pkcs8_key_parser drm drm_panel_orientation_quirks fuse nfnetlink ip_tables x_tables autofs4
+[    6.804784] gpu_gx status stuck at 'off'
+[    6.804847] Modules linked in: ath10k_pci(+) ath10k_core msm ath mac80211 ubwc_config libarc4 mdt_loader drm_dp_aux_bus drm_gpuvm hci_uart drm_exec btqca gpu_sched bluetooth drm_display_helper cec drm_client_lib drm_kms_helper socinfo cfg80211 rfkill evdev binfmt_misc pkcs8_key_parser drm drm_panel_orientation_quirks fuse nfnetlink ip_tables x_tables autofs4
+[    6.821445] gpu_gx status stuck at 'off'
+[    6.821889] Modules linked in: panel_samsung_ams968hh01 ath10k_pci(+) ath10k_core msm ath mac80211 ubwc_config libarc4 mdt_loader drm_dp_aux_bus drm_gpuvm hci_uart drm_exec btqca gpu_sched bluetooth drm_display_helper cec drm_client_lib drm_kms_helper socinfo cfg80211 rfkill evdev binfmt_misc pkcs8_key_parser drm drm_panel_orientation_quirks fuse nfnetlink ip_tables x_tables autofs4
+[    6.847046] gpu_gx status stuck at 'off'
+[    6.847110] Modules linked in: panel_samsung_ams968hh01 ath10k_pci ath10k_core msm ath mac80211 ubwc_config libarc4 mdt_loader drm_dp_aux_bus drm_gpuvm hci_uart drm_exec btqca gpu_sched bluetooth drm_display_helper cec drm_client_lib drm_kms_helper socinfo cfg80211 rfkill evdev binfmt_misc pkcs8_key_parser drm drm_panel_orientation_quirks fuse nfnetlink ip_tables x_tables autofs4
+[    6.991105] ath10k_pci 0000:01:00.0: firmware ver WLAN.RM.4.4.1-00309- api 6 features wowlan,ignore-otp,mfp crc32 0793bcf2
+[    7.700987] gpu_gx status stuck at 'off'
+[    7.701048] Modules linked in: md4 algif_hash panel_samsung_ams968hh01 ath10k_pci ath10k_core msm ath mac80211 ubwc_config libarc4 mdt_loader drm_dp_aux_bus drm_gpuvm hci_uart drm_exec btqca gpu_sched bluetooth drm_display_helper cec drm_client_lib drm_kms_helper socinfo cfg80211 rfkill evdev binfmt_misc pkcs8_key_parser drm drm_panel_orientation_quirks fuse nfnetlink ip_tables x_tables autofs4
+[   17.896305] gpu_gx status stuck at 'off'
+[   17.896365] Modules linked in: des_generic algif_skcipher md4 algif_hash panel_samsung_ams968hh01 ath10k_pci ath10k_core msm ath mac80211 ubwc_config libarc4 mdt_loader drm_dp_aux_bus drm_gpuvm hci_uart drm_exec btqca gpu_sched bluetooth drm_display_helper cec drm_client_lib drm_kms_helper socinfo cfg80211 rfkill evdev binfmt_misc pkcs8_key_parser drm drm_panel_orientation_quirks fuse nfnetlink ip_tables x_tables autofs4
+[   17.897833] platform b00000.gpu: deferred probe pending: (reason unknown)
+[   17.897903] qnoc-msm8996 408000.interconnect: sync_state() pending due to b00000.gpu
+[   17.897913] gcc-msm8996 300000.clock-controller: sync_state() pending due to b00000.gpu
+[   17.897924] mmcc-msm8996 8c0000.clock-controller: sync_state() pending due to b00000.gpu
+GBM platform:
+eglinfo: eglInitialize failed

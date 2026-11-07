@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-14T17:20:00+00:00",
+  "installed": {
+    "linux-tabs3": "6.18.56-65 (modules installed, boot partition written from recovery at 20:10 local, readback verified)",
+    "tabs3-base": "0.1.24",
+    "tabs3-dashboard": "0.1.4",
+    "tabs3-sensors": "0.1.1",
+    "boot_partition": "package 65 combined image, sha256 ab84640b9c3c11f164bcfb0a7f34a40d2f89e75ec3281caadb304f1e654e6309 (private/images/package65/)",
+    "recovery": "unchanged (hardened recovery-fastboot build of 2026-10-14, kernel 6.19.5-29)"
+  },
+  "previous": "6.18.56-64",
+  "change": "front camera: patch 0040 adds the s5k5e3 sensor driver (CONFIG_VIDEO_S5K5E3=m); camera.dtsi describes the S5K5E3YX at 0x10 on CCI master 1 with MCLK2 (TLMM 15), reset (TLMM 40), its CAM_CORE_EN switch (TLMM 8, a fixed regulator on S3), L23 and LVS1, and the CAMSS CSIPHY2 port on two lanes; the full tree frees TLMM 8, 15 and 40 from gpio-reserved-ranges; tools/camera-capture-test takes CAM=front; tools/check-dtbs expects the package 64 microSD state (1.8 V signalling allowed)",
+  "build": "incremental from the warm object cache; the driver compiled without warnings at W=1; patch 0040 generated against the pristine 6.18.56 files and applied by scripts/prepare-lte-kernel.py; device-tree guard passes for all four trees",
+  "path": [
+    "19:56: package 65 built and packed; first RAM boot through recovery's software fastboot (SSH after 22 s): the sensor never probed, deferred on its supplier regulator-cam-core-front, whose probe failed with 'could not request pin 8 (GPIO_8)' because the full tree's gpio-reserved-ranges still reserved TLMM 8, 15 and 40; freed, device trees rebuilt (kernel and modules unchanged), package and images regenerated",
+    "20:03: second RAM boot (SSH after 21 s): s5k5e3 9-0010 probed (chip id read over CCI master 1), entity with exposure, flips, blanking, analogue and digital gain, test pattern, link frequency 448 MHz and pixel rate 179.2 MHz; format SGRBG10_1X10/2576x1932; the sensor runtime-suspends between uses (L23 and the core switch at use count 0)",
+    "capture through CSIPHY2 -> CSID2 failed at open ('Failed to power up pipeline: -22'): the CAMSS driver powers a CSID through the VFE of the same index and MSM8996 has two VFEs for four CSIDs, so CSID2 and CSID3 are unusable; CSID1 -> ISPIF1 -> VFE0 RDI1 and CSID0 both stream (the tool now uses CSID1)",
+    "full mode 2576x1932: 10, 30 and 60 frames of 6228768 bytes (rows padded to 3224 bytes); 640x480: 30 and 120 frames of 384000 bytes; a frame at exposure 2000 lines and 4x analogue gain decoded (tools/camera-frame-to-png, GRBG) to a sharp picture of the room with neutral colours, kept under private/captures/ (not committed)",
+    "screen blanked (DPMS Off) on the RAM boot: front 60 frames, rear 60 frames, front VGA 120 frames in the same boot; no halt timeout, no SMMU error",
+    "20:10: boot partition written from recovery (flash-boot, readback verified), Samsung recovery flag cleared, Debian back on package 65 from disk after 5 s of polling; front 30 frames, rear 30 frames, front 30 frames with the screen blanked; devices_deferred empty; dashboard and screen services active, grip sensor bound by its oneshot service"
+  ],
+  "checks": {
+    "probe": "chip id 0x5e30 at register 0x0000 over CCI master 1 (adapter i2c-9); nothing deferred",
+    "modes": "2576x1932 at 30 fps (frame length 2025, line length 2950) and 640x480 4x4-binned at 120 fps (frame length 506); 896 Mbps per lane on two lanes from the 24 MHz MCLK2",
+    "frames_from_disk": "front 2576x1932 x30 (screen on) and x30 (screen blanked), rear 2104x1560 x30; every frame complete, 256 distinct byte values in the front frames",
+    "picture": "ceiling with recessed lights, a vent, crown moulding and a mirror, sharp, neutral colours as SGRBG10; upright in the landscape mount (the sensor reports rotation 270 for the portrait frame)",
+    "runtime_pm": "s5k5e3 9-0010 suspended between captures; vreg_l23a_2p8 and vreg_cam_core_front at use count 0",
+    "rear_camera": "unchanged: 2104x1560 captures with the screen on and blanked",
+    "errors": "none (no VFE halt timeout, no SMMU TLB sync timeout, no CCI error); only the known pclk rcg warnings at panel probe",
+    "microsd_from_disk": "SDR104, 200 MHz, 1.80 V signalling; /srv mounted"
+  },
+  "unknown": [
+    "whether CSID2 and CSID3 could be driven through VFE1 with a CAMSS driver change (the index mapping is the driver's); not needed while CSID1 is free",
+    "the sensor's real analogue gain ceiling: the control allows 1x to 16x (0x20 to 0x200), from the register width, not a datasheet",
+    "the two-row offset of the active area (rows 2 to 1933 of a 1936-row array) is the vendor crop; the full array size is undocumented"
+  ],
+  "pending_on_hardware": [
+    "the owner's look at private/captures/front-s5k5e3-2576x1932-20261014.png: does the view from the mount and its orientation suit a dashboard snapshot or presence detection",
+    "automatic exposure (both cameras), a snapshot tool, and presence detection from the camera that faces the room"
+  ]
+}

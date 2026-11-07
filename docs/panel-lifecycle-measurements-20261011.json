@@ -1,0 +1,360 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-11T08:32:05.615803+00:00",
+  "source_analysis_commit": "f407c1c",
+  "source_analysis_document": "docs/panel-ams968hh01.md",
+  "previous_readback_report": "docs/panel-read-protocol-20261011.json",
+  "device": {
+    "model": "SM-T825 LTE rev05",
+    "kernel_package": "6.19.5-25",
+    "kernel_build": 10,
+    "environment": "Native Debian"
+  },
+  "summary": [
+    "R4 retrieved the expected D1 values at three addresses with independent calibration controls. M1 additionally demonstrated that D1[D9] follows compression writes 08 -> 00 -> 08.",
+    "M1 did not reset the measured B2 drive settings during a compression toggle with a completed frame in each phase. No B2 data writes occurred in the measurement interval.",
+    "M2 did not reset those settings during direct HS display-off/display-on, before or after a completed frame. The driver wake helper was bypassed and no B2 data writes occurred in this interval.",
+    "M3 reproduced unexpected pre-fixup link and drive values on two boots with fixup disabled. The explicit manual fixup changed them to the intended values on the first boot.",
+    "The findings localize an initialization/retention problem before the fixup, but do not establish whether early writes are ignored, overwritten later, or reflected differently before internal state is ready. No physical display outcome was observed."
+  ],
+  "method_controls": {
+    "visual_baseline": "Not verified: the user is away. M1/M2 used a register-correct baseline and unchanged text-console pixel data, not a visually confirmed bright recovery image.",
+    "quiescent_reads": "Held tty1 in KD_GRAPHICS; paused/resumed the existing screen daemon for R4/M1/M2. All read snapshots had zero frame kickoffs. Traced both pingpong completion paths for every deliberate frame.",
+    "isolated_M1": "Sent only B1 compression and dual-link data writes between baseline and post-toggle snapshots; omitted gamma and the final normal-conditions fixup step.",
+    "isolated_M2": "Used raw HS 28/29 commands separated by 100 ms, rather than bl_power, because the installed backlight wake handler reapplies normal conditions.",
+    "no_op_frames": "Rewrote the same first four framebuffer bytes to request a frame without changing image content; verified completion on both pingpong blocks before reads.",
+    "transport_trace": "M1/M2 and the first M3 run include kprobes of msm:dsi_host_transfer capturing type, flags, length and first two payload bytes, plus transfer return values.",
+    "new_driver_builds_or_images": false,
+    "clock_or_gpio_configuration_writes": false
+  },
+  "R4": {
+    "status": "expected_readback_at_tested_addresses",
+    "request": "HS 15 b0 <offset>, then HS 24 d1 01 1",
+    "control": "Before each D1 read, alternate known D8 calibration at 5a (33) and 5b (51).",
+    "values": {
+      "D1[d0]": [
+        "1d",
+        "1d"
+      ],
+      "D1[51]": [
+        "06",
+        "06"
+      ],
+      "D1[d9]": [
+        "08",
+        "08"
+      ]
+    },
+    "limits": "Expected constants alone do not prove every D1 address is a live B1 mirror. The controlled D9 changes in M1 add direct evidence for that address."
+  },
+  "M1": {
+    "status": "no_reset_of_measured_drive_settings_in_this_run",
+    "sequence": [
+      "Confirm intended D1/D2 values while the display is off.",
+      "Send raw HS display-on and complete one unchanged-content frame. Confirm register baseline.",
+      "Write B1[D9]=00, complete one frame and wait one second; read registers.",
+      "Write B1[D9]=08 and B1[51]=06, complete one frame and wait one second; read registers."
+    ],
+    "compression_readback": [
+      "08",
+      "00",
+      "08"
+    ],
+    "drive_values_throughout": {
+      "D2[67]": "1b",
+      "D2[36]": "12",
+      "D2[4d]": "05",
+      "D2[49]": "7f"
+    },
+    "B2_data_writes_in_test": 0,
+    "conclusion": "The proposed compression toggle did not erase these already-correct drive-register values in this state.",
+    "limits": [
+      "Does not exclude first-initialization behavior or an unmeasured internal latch changing.",
+      "No bright-image load or optical validation; no conclusion that the picture remained correct."
+    ]
+  },
+  "M2": {
+    "status": "no_reset_of_measured_drive_settings_in_this_run",
+    "sequence": [
+      "Establish an independent normal-conditions baseline, complete one unchanged-content frame and record registers.",
+      "Send raw HS display off (28), wait 100 ms, then raw HS display on (29).",
+      "Read before sending another frame, then complete one frame, wait one second and read again."
+    ],
+    "drive_values_before_and_after": {
+      "D2[67]": "1b",
+      "D2[36]": "12",
+      "D2[4d]": "05",
+      "D2[49]": "7f"
+    },
+    "B2_data_writes_between_off_on_and_final_snapshot": 0,
+    "conclusion": "Off/on did not erase the measured register settings. Loss of these values was not reproduced as a wake-failure mechanism.",
+    "limits": [
+      "Does not establish a successful visible wake; the raw-command test bypasses UI behavior.",
+      "Does not test the previously troublesome large bright image or prove the panel power/output stage stayed healthy."
+    ]
+  },
+  "M3": {
+    "status": "unexpected_pre_fixup_values_reproduced_on_two_boots",
+    "temporary_configuration": {
+      "option": "options panel_samsung_ams968hh01 fixup=0",
+      "option_path": "/etc/modprobe.d/tabs3-panel-measurement.conf",
+      "masked_service": "tabs3-screen.service"
+    },
+    "configuration_reason": "Prevent automatic fixup and screen-daemon wake writes from overwriting the state being measured. The panel is a module loaded after the installed root starts, so no image modification was needed.",
+    "boot_checks": [
+      "Live module parameter was 0.",
+      "Screen daemon was masked and inactive.",
+      "No automatic fixup-step messages occurred before the measurements.",
+      "Display had reached its normal post-boot state with bl_power=0; the image was not observed."
+    ],
+    "before_vs_after": [
+      {
+        "register": "d1[d0]",
+        "before_fixup": "1d",
+        "after_manual_fixup": "1d",
+        "second_no_fixup_boot": [
+          "1d",
+          "1d"
+        ]
+      },
+      {
+        "register": "d1[51]",
+        "before_fixup": "02",
+        "after_manual_fixup": "06",
+        "second_no_fixup_boot": [
+          "02",
+          "02"
+        ]
+      },
+      {
+        "register": "d1[d9]",
+        "before_fixup": "e5",
+        "after_manual_fixup": "08",
+        "second_no_fixup_boot": [
+          "e5",
+          "e5"
+        ]
+      },
+      {
+        "register": "d2[70]",
+        "before_fixup": "08",
+        "after_manual_fixup": "08",
+        "second_no_fixup_boot": [
+          "08",
+          "08"
+        ]
+      },
+      {
+        "register": "d2[67]",
+        "before_fixup": "0f",
+        "after_manual_fixup": "1b",
+        "second_no_fixup_boot": [
+          "0f",
+          "0f"
+        ]
+      },
+      {
+        "register": "d2[36]",
+        "before_fixup": "10",
+        "after_manual_fixup": "12",
+        "second_no_fixup_boot": [
+          "10",
+          "10"
+        ]
+      },
+      {
+        "register": "d2[4d]",
+        "before_fixup": "00",
+        "after_manual_fixup": "05",
+        "second_no_fixup_boot": [
+          "00",
+          "00"
+        ]
+      },
+      {
+        "register": "d2[49]",
+        "before_fixup": "99",
+        "after_manual_fixup": "7f",
+        "second_no_fixup_boot": [
+          "99",
+          "99"
+        ]
+      }
+    ],
+    "first_boot_manual_fixup": {
+      "trigger": "debugfs fixup",
+      "frame_submissions": 40,
+      "pp0_completions": 40,
+      "pp1_completions": 40,
+      "normal_conditions_data_writes": 6,
+      "note": "This count includes a gamma update-key write plus the five normal-condition B2 data writes. The manual fixup does more than change compression."
+    },
+    "second_boot_control": "Rebooted with the same diagnostic option, without running the fixup. Read every D1/D2 location twice with D8=33 and D8=51 controls interleaved; all unexpected values reproduced exactly.",
+    "DCS_before": {
+      "0a": "04",
+      "0e": "80",
+      "0f": "00"
+    },
+    "DCS_after_manual_fixup": {
+      "0a": "04",
+      "0e": "80",
+      "0f": "80"
+    },
+    "conclusion": "The intended post-initialization register values are not present before the fixup on this build. The manual fixup supplies them; the result cannot be explained solely as all the intended readable values already being present before it.",
+    "limits": [
+      "Measurements are after boot and initial frame activity, not immediately after each initialization command. They cannot distinguish initial write rejection from later reset/overwrite.",
+      "The meaning of D1[D9]=e5 in this state is not established; it is a reproducible measured byte, not a claimed reset default.",
+      "The manual fixup applies gamma/update and normal drive writes as well as compression changes, so its success does not isolate the corrective operation.",
+      "The readback bank may not expose every internal output/latch state. No visible garbling, colour correction or wake success was confirmed."
+    ]
+  },
+  "trace_controls": {
+    "M1_M2": {
+      "frame_kickoffs": 5,
+      "pp0_tx_done": 5,
+      "pp1_tx_done": 5,
+      "negative_host_returns": 0,
+      "captured_host_returns": 193,
+      "enabled_timeout_or_underrun_events": 0,
+      "snapshot_windows_without_kickoffs": [
+        "BEFORE_RAW_DISPLAY_ON",
+        "M1_BASELINE",
+        "M1_AFTER_COMP_ZERO",
+        "M1_AFTER_COMP_EIGHT",
+        "M2_BASELINE",
+        "M2_AFTER_ON_BEFORE_FRAME",
+        "M2_AFTER_ON_AFTER_FRAME"
+      ]
+    },
+    "M3": {
+      "frame_kickoffs": 40,
+      "pp0_tx_done": 40,
+      "pp1_tx_done": 40,
+      "negative_host_returns": 0,
+      "captured_host_returns": 62,
+      "enabled_timeout_or_underrun_events": 0,
+      "snapshot_windows_without_kickoffs": [
+        "M3_BEFORE_FIXUP",
+        "M3_AFTER_FIXUP"
+      ],
+      "manual_fixup_B2_data_writes": 6,
+      "note": "The manual fixup includes gamma/update and normal-condition writes; it is not a compression-only test."
+    },
+    "R4": {
+      "frame_kickoffs": 0,
+      "pp0_tx_done": 0,
+      "pp1_tx_done": 0,
+      "negative_host_returns": 0,
+      "captured_host_returns": 0,
+      "enabled_timeout_or_underrun_events": 0,
+      "snapshot_windows_without_kickoffs": []
+    },
+    "M3_REPEAT": {
+      "frame_kickoffs": 0,
+      "pp0_tx_done": 0,
+      "pp1_tx_done": 0,
+      "negative_host_returns": 0,
+      "captured_host_returns": 0,
+      "enabled_timeout_or_underrun_events": 0,
+      "snapshot_windows_without_kickoffs": []
+    },
+    "M1": {
+      "B2_data_writes_during_test": 0,
+      "all_host_packets_HS": true
+    },
+    "M2": {
+      "B2_data_writes_during_test": 0,
+      "all_host_packets_HS": true
+    }
+  },
+  "recommended_next_evidence": [
+    "Capture the ordering of reset release, TCON-ready, clock-lane transitions, initialization sends and first frame. These tests did not measure clock state during reset.",
+    "Locate the first stage where intended D1/D2 values are absent using carefully controlled pre-frame checkpoints, accounting for reads themselves potentially changing panel state.",
+    "Do not base the redesign on compression or display off/on always erasing B2 settings; that mechanism was not observed in the controlled steady-state tests.",
+    "Retain physical colour, dimming and wake checks when the user returns; register agreement alone cannot qualify display behavior."
+  ],
+  "cleanup": {
+    "option_removed": true,
+    "service_unmasked": true,
+    "normal_reboot_completed": true,
+    "runtime_fixup": 2,
+    "normal_fixup_steps_logged": 4,
+    "automatic_screen_blanking_enabled_and_active": true,
+    "trace_instances_remaining": 0,
+    "kprobes_remaining": 0,
+    "driver_source_changes": false
+  },
+  "final_state": {
+    "environment": "Debian",
+    "battery_percent": 64,
+    "battery_temp_C": 21.8,
+    "battery_status": "Charging",
+    "charger_health": "Good",
+    "USB_type": "SDP",
+    "input_limit_mA": 500,
+    "failed_systemd_units": 0,
+    "physical_screen_verified": false
+  },
+  "committed_evidence": {
+    "r4-results.txt": "docs/panel-measurements-20261011/r4-results.txt",
+    "r4.trace": "docs/panel-measurements-20261011/r4.trace",
+    "m1-m2-results.txt": "docs/panel-measurements-20261011/m1-m2-results.txt",
+    "m1-m2.trace": "docs/panel-measurements-20261011/m1-m2.trace",
+    "m3-results.txt": "docs/panel-measurements-20261011/m3-results.txt",
+    "m3.trace": "docs/panel-measurements-20261011/m3.trace",
+    "m3-repeat-results.txt": "docs/panel-measurements-20261011/m3-repeat-results.txt",
+    "m3-repeat.trace": "docs/panel-measurements-20261011/m3-repeat.trace",
+    "snapshots.json": "docs/panel-measurements-20261011/snapshots.json",
+    "m3-repeat-values.json": "docs/panel-measurements-20261011/m3-repeat-values.json",
+    "trace-controls.json": "docs/panel-measurements-20261011/trace-controls.json",
+    "m3-boot-state.txt": "docs/panel-measurements-20261011/m3-boot-state.txt",
+    "normal-boot-verification.txt": "docs/panel-measurements-20261011/normal-boot-verification.txt"
+  },
+  "private_evidence_directory": "private/panel-lifecycle-measurements-20261011",
+  "evidence_sha256": {
+    "r4-results.txt": "5f2e00e8c5bc058312fb1163af5639e24f84983ceaead4a4fd74d704140a95c1",
+    "r4.trace": "fd51a83061aab352e275dcd9328aa34cc8fed4dc568fce08cdf945a4c683e515",
+    "m1-m2-results.txt": "f87296c218f8401151bac2c66719eecaa4bbadf11c37ba23458f8cbda9debe26",
+    "m1-m2.trace": "d020666cdd8b3f422a5bb8ecbef10b1a7561d8ec6471a487dfc48f02122f66a2",
+    "m3-results.txt": "1a61dd7a71f5b7b3b5e7c195d48a2948f7694ae3609958a324ac2d0bafa1e65f",
+    "m3.trace": "b7cf553cf28442cb639a3ede0d0d14e5493f097831f80f5bba6872d7ffa9af17",
+    "m3-repeat-results.txt": "ddd3eae39bfcb768b0b682361ba102b29ae9f19b03434f272f467b8938e74323",
+    "m3-repeat.trace": "bc7a87733711c9e356232702370bc53554c83e794181de3a0b358907ff6f57fd",
+    "snapshots.json": "cef22110a49510312bbc827920554978f3156c74ff55be1f96a2774bdddf4f8c",
+    "m3-repeat-values.json": "f59c6d806cfe53da36ba6203bdc1a91a5676ddb8cd792d55227707f8b51fc6c8",
+    "trace-controls.json": "30a0d1876875c5ba944c1f16d6c1ad09dab7135caab37caae41648607140692d",
+    "m3-boot-state.txt": "84ab0be026c659f9a9b751858d987b8a60822f70394629ac9e19312b669e3227",
+    "normal-boot-verification.txt": "6bb3bcf2a79ff17838ee4c9a1b6feec59f49c8b47b52127ebbf8a7945762a823"
+  },
+  "private_evidence_sha256": {
+    "after-m1-m2-dmesg.txt": "fadcfa33ca7fb7f3ab3cb699d9aa5a5f715e7f7a6c453b8a12c01eda45da7ce6",
+    "before-m1-m2-dmesg.txt": "fadcfa33ca7fb7f3ab3cb699d9aa5a5f715e7f7a6c453b8a12c01eda45da7ce6",
+    "before-m1-m2-power.txt": "72a46f8eeb4fa1a5ff3464a23386751565fbd1101f4b4f6da5582254c7d9da81",
+    "between-m3-boots-state.txt": "6ebc648b115a36571218cf83ff0f60ed8cffff0334acef8d28b5e6045fc153f8",
+    "final-state.txt": "764f76061328f9631598a9f5d23238e38af2660f6b9cc5e5bda13e71556dd9c9",
+    "m1-m2-results.txt": "f87296c218f8401151bac2c66719eecaa4bbadf11c37ba23458f8cbda9debe26",
+    "m1-m2-script.sh": "ce29fd2ccc5e52f8252aa1830fc6ddd297085c6e511148e37cdf861ae3b986bd",
+    "m1-m2.trace": "d020666cdd8b3f422a5bb8ecbef10b1a7561d8ec6471a487dfc48f02122f66a2",
+    "m3-after-dmesg.txt": "79d9f4feeebb7172ff01ec14f250c9fbd90d406d87d793468af6c035001eb51d",
+    "m3-before-dmesg.txt": "bdd84388af3c55995ab336f5c358287bc36321dce30b30e7485026cfa8128c79",
+    "m3-boot-state.txt": "84ab0be026c659f9a9b751858d987b8a60822f70394629ac9e19312b669e3227",
+    "m3-repeat-after-dmesg.txt": "e6f1f2cf37171d4ce4e7bd5352f59e7c2b8a39a354e675881b2b8fc3d39fa0fd",
+    "m3-repeat-before-dmesg.txt": "e6f1f2cf37171d4ce4e7bd5352f59e7c2b8a39a354e675881b2b8fc3d39fa0fd",
+    "m3-repeat-results.txt": "ddd3eae39bfcb768b0b682361ba102b29ae9f19b03434f272f467b8938e74323",
+    "m3-repeat-script.sh": "32f25ea5a3f028df89fbf087d927e6de747d390984ca03a02f3689e4fb261bd3",
+    "m3-repeat-values.json": "f59c6d806cfe53da36ba6203bdc1a91a5676ddb8cd792d55227707f8b51fc6c8",
+    "m3-repeat.trace": "bc7a87733711c9e356232702370bc53554c83e794181de3a0b358907ff6f57fd",
+    "m3-restore.txt": "a86923c47869a1b1df21965e557067fcb3f990dc20da95338cbf4e90c4e02e40",
+    "m3-results.txt": "1a61dd7a71f5b7b3b5e7c195d48a2948f7694ae3609958a324ac2d0bafa1e65f",
+    "m3-script.sh": "21e813ed1432118c0de07876ab27d74bf4c1f5b7b139b1c509aa5e10d3c2dfc8",
+    "m3-setup.txt": "4f08dcfccc7c3d8586c392e17f55f9cbdc4b567afc9840324e2bd959f92326fa",
+    "m3-temporary-changes.json": "771d74cea2b399d975929b37157e5816614371a01ad67201e8d2fc9149bef15f",
+    "m3.trace": "b7cf553cf28442cb639a3ede0d0d14e5493f097831f80f5bba6872d7ffa9af17",
+    "normal-restored-dmesg.txt": "27519945f66559ba7daa98a64e8bd133bd532fa9c4892dfad082232514604d45",
+    "r4-results.txt": "5f2e00e8c5bc058312fb1163af5639e24f84983ceaead4a4fd74d704140a95c1",
+    "r4-script.sh": "373160685215039833af00c35e4610635eef2cbc7ac985a74d0fccf407bc5e90",
+    "r4.trace": "fd51a83061aab352e275dcd9328aa34cc8fed4dc568fce08cdf945a4c683e515",
+    "snapshots.json": "cef22110a49510312bbc827920554978f3156c74ff55be1f96a2774bdddf4f8c",
+    "trace-controls.json": "30a0d1876875c5ba944c1f16d6c1ad09dab7135caab37caae41648607140692d"
+  }
+}

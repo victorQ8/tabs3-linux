@@ -1,0 +1,7 @@
+/work/
+/artifacts/
+/private/
+__pycache__/
+*.pyc
+# Written by tools/panel/smartdim.py
+tools/panel/gamma-table.json

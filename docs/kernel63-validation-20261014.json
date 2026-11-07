@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-14T09:40:00+00:00",
+  "installed": {
+    "linux-tabs3": "6.18.56-63 (modules and /boot files; same release string 6.18.56-gts3l1 as package 62)",
+    "tabs3-base": "0.1.21 (cover switch sleeps the screen)",
+    "tabs3-dashboard": "0.1.2 (four themes)",
+    "tabs3-sensors": "0.1.1",
+    "boot_partition": "package 63 combined image written from recovery with tabs3-recovery flash-boot at 13:02 on 2026-10-14 (sha256 b841c74672fc21f3..., readback verified); the package 62 image remains under private/images/package62/",
+    "recovery": "unchanged (recovery-fastboot build, kernel 6.19.5-29)"
+  },
+  "previous": "6.18.56-62",
+  "change": "patch 0039 and camera.dtsi: MSM8996 interconnect paths for the camera (cam_ahb, cam_vfe_mem), so the VFE votes bandwidth for its path to memory instead of depending on the display's vote",
+  "build": "from scratch (the Docker builder image and the kernel object volume had been deleted by mistake); builder image rebuilt from build/Dockerfile, kernel 25 min with JOBS=6, no errors",
+  "path": [
+    "2026-10-14 11:51 and 11:58: on package 62, three RDI captures in a row succeed with the screen on; a capture with the panel blanked (DRM CRTC inactive, display vote 0) delivers no frame while the VFE keeps taking interrupts, then VFE halt timeout and SMMU TLB sync timeouts until a reboot",
+    "12:20: linux-tabs3 6.18.56-63 installed on the tablet (modules only; no flashing)",
+    "12:22: tabs3-fastboot armed the one-time request, recovery's lk2nd fastboot answered (tabs3-recovery-fastboot 1), fastboot boot of tabs3-installed-gpu.img, SSH after 21 s",
+    "12:23-12:25: checks from RAM passed (below); the RAM-booted device tree carries interconnect-names cam_vfe_mem cam_ahb",
+    "12:25: plain reboot from the RAM-booted system landed in recovery (Samsung's recovery flag stays set after the software fastboot entry); tabs3-recovery reboot over USB returned to Debian on the package 62 image, all services up",
+    "13:02: boot partition written from recovery (flash-boot, readback verified), tabs3-recovery reboot, Debian on the package 63 image; with the screen blanked (CRTC inactive, display vote 0) a 30-frame capture from disk completed with no halt timeout and no SMMU error"
+  ],
+  "checks": {
+    "camera_with_screen_off": "CRTC inactive and display vote 0 0; 30 frames (123177600 bytes) and 300 frames captured, no halt timeout, no TLB sync timeout",
+    "camera_votes_while_streaming": "interconnect summary rows for a34000.camss: cam_ahb 38400/76800, cam_vfe_mem 939524/1342177 (kB/s avg/peak), sampled at 3, 6 and 9 s; 0/0 while idle",
+    "camera_with_screen_on": "three sessions of 4, 10 and 4 frames at 40-57 s after boot, all delivered frames",
+    "frame_stride": "2632 bytes per packed 2104-pixel row (rows padded to 8 bytes); tools/camera-frame-to-png and the capture test's statistics corrected",
+    "dashboard": "tabs3-dashboard 0.1.1 started at 9.8 s bound to dev-fb0.device on the disk boot, started and rendering on the RAM boot",
+    "grip_sensor": "tabs3-grip-sensor.service bound the SX9310 on the RAM boot and on the disk boots (probe fails at 7.5 s, SLPI up at 7.6 s, bind at 11.8 s)",
+    "sensor_registry": "tabs3-sns-reg active; SLPI, ADSP and modem running",
+    "boot_check": "4 clk-rcg2 update_config warnings (pclk0_clk_src) on the RAM boot and on one disk boot out of four today, none on the others; display worked every time",
+    "dw9807": "still refuses its I2C writes at probe (ENXIO)",
+    "camera_from_disk_screen_off": "30 frames, 0 errors, on the flashed package 63 image (13:10)"
+  },
+  "pending_on_hardware": [
+    "owner's checks: vibration buzz, cover magnet on the hall switch, gyro and magnetometer tilt",
+    "GPS near a window"
+  ]
+}

@@ -1,0 +1,32 @@
+#!/bin/sh
+# Bound sustained server heat using supported frequencies, without changing
+# voltage tables or disabling the kernel's temperature-based throttling.
+set -eu
+tr '\000' '\n' < /sys/firmware/devicetree/base/compatible |
+    grep -qx 'samsung,gts3llte' || exit 0
+# On this firmware, CPU0 standalone collapse prevents the APSS watchdog
+# from expiring. Keep CPU0 in WFI; the other three cores may use PSCI idle.
+# This is a server reliability policy, not a change to the shared PSCI driver.
+for state in /sys/devices/system/cpu/cpu0/cpuidle/state[1-9]*/disable; do
+    [ -e "$state" ] || continue
+    echo 1 > "$state"
+    [ "$(cat "$state")" = 1 ] || exit 1
+    printf 'CPU0 deep idle disabled for watchdog recovery: %s\n' "$state"
+done
+limit=${TABS3_CPU_MAX_KHZ:-1000000}
+case "$limit" in ''|*[!0-9]*) echo 'Invalid TABS3_CPU_MAX_KHZ' >&2; exit 1 ;; esac
+count=0
+for policy in /sys/devices/system/cpu/cpufreq/policy*; do
+    [ -r "$policy/scaling_available_frequencies" ] || continue
+    ceiling=$(awk -v limit="$limit" '{ for (i=1; i<=NF; i++) if ($i<=limit && $i>best) best=$i } END { print best+0 }' "$policy/scaling_available_frequencies")
+    [ "$ceiling" -ge "$(cat "$policy/scaling_min_freq")" ] || {
+        echo "Requested cap is below ${policy##*/}'s current minimum." >&2; exit 1;
+    }
+    # scaling_max_freq can currently reflect a tighter thermal QoS request.
+    # Still set the userspace ceiling: otherwise it could return to the old
+    # higher ceiling when the chip cools. Thermal QoS remains authoritative.
+    echo "$ceiling" > "$policy/scaling_max_freq"
+    printf '%s maximum: %s kHz\n' "${policy##*/}" "$(cat "$policy/scaling_max_freq")"
+    count=$((count + 1))
+done
+[ "$count" = 2 ] || { echo "Expected two CPU frequency policies, found $count." >&2; exit 1; }

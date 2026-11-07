@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-15T07:05:00+00:00",
+  "installed": {"linux-tabs3": "6.18.56-68", "tabs3-base": "0.1.27"},
+  "ethernet_adapter": {
+    "device": "Realtek RTL8156 2.5G USB Ethernet (0bda:8156), driver r8152, 480 Mb/s on the USB 2.0 host",
+    "link": "up, DHCP address from the router in 11 s, routable, default route ahead of Wi-Fi",
+    "throughput": "60 MB from the PC: 16.9 MB/s through the adapter, 11.8 MB/s through Wi-Fi; 0 errors, 52 dropped receives",
+    "battery": "100 %, 811 to 828 mA out of the battery with traffic (host mode, VBUS boosted by the tablet)"
+  },
+  "hub": {
+    "device": "four-port USB 2.0 hub (14cd:8601, 100 mA) with a billboard device on port 4 (343c:0000 'USB Type-C Digital AV Adapter', low speed): an HDMI output behind an un-negotiated DisplayPort alternate mode",
+    "with_wall_charger_in_its_type_c_input": "charger online 0 throughout a recording every 2 s from 09:58 to 10:00, status Discharging, 499 to 880 mA from the battery, OTG boost enabled, hub still enumerated: no power reached the tablet",
+    "conclusion": "host and charging at the same time needs a USB-C PD power-role swap, i.e. the s2mm005 controller; not possible with the SM5705 alone"
+  },
+  "after": "port returned to device mode with tabs3-usb-host device; the keeper resumes the forced descent once the PC cable is back"
+}

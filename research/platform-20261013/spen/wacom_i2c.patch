@@ -1,0 +1,336 @@
+Input: wacom_i2c - support the Samsung S Pen firmware protocol (W9019)
+
+The mainline driver speaks Wacom's HID-like "I2C EMR" protocol: a GET_REPORT
+of feature report 3 through command register 0x0004 / data register 0x0005
+(04 00 33 02 05 00), a 19-byte little-endian query reply, and 19-byte input
+reports with a flag byte at data[3] and x/y/pressure at data[4..9]. The W9019
+in the Samsung Galaxy Tab S3 (SM-T825) runs Samsung's firmware
+("w9019_gts3l.fw"), which only implements that protocol in its bootloader at
+address 0x09; the application firmware at 0x56 uses single-byte commands
+(0x2A query, 0x2D survey exit, ...), a 15-byte big-endian query reply
+(0x0F header, max X/Y/pressure, firmware version) and 14-byte big-endian input
+reports with the status bits in data[0] (RDY, eraser, barrel switch, tip) and
+x/y/pressure/height/tilt in data[1..9]. Sending the HID query to that firmware
+yields garbage limits and the reports would be misparsed, so this adds a
+"wacom,w9019" OF match that selects the Samsung protocol, an optional
+vdd-supply with the vendor's 200 ms power-up delay, a defensive survey-mode
+exit before the query, ABS_DISTANCE/ABS_TILT_* for the extra fields, the
+0.01 mm resolution, and touchscreen-* orientation properties (used by both
+variants) so the raw landscape axes can be flipped from the device tree. The
+existing "WAC_I2C_EMR" behaviour is unchanged apart from the (dummy-capable)
+regulator lookup.
+
+Vendor references: drivers/input/wacom_tab/wacom_i2c_func.c (wacom_i2c_query
+l.175-266, wacom_i2c_coord l.525-723, survey l.334-400) and
+drivers/input/wacom_tab/wacom_i2c.c (probe l.1683-1689, IRQ l.1737-1741) of
+the SM-T825 kernel (LineageOS mirror Valera1978/android_kernel_samsung_msm8996,
+branch lineage-17.1).
+---
+--- a/drivers/input/touchscreen/wacom_i2c.c
++++ b/drivers/input/touchscreen/wacom_i2c.c
+@@ -7,12 +7,16 @@
+  */
+ 
+ #include <linux/bits.h>
++#include <linux/delay.h>
+ #include <linux/module.h>
+ #include <linux/input.h>
++#include <linux/input/touchscreen.h>
+ #include <linux/i2c.h>
+ #include <linux/slab.h>
+ #include <linux/irq.h>
+ #include <linux/interrupt.h>
++#include <linux/mod_devicetable.h>
++#include <linux/regulator/consumer.h>
+ #include <linux/unaligned.h>
+ 
+ /* Bitmasks (for data[3]) */
+@@ -39,16 +43,44 @@
+ #define WACOM_QUERY_REPORT	3
+ #define WACOM_QUERY_SIZE	19
+ 
++/*
++ * Samsung "S Pen" firmware variant (e.g. the W9019 in the Galaxy Tab S3):
++ * single-byte commands, big-endian fields, 14-byte input reports and a
++ * 15-byte query reply.
++ */
++#define SEC_CMD_QUERY		0x2a
++#define SEC_CMD_SURVEY_EXIT	0x2d
++#define SEC_QUERY_SIZE		15
++#define SEC_QUERY_HEADER	0x0f
++#define SEC_REPORT_SIZE		14
++
++/* Bitmasks (for data[0]) */
++#define SEC_RDY			BIT(7)
++#define SEC_ERASER		BIT(6)
++#define SEC_BARREL_SWITCH	BIT(5)
++#define SEC_TIP_SWITCH		BIT(4)
++
++/* Bitmasks (for data[12]) */
++#define SEC_SOFTKEY		BIT(7)
++
++enum wacom_i2c_proto {
++	WACOM_PROTO_HID,
++	WACOM_PROTO_SAMSUNG,
++};
++
+ struct wacom_features {
+ 	int x_max;
+ 	int y_max;
+ 	int pressure_max;
+-	char fw_version;
++	unsigned int fw_version;
+ };
+ 
+ struct wacom_i2c {
+ 	struct i2c_client *client;
+ 	struct input_dev *input;
++	struct touchscreen_properties prop;
++	enum wacom_i2c_proto proto;
++	unsigned int report_size;
+ 	u8 data[WACOM_QUERY_SIZE];
+ 	bool prox;
+ 	int tool;
+@@ -103,19 +135,73 @@
+ 	return 0;
+ }
+ 
+-static irqreturn_t wacom_i2c_irq(int irq, void *dev_id)
++static int wacom_sec_query_device(struct i2c_client *client,
++				  struct wacom_features *features)
++{
++	u8 cmd = SEC_CMD_QUERY;
++	u8 data[SEC_QUERY_SIZE];
++	int retries = 3;
++	int ret;
++
++	do {
++		ret = i2c_master_send(client, &cmd, sizeof(cmd));
++		if (ret < 0)
++			return ret;
++
++		/* The firmware needs time to prepare the reply */
++		msleep(100);
++
++		ret = i2c_master_recv(client, data, sizeof(data));
++		if (ret < 0)
++			return ret;
++		if (ret == sizeof(data) && data[0] == SEC_QUERY_HEADER)
++			break;
++
++		msleep(100);
++	} while (--retries);
++
++	if (!retries)
++		return -ENODEV;
++
++	features->x_max = get_unaligned_be16(&data[1]);
++	features->y_max = get_unaligned_be16(&data[3]);
++	features->pressure_max = get_unaligned_be16(&data[5]);
++	features->fw_version = get_unaligned_be16(&data[7]);
++
++	dev_dbg(&client->dev,
++		"x_max:%d, y_max:%d, pressure:%d, fw:0x%04x, mpu:0x%02x, bl:0x%02x\n",
++		features->x_max, features->y_max, features->pressure_max,
++		features->fw_version, data[9], data[10]);
++
++	return 0;
++}
++
++/*
++ * Leave the firmware's low-power "survey" (always-on pen) mode in case the
++ * previous OS left the controller there. The vendor driver sends this on
++ * every screen-on regardless of the current mode, so it is harmless when the
++ * controller is already in normal mode.
++ */
++static int wacom_sec_survey_exit(struct i2c_client *client)
++{
++	u8 cmd = SEC_CMD_SURVEY_EXIT;
++	int ret;
++
++	ret = i2c_master_send(client, &cmd, sizeof(cmd));
++	if (ret < 0)
++		return ret;
++
++	msleep(50);
++
++	return 0;
++}
++
++static void wacom_i2c_report(struct wacom_i2c *wac_i2c)
+ {
+-	struct wacom_i2c *wac_i2c = dev_id;
+ 	struct input_dev *input = wac_i2c->input;
+ 	u8 *data = wac_i2c->data;
+ 	unsigned int x, y, pressure;
+ 	unsigned char tsw, f1, f2, ers;
+-	int error;
+-
+-	error = i2c_master_recv(wac_i2c->client,
+-				wac_i2c->data, sizeof(wac_i2c->data));
+-	if (error < 0)
+-		goto out;
+ 
+ 	tsw = data[3] & WACOM_TIP_SWITCH;
+ 	ers = data[3] & WACOM_ERASER;
+@@ -135,10 +221,78 @@
+ 	input_report_key(input, wac_i2c->tool, wac_i2c->prox);
+ 	input_report_key(input, BTN_STYLUS, f1);
+ 	input_report_key(input, BTN_STYLUS2, f2);
+-	input_report_abs(input, ABS_X, x);
+-	input_report_abs(input, ABS_Y, y);
++	touchscreen_report_pos(input, &wac_i2c->prop, x, y, false);
+ 	input_report_abs(input, ABS_PRESSURE, pressure);
+ 	input_sync(input);
++}
++
++static void wacom_sec_report(struct wacom_i2c *wac_i2c)
++{
++	struct input_dev *input = wac_i2c->input;
++	u8 *data = wac_i2c->data;
++	int tilt_x, tilt_y;
++
++	if (!(data[0] & SEC_RDY)) {
++		/* The first report without RDY ends the proximity session */
++		if (wac_i2c->prox) {
++			input_report_key(input, BTN_TOUCH, 0);
++			input_report_key(input, BTN_STYLUS, 0);
++			input_report_abs(input, ABS_PRESSURE, 0);
++			input_report_abs(input, ABS_DISTANCE, 0);
++			input_report_key(input, wac_i2c->tool, 0);
++			input_sync(input);
++			wac_i2c->prox = false;
++		}
++		return;
++	}
++
++	/* Pen over the Android soft-key strip: carries no coordinates */
++	if (data[12] & SEC_SOFTKEY)
++		return;
++
++	if (!wac_i2c->prox) {
++		wac_i2c->tool = (data[0] & SEC_ERASER) ?
++			BTN_TOOL_RUBBER : BTN_TOOL_PEN;
++		wac_i2c->prox = true;
++	}
++
++	/* Tilt is reported along the raw axes; follow the position transform */
++	tilt_x = (s8)data[8];
++	tilt_y = (s8)data[9];
++	if (wac_i2c->prop.invert_x)
++		tilt_x = -tilt_x;
++	if (wac_i2c->prop.invert_y)
++		tilt_y = -tilt_y;
++	if (wac_i2c->prop.swap_x_y)
++		swap(tilt_x, tilt_y);
++
++	input_report_key(input, BTN_TOUCH, data[0] & SEC_TIP_SWITCH);
++	input_report_key(input, wac_i2c->tool, 1);
++	input_report_key(input, BTN_STYLUS, data[0] & SEC_BARREL_SWITCH);
++	touchscreen_report_pos(input, &wac_i2c->prop,
++			       get_unaligned_be16(&data[1]),
++			       get_unaligned_be16(&data[3]), false);
++	input_report_abs(input, ABS_PRESSURE, get_unaligned_be16(&data[5]));
++	input_report_abs(input, ABS_DISTANCE, data[7]);
++	input_report_abs(input, ABS_TILT_X, tilt_x);
++	input_report_abs(input, ABS_TILT_Y, tilt_y);
++	input_sync(input);
++}
++
++static irqreturn_t wacom_i2c_irq(int irq, void *dev_id)
++{
++	struct wacom_i2c *wac_i2c = dev_id;
++	int error;
++
++	error = i2c_master_recv(wac_i2c->client,
++				wac_i2c->data, wac_i2c->report_size);
++	if (error < 0)
++		goto out;
++
++	if (wac_i2c->proto == WACOM_PROTO_SAMSUNG)
++		wacom_sec_report(wac_i2c);
++	else
++		wacom_i2c_report(wac_i2c);
+ 
+ out:
+ 	return IRQ_HANDLED;
+@@ -168,6 +322,7 @@
+ 	struct wacom_i2c *wac_i2c;
+ 	struct input_dev *input;
+ 	struct wacom_features features = { 0 };
++	enum wacom_i2c_proto proto;
+ 	int error;
+ 
+ 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
+@@ -175,7 +330,24 @@
+ 		return -EIO;
+ 	}
+ 
+-	error = wacom_query_device(client, &features);
++	proto = (uintptr_t)i2c_get_match_data(client);
++
++	error = devm_regulator_get_enable(dev, "vdd");
++	if (error)
++		return dev_err_probe(dev, error, "failed to enable vdd supply\n");
++
++	if (proto == WACOM_PROTO_SAMSUNG) {
++		/* Firmware start-up time after power-on (vendor driver: 200 ms) */
++		msleep(200);
++
++		error = wacom_sec_survey_exit(client);
++		if (error)
++			return error;
++
++		error = wacom_sec_query_device(client, &features);
++	} else {
++		error = wacom_query_device(client, &features);
++	}
+ 	if (error)
+ 		return error;
+ 
+@@ -184,6 +356,9 @@
+ 		return -ENOMEM;
+ 
+ 	wac_i2c->client = client;
++	wac_i2c->proto = proto;
++	wac_i2c->report_size = proto == WACOM_PROTO_SAMSUNG ?
++		SEC_REPORT_SIZE : WACOM_QUERY_SIZE;
+ 
+ 	input = devm_input_allocate_device(dev);
+ 	if (!input)
+@@ -211,6 +386,17 @@
+ 	input_set_abs_params(input, ABS_PRESSURE,
+ 			     0, features.pressure_max, 0, 0);
+ 
++	if (proto == WACOM_PROTO_SAMSUNG) {
++		input_set_abs_params(input, ABS_DISTANCE, 0, 255, 0, 0);
++		input_set_abs_params(input, ABS_TILT_X, -63, 63, 0, 0);
++		input_set_abs_params(input, ABS_TILT_Y, -63, 63, 0, 0);
++		/* Coordinates are in 0.01 mm units (2540 lpi) */
++		input_abs_set_res(input, ABS_X, 100);
++		input_abs_set_res(input, ABS_Y, 100);
++	}
++
++	touchscreen_parse_properties(input, false, &wac_i2c->prop);
++
+ 	input_set_drvdata(input, wac_i2c);
+ 
+ 	error = devm_request_threaded_irq(dev, client->irq, NULL, wacom_i2c_irq,
+@@ -258,10 +444,17 @@
+ };
+ MODULE_DEVICE_TABLE(i2c, wacom_i2c_id);
+ 
++static const struct of_device_id wacom_i2c_of_match[] = {
++	{ .compatible = "wacom,w9019", .data = (void *)WACOM_PROTO_SAMSUNG },
++	{ }
++};
++MODULE_DEVICE_TABLE(of, wacom_i2c_of_match);
++
+ static struct i2c_driver wacom_i2c_driver = {
+ 	.driver	= {
+ 		.name	= "wacom_i2c",
+ 		.pm	= pm_sleep_ptr(&wacom_i2c_pm),
++		.of_match_table = wacom_i2c_of_match,
+ 	},
+ 
+ 	.probe		= wacom_i2c_probe,

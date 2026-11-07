@@ -1,0 +1,5 @@
+Normal configuration restored: fixup=2; temporary option absent; service mask absent; tabs3-screen enabled and active.
+[   12.515700] panel-samsung-ams968hh01 994000.dsi.0: DSI input fixup step 0 sent
+[   13.123790] panel-samsung-ams968hh01 994000.dsi.0: DSI input fixup step 1 sent
+[   13.732557] panel-samsung-ams968hh01 994000.dsi.0: DSI input fixup step 2 sent
+[   14.341002] panel-samsung-ams968hh01 994000.dsi.0: DSI input fixup step 3 sent

@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/* USB-C host mode: USB role switch and VBUS from the SM5705 boost. */
+
+/*
+ * USB-C host mode (USB 2.0 high speed) for USB devices such as an Ethernet
+ * adapter. The port starts as a USB device (gadget networking, as before);
+ * writing "host" to the usb_role "role" attribute switches it and turns on
+ * VBUS from the SM5705 boost. Since package 72 the s2mm005 controller's
+ * driver (usbpd.dtsi) sets the role from the controller's data role, so a
+ * hub or an adapter is hosted as it attaches; the attribute still
+ * overrides. Recovery (display variant) stays device-only.
+ */
+&sm5705_charger {
+	sm5705_otg_vbus: otg-vbus {
+		regulator-name = "sm5705_otg_vbus";
+		regulator-min-microvolt = <5100000>;
+		regulator-max-microvolt = <5100000>;
+	};
+};
+
+&usb3_dwc3 {
+	dr_mode = "otg";
+	usb-role-switch;
+	role-switch-default-mode = "peripheral";
+	vbus-supply = <&sm5705_otg_vbus>;
+};

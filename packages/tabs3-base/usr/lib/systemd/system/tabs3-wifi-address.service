@@ -1,0 +1,13 @@
+[Unit]
+Description=Configure the Tab S3 factory Wi-Fi address from read-only EFS
+After=local-fs.target systemd-udev-trigger.service
+Before=NetworkManager.service iwd.service
+ConditionPathExists=/sys/firmware/devicetree/base/compatible
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/tabs3-wifi-address
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

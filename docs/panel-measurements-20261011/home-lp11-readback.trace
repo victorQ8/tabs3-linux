@@ -1,0 +1,50 @@
+# tracer: nop
+#
+# entries-in-buffer/entries-written: 38/38   #P:4
+#
+#                                _-----=> irqs-off/BH-disabled
+#                               / _----=> need-resched
+#                              | / _---=> hardirq/softirq
+#                              || / _--=> preempt-depth
+#                              ||| / _-=> migrate-disable
+#                              |||| /     delay
+#           TASK-PID     CPU#  |||||  TIMESTAMP  FUNCTION
+#              | |         |   |||||     |         |
+              sh-455     [003] ...1.    37.533615: tracing_mark_write: STATIC_VERIFY_START
+              sh-455     [003] ...1.    40.539844: tracing_mark_write: STARTUP_NO_FIXUP
+              sh-455     [003] ...1.    40.547769: tracing_mark_write: SEND 15 b0 5a
+              sh-455     [001] ...1.    40.565733: tracing_mark_write: SEND 24 d8 01 1
+              sh-455     [003] ...1.    40.581187: tracing_mark_write: SEND 15 b0 d0
+              sh-455     [001] ...1.    40.598391: tracing_mark_write: SEND 24 d1 01 1
+              sh-455     [000] ...1.    40.616214: tracing_mark_write: SEND 15 b0 5a
+              sh-455     [003] ...1.    40.632153: tracing_mark_write: SEND 24 d8 01 1
+              sh-455     [003] ...1.    40.650193: tracing_mark_write: SEND 15 b0 51
+              sh-455     [001] ...1.    40.667970: tracing_mark_write: SEND 24 d1 01 1
+              sh-455     [003] ...1.    40.684977: tracing_mark_write: SEND 15 b0 5a
+              sh-455     [001] ...1.    40.702925: tracing_mark_write: SEND 24 d8 01 1
+              sh-455     [003] ...1.    40.719572: tracing_mark_write: SEND 15 b0 d9
+              sh-455     [001] ...1.    40.740211: tracing_mark_write: SEND 24 d1 01 1
+              sh-455     [001] ...1.    40.754543: tracing_mark_write: SEND 15 b0 5a
+              sh-455     [003] ...1.    40.772327: tracing_mark_write: SEND 24 d8 01 1
+              sh-455     [001] ...1.    40.792828: tracing_mark_write: SEND 15 b0 70
+              sh-455     [000] ...1.    40.807323: tracing_mark_write: SEND 24 d2 01 1
+              sh-455     [003] ...1.    40.824827: tracing_mark_write: SEND 15 b0 5a
+              sh-455     [001] ...1.    40.841230: tracing_mark_write: SEND 24 d8 01 1
+              sh-455     [003] ...1.    40.859925: tracing_mark_write: SEND 15 b0 67
+              sh-455     [001] ...1.    40.878458: tracing_mark_write: SEND 24 d2 01 1
+              sh-455     [003] ...1.    40.894923: tracing_mark_write: SEND 15 b0 5a
+              sh-455     [001] ...1.    40.914320: tracing_mark_write: SEND 24 d8 01 1
+              sh-455     [003] ...1.    40.929515: tracing_mark_write: SEND 15 b0 36
+              sh-455     [001] ...1.    40.947412: tracing_mark_write: SEND 24 d2 01 1
+              sh-455     [000] ...1.    40.965673: tracing_mark_write: SEND 15 b0 5a
+              sh-455     [002] ...1.    40.984587: tracing_mark_write: SEND 24 d8 01 1
+              sh-455     [003] ...1.    41.003820: tracing_mark_write: SEND 15 b0 4d
+              sh-455     [003] ...1.    41.018041: tracing_mark_write: SEND 24 d2 01 1
+              sh-455     [001] ...1.    41.035928: tracing_mark_write: SEND 15 b0 5a
+              sh-455     [003] ...1.    41.049417: tracing_mark_write: SEND 24 d8 01 1
+              sh-455     [001] ...1.    41.068757: tracing_mark_write: SEND 15 b0 49
+              sh-455     [002] ...1.    41.085086: tracing_mark_write: SEND 24 d2 01 1
+              sh-455     [001] ...1.    41.104203: tracing_mark_write: SEND 06 0a 1
+              sh-455     [003] ...1.    41.124156: tracing_mark_write: SEND 06 0e 1
+              sh-455     [001] ...1.    41.145707: tracing_mark_write: SEND 06 0f 1
+              sh-455     [003] ...1.    41.152769: tracing_mark_write: END

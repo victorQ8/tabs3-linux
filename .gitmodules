@@ -1,0 +1,9 @@
+[submodule "upstream/gts3lwifi-mainline"]
+	path = upstream/gts3lwifi-mainline
+	url = https://github.com/wh1ter0z3/gts3lwifi-mainline.git
+[submodule "upstream/lk2nd"]
+	path = upstream/lk2nd
+	url = https://github.com/msm8916-mainline/lk2nd.git
+[submodule "upstream/lvgl"]
+	path = upstream/lvgl
+	url = https://github.com/lvgl/lvgl.git

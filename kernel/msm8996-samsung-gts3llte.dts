@@ -1,0 +1,78 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/* SM-T825 rev05 USB bring-up; RAM boot and USB SSH verified 2026-10-10.
+ * Reuse the pinned sibling board's PM8994/PM8004 and reserved-memory layout.
+ * LTE differences below come from this tablet's live downstream DTB.
+ */
+#include "apq8096-samsung-gts3lwifi.dts"
+
+/ {
+	model = "Samsung Galaxy Tab S3 LTE (SM-T825)";
+	compatible = "samsung,gts3llte", "qcom,msm8996";
+	qcom,msm-id = <246 0x30001>;
+	qcom,board-id = <8 5>;
+	qcom,pmic-id = <0x20009 0x1000c 0 0>;
+
+	reserved-memory {
+		/* No lk2nd.pass-simplefb: preserve S-Boot's full splash allocation. */
+		memory@9a400000 {
+			reg = <0 0x9a400000 0 0x1c00000>;
+			no-map;
+		};
+		/*
+		 * The stock camera pool at 0xc0000000 (328 MiB) was a reusable
+		 * CMA area; packages 1-55 kept it unavailable. It is plain RAM
+		 * again (package 56).
+		 */
+	};
+};
+
+/* Stock SM-T825 DT and lk2nd both use PS_HOLD at 0x4ab000.
+ * This Samsung firmware returns from PSCI SYSTEM_RESET without resetting.
+ * The built-in msm-poweroff driver supplies the fallback; pm8941-pwrkey
+ * already configures the primary PMIC's reset/shutdown type beforehand.
+ */
+&{/soc@0} {
+	restart@4ab000 {
+		compatible = "qcom,pshold";
+		reg = <0x004ab000 0x4>;
+	};
+};
+
+/* Stock USB digital supply is S2 voltage-corner, represented by VDD_MX.
+ * Based on Konrad Dybcio's upstream MSM8996 QUSB2 power-domain patch:
+ * https://lore.kernel.org/all/20260610-topic-8996_61x5_qusb2phy-v1-3-d7135980e78f@oss.qualcomm.com/
+ * No arbitrary conversion of stock corner 4 to a regulator voltage.
+ */
+&hsusb_phy1 {
+	/delete-property/ vdd-supply;
+	power-domains = <&rpmpd MSM8996_VDDMX>;
+	required-opps = <&rpmpd_opp4>;
+};
+
+/* First image runs entirely in RAM: do not probe storage or the panel. */
+&sdhc1 { status = "disabled"; };
+/delete-node/ &vreg_lcd_vdd_3p3;
+&tlmm { gpio-reserved-ranges = <0 150>; };
+
+/* Samsung secure firmware owns some debug blocks. Keep CoreSight off. */
+&{/soc@0/stm@3002000} { status = "disabled"; };
+&{/soc@0/tpiu@3020000} { status = "disabled"; };
+&{/soc@0/funnel@3021000} { status = "disabled"; };
+&{/soc@0/funnel@3022000} { status = "disabled"; };
+&{/soc@0/funnel@3023000} { status = "disabled"; };
+&{/soc@0/funnel@3025000} { status = "disabled"; };
+&{/soc@0/replicator@3026000} { status = "disabled"; };
+&{/soc@0/etf@3027000} { status = "disabled"; };
+&{/soc@0/etr@3028000} { status = "disabled"; };
+&{/soc@0/debug@3810000} { status = "disabled"; };
+&{/soc@0/etm@3840000} { status = "disabled"; };
+&{/soc@0/debug@3910000} { status = "disabled"; };
+&{/soc@0/etm@3940000} { status = "disabled"; };
+&{/soc@0/funnel@39b0000} { status = "disabled"; };
+&{/soc@0/debug@3a10000} { status = "disabled"; };
+&{/soc@0/etm@3a40000} { status = "disabled"; };
+&{/soc@0/debug@3b10000} { status = "disabled"; };
+&{/soc@0/etm@3b40000} { status = "disabled"; };
+&{/soc@0/funnel@3bb0000} { status = "disabled"; };
+&{/soc@0/funnel@3bc0000} { status = "disabled"; };
+&{/etm} { status = "disabled"; };

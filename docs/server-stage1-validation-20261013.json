@@ -1,0 +1,261 @@
+{
+  "recorded_utc": "2026-10-13T13:07:09.481545+00:00",
+  "scope": "Server qualification stage 1; hardware candidate 57 is still uninstalled",
+  "installed": {
+    "kernel": "6.18.56-55",
+    "base": "0.1.15",
+    "recovery": "6.19.5-29"
+  },
+  "host_tests": {
+    "passed": 49
+  },
+  "final_reboot": {
+    "kernel_package": "6.18.56-55",
+    "base_package": "0.1.15",
+    "system_state": "running",
+    "failed_units": "",
+    "default_target": "multi-user.target",
+    "wifi_factory_address_matches": true,
+    "wifi_state": "100 (connected)",
+    "health_timer": "active",
+    "health_result": "success",
+    "ssh_policy": [
+      "permitrootlogin no",
+      "pubkeyauthentication yes",
+      "passwordauthentication no"
+    ],
+    "root_mount_options": [
+      "rw",
+      "bsddf",
+      "nogrpid",
+      "block_validity",
+      "dioread_nolock",
+      "nodiscard",
+      "delalloc",
+      "nowarn_on_error",
+      "journal_checksum",
+      "barrier",
+      "auto_da_alloc",
+      "user_xattr",
+      "acl",
+      "noquota",
+      "resuid=0",
+      "resgid=0",
+      "errors=remount-ro",
+      "commit=5",
+      "min_batch_time=0",
+      "max_batch_time=15000",
+      "i_version",
+      "stripe=0",
+      "data=ordered",
+      "inode_readahead_blks=32",
+      "init_itable=10",
+      "max_dir_size_kb=0",
+      "prefetch_block_bitmaps"
+    ],
+    "sleep_masked": true,
+    "security_library_versions": "librsvg2-2:arm64\t2.60.0+dfsg-1+deb13u1\nlibrsvg2-common:arm64\t2.60.0+dfsg-1+deb13u1",
+    "boot_partition_sha256": "bd2ebd8190e7a6c0cb1145be71733a7d03dd453c26ae8e7c952741f90ba6dc53",
+    "recovery_partition_sha256": "488614872014fb76b4e65ad6140ad956fab253100481ea87eece021af24ac294",
+    "boot_image_bytes": 26198032,
+    "recovery_image_bytes": 26251280,
+    "boot_image_sha256": "e13c9e4c36d1e7aa43b99deab638a1c61b6170121f200f36026b465c3f503694",
+    "recovery_image_sha256": "b2e4d3d21e6a128a02688d9a27145aecaf1caf27b4d12195b030467294d89c40",
+    "usb_ssh_return_seconds": 28.9,
+    "verification_note": "Initial check compared whole-partition hashes with image-prefix hashes. Corrected to explicit saved-image lengths, without another reboot.",
+    "health_sample": {
+      "schema_version": 1,
+      "recorded_utc": "2026-10-13T13:04:19.397747+00:00",
+      "boot_id": "b3507734-3ba3-45cf-80ed-8d994ebd8138",
+      "uptime_s": 218.16,
+      "ntp_synchronized_this_boot": true,
+      "kernel": "6.18.56-gts3l1",
+      "kernel_tainted": 512,
+      "loadavg": "0.25 0.28 0.12 1/238 941",
+      "memory_bytes": {
+        "MemTotal": 3448299520,
+        "MemAvailable": 3093565440,
+        "SwapTotal": 0,
+        "SwapFree": 0
+      },
+      "pressure": {
+        "cpu": "some avg10=0.01 avg60=0.41 avg300=0.74 total=5071467\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0",
+        "memory": "some avg10=0.00 avg60=0.00 avg300=0.00 total=0\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0",
+        "io": "some avg10=0.00 avg60=0.12 avg300=0.33 total=2198620\nfull avg10=0.00 avg60=0.06 avg300=0.14 total=1063358"
+      },
+      "root_bytes": {
+        "total": 29864665088,
+        "available": 23713775616
+      },
+      "temperatures_mc": {
+        "sm5705-battery": 28000,
+        "gpu-bottom-thermal": 33700,
+        "sm5705-charger": 32100,
+        "modemtx-thermal": 33700,
+        "cpu3-thermal": 36300,
+        "q6-dsp-thermal": 34400,
+        "cluster0-l2-thermal": 36600,
+        "cluster1-l2-thermal": 37600,
+        "cpu0-thermal": 37200,
+        "m4m-thermal": 36300,
+        "pm8994-thermal": 33760,
+        "gpu-top-thermal": 32800,
+        "mem-thermal": 34400,
+        "cpu2-thermal": 36900,
+        "camera-thermal": 34100,
+        "cpu1-thermal": 38800,
+        "l3-or-venus-thermal": 35600
+      },
+      "battery": {
+        "capacity": 100,
+        "temp": 280,
+        "current_now": 32226,
+        "voltage_now": 4371093
+      },
+      "battery_status": "Charging",
+      "charger": {
+        "online": 1,
+        "temp": 321,
+        "input_current_limit": 500000
+      },
+      "charger_type": "Unknown [SDP] DCP CDP",
+      "charger_health": "Good",
+      "cpu": {
+        "policy2": {
+          "scaling_cur_freq": 940800,
+          "scaling_max_freq": 940800
+        },
+        "policy0": {
+          "scaling_cur_freq": 307200,
+          "scaling_max_freq": 960000
+        }
+      },
+      "cpuidle_driver": "none",
+      "network": {
+        "wlan0": {
+          "operstate": "up",
+          "carrier": 1,
+          "counters": {
+            "rx_bytes": 116898,
+            "tx_bytes": 4459,
+            "rx_errors": 0,
+            "tx_errors": 0,
+            "rx_dropped": 203,
+            "tx_dropped": 0
+          }
+        },
+        "usb0": {
+          "operstate": "up",
+          "carrier": 1,
+          "counters": {
+            "rx_bytes": 107594,
+            "tx_bytes": 161228,
+            "rx_errors": 0,
+            "tx_errors": 0,
+            "rx_dropped": 0,
+            "tx_dropped": 0
+          }
+        }
+      },
+      "remoteproc": {
+        "adsp": "running",
+        "slpi": "running",
+        "2080000.remoteproc": "running"
+      },
+      "new_boot_since_previous_sample": false,
+      "drain_started_uptime_s": null,
+      "notices": [],
+      "collection_seconds": 0.1441
+    }
+  },
+  "recovery": {
+    "recovery_kernel": "6.19.5-gts3l1",
+    "recovery_ssh_seconds": 15.2,
+    "fallback_return_armed": true,
+    "fsck_exit_code": 0,
+    "fsck_no_write_option": true,
+    "boot_partition_written": false,
+    "recovery_partition_written": false,
+    "return_verified_utc": "2026-10-13T12:50:13.775436+00:00"
+  },
+  "backup": {
+    "archive_sha256": "d88bbdf6cd408ed4d02d65fe81f737e97932becb5badcdaa4629ff40b984d4c1",
+    "archive_bytes": 403297071,
+    "scope": "Configuration and user files, not a complete root filesystem or transactional application backup",
+    "restore_test": {
+      "restore_test": "passed",
+      "checks": "All regular-file hashes and modes, symlink targets and directory existence",
+      "ownership": "Archived numeric ownership retained in tar; not applied in this unprivileged test",
+      "regular_files": 660,
+      "symlinks": 557,
+      "directories": 334,
+      "hardlinks": 0
+    },
+    "scheduled_backup": false
+  },
+  "maintenance": {
+    "usb_key_login": true,
+    "effective_config_and_timers": [
+      "permitrootlogin no",
+      "pubkeyauthentication yes",
+      "passwordauthentication no",
+      "kbdinteractiveauthentication no",
+      "enabled",
+      "enabled",
+      "active"
+    ],
+    "password_only_connection_rejected": true,
+    "wifi_key_login": true,
+    "unattended_dry_run_exit_code": 0,
+    "apt_policy": [
+      "APT::Periodic \"\";",
+      "APT::Periodic::Update-Package-Lists \"1\";",
+      "APT::Periodic::Unattended-Upgrade \"1\";",
+      "APT::Periodic::Enable \"1\";",
+      "Unattended-Upgrade::Origins-Pattern \"\";",
+      "Unattended-Upgrade::Origins-Pattern:: \"origin=Debian,codename=trixie-security,label=Debian-Security\";",
+      "Unattended-Upgrade::Package-Blacklist:: \"^linux-tabs3$\";",
+      "Unattended-Upgrade::Package-Blacklist:: \"^tabs3-.*\";",
+      "Unattended-Upgrade::Automatic-Reboot \"false\";",
+      "Unattended-Upgrade::Remove-Unused-Kernel-Packages \"false\";",
+      "Unattended-Upgrade::Remove-Unused-Dependencies \"false\";"
+    ],
+    "dry_run_summary": [
+      "Allowed origins are: origin=Debian,codename=trixie-security,label=Debian-Security",
+      "Initial blacklist: ^linux-tabs3$ ^tabs3-.*",
+      "Packages that will be upgraded: librsvg2-2 librsvg2-common"
+    ]
+  },
+  "security_updates_applied": {
+    "librsvg2-2": "2.60.0+dfsg-1+deb13u1",
+    "librsvg2-common": "2.60.0+dfsg-1+deb13u1"
+  },
+  "package_artifact": {
+    "base_version": "0.1.15",
+    "artifact_sha256": "daec9bd570149f5dbd5be0e37fc319fef9d4f879985ccafa71efe4418741da81",
+    "filesystem_error_policy": "remount-ro",
+    "effective_mount_check": "/proc/fs/ext4/dm-0/options explicitly reports errors=remount-ro; findmnt omits the matching superblock default"
+  },
+  "health": {
+    "sample_count": 29,
+    "first_utc": "2026-10-13T12:34:07.717320+00:00",
+    "last_utc": "2026-10-13T13:06:24.339234+00:00",
+    "boot_ids_seen": 3,
+    "notices": [],
+    "interval_seconds": 60,
+    "retention_daily_files": 7,
+    "daily_size_limit_bytes": 8388608,
+    "changes_hardware": false,
+    "automatic_shutdown": false,
+    "external_alert_delivery": false
+  },
+  "qualification_complete": false,
+  "remaining": "Physical fastboot entry for isolated RAM driver tests; sustained wall-powered workload, watchdog/RTC/thermal qualification, outage and restart testing",
+  "hash_scope": "boot_image_sha256 and recovery_image_sha256 cover explicit saved-image byte lengths; partition hashes also record the larger complete partitions.",
+  "evidence": [
+    {
+      "path": "docs/server-measurements-20261013/stage1-health-samples.jsonl",
+      "sha256": "12d798776129fb2cec08348bb3f3d121089251313c8439d681acfad18ec7e8dd"
+    }
+  ]
+}

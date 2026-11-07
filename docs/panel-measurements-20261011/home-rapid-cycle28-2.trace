@@ -1,0 +1,50 @@
+# tracer: nop
+#
+# entries-in-buffer/entries-written: 38/38   #P:4
+#
+#                                _-----=> irqs-off/BH-disabled
+#                               / _----=> need-resched
+#                              | / _---=> hardirq/softirq
+#                              || / _--=> preempt-depth
+#                              ||| / _-=> migrate-disable
+#                              |||| /     delay
+#           TASK-PID     CPU#  |||||  TIMESTAMP  FUNCTION
+#              | |         |   |||||     |         |
+              sh-6230    [002] ...1.   289.869945: tracing_mark_write: STATIC_VERIFY_START
+              sh-6230    [002] ...1.   292.879202: tracing_mark_write: STARTUP_NO_FIXUP
+              sh-6230    [002] ...1.   292.891199: tracing_mark_write: SEND 15 b0 5a
+              sh-6230    [001] ...1.   292.913066: tracing_mark_write: SEND 24 d8 01 1
+              sh-6230    [003] ...1.   292.932988: tracing_mark_write: SEND 15 b0 d0
+              sh-6230    [001] ...1.   292.951601: tracing_mark_write: SEND 24 d1 01 1
+              sh-6230    [003] ...1.   292.970221: tracing_mark_write: SEND 15 b0 5a
+              sh-6230    [001] ...1.   292.989216: tracing_mark_write: SEND 24 d8 01 1
+              sh-6230    [000] ...1.   293.006677: tracing_mark_write: SEND 15 b0 51
+              sh-6230    [003] ...1.   293.023171: tracing_mark_write: SEND 24 d1 01 1
+              sh-6230    [003] ...1.   293.038247: tracing_mark_write: SEND 15 b0 5a
+              sh-6230    [003] ...1.   293.054954: tracing_mark_write: SEND 24 d8 01 1
+              sh-6230    [000] ...1.   293.073209: tracing_mark_write: SEND 15 b0 d9
+              sh-6230    [001] ...1.   293.090744: tracing_mark_write: SEND 24 d1 01 1
+              sh-6230    [000] ...1.   293.108570: tracing_mark_write: SEND 15 b0 5a
+              sh-6230    [003] ...1.   293.124434: tracing_mark_write: SEND 24 d8 01 1
+              sh-6230    [003] ...1.   293.141296: tracing_mark_write: SEND 15 b0 70
+              sh-6230    [001] ...1.   293.159835: tracing_mark_write: SEND 24 d2 01 1
+              sh-6230    [003] ...1.   293.175370: tracing_mark_write: SEND 15 b0 5a
+              sh-6230    [003] ...1.   293.189669: tracing_mark_write: SEND 24 d8 01 1
+              sh-6230    [000] ...1.   293.207975: tracing_mark_write: SEND 15 b0 67
+              sh-6230    [000] ...1.   293.223976: tracing_mark_write: SEND 24 d2 01 1
+              sh-6230    [000] ...1.   293.240283: tracing_mark_write: SEND 15 b0 5a
+              sh-6230    [003] ...1.   293.255730: tracing_mark_write: SEND 24 d8 01 1
+              sh-6230    [000] ...1.   293.272895: tracing_mark_write: SEND 15 b0 36
+              sh-6230    [003] ...1.   293.292027: tracing_mark_write: SEND 24 d2 01 1
+              sh-6230    [003] ...1.   293.307194: tracing_mark_write: SEND 15 b0 5a
+              sh-6230    [000] ...1.   293.325259: tracing_mark_write: SEND 24 d8 01 1
+              sh-6230    [003] ...1.   293.340949: tracing_mark_write: SEND 15 b0 4d
+              sh-6230    [001] ...1.   293.360014: tracing_mark_write: SEND 24 d2 01 1
+              sh-6230    [003] ...1.   293.375695: tracing_mark_write: SEND 15 b0 5a
+              sh-6230    [001] ...1.   293.394465: tracing_mark_write: SEND 24 d8 01 1
+              sh-6230    [003] ...1.   293.410328: tracing_mark_write: SEND 15 b0 49
+              sh-6230    [003] ...1.   293.427466: tracing_mark_write: SEND 24 d2 01 1
+              sh-6230    [003] ...1.   293.443392: tracing_mark_write: SEND 06 0a 1
+              sh-6230    [003] ...1.   293.458758: tracing_mark_write: SEND 06 0e 1
+              sh-6230    [003] ...1.   293.474709: tracing_mark_write: SEND 06 0f 1
+              sh-6230    [003] ...1.   293.482670: tracing_mark_write: END

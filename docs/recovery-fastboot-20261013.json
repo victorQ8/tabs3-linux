@@ -1,0 +1,93 @@
+{
+  "recorded_date": "2026-10-13",
+  "device": "Samsung Galaxy Tab S3 LTE SM-T825",
+  "base_package": "0.1.16",
+  "normal_kernel_package": "6.18.56-55",
+  "recovery_kernel_package": "6.19.5-29",
+  "bootloader_source_commit": "8b46487c4c76776c4f2f61468d44a74c69e6b9ea",
+  "build": {
+    "hardware_tested": false,
+    "installed": false,
+    "baseline_sha256": "b2e4d3d21e6a128a02688d9a27145aecaf1caf27b4d12195b030467294d89c40",
+    "lk2nd_sha256": "ac4dd5147f85553264d14acb66d18a3ee38e5423834eab8d64f78ad4f01bf57d",
+    "kernel_and_dtb_unchanged": true,
+    "linux_kernel_sha256": "022c5a41b0a21d09d55bf653abd28721ceb52041e707ad436617f6942b5c20be",
+    "request_offset": 4190208,
+    "timeout_seconds": 120,
+    "inputs": {
+      "usr/sbin/tabs3-recovery": "6c4d8adc20a903d5010eeee593e7e1c89a48e6701420e99ae97909cc368197ba",
+      "usr/lib/tabs3/fastboot-request.sh": "50cac88ba2d74ec1be3bd926e37b7747185d61b6cda203e58b0f13cdf8f83b2d",
+      "usr/bin/tabs3-recovery-ui": "1ecfdaa2f8e2e4098be303455ed09c4fc66b652e099c0ed7bc6e41aa1e7d4661",
+      "usr/sbin/tabs3-reboot-recovery": "bf3f4a5c664e572b600507e32a4dce43803bd73d24308360c6a30c21c6e16478"
+    },
+    "images": {
+      "tabs3-recovery-fastboot-candidate.img": {
+        "bytes": 26513424,
+        "sha256": "dc8c4804ddd5e0dc9c7a781d5d3c20c6e0e66e59c38a18ce03e1a883a58125fb"
+      },
+      "tabs3-recovery-fastboot-linux.img": {
+        "bytes": 22319120,
+        "sha256": "7772e5682be42986cdc1f5da7fe8e32f7350dd038fb087401dc121825d46765c"
+      }
+    }
+  },
+  "image_checks": {
+    "kernel_and_dtb_sha256": "022c5a41b0a21d09d55bf653abd28721ceb52041e707ad436617f6942b5c20be",
+    "compressed_initramfs_bytes": 10935752,
+    "limit_bytes": 11534336,
+    "linux_load_addresses_unchanged": true,
+    "cmdline_unchanged": true,
+    "request_initially_clear": true
+  },
+  "installed": true,
+  "host_tests": {
+    "passed": 55,
+    "command": "python3 -m unittest discover -s tests",
+    "recovery_fastboot_build": "passed",
+    "normal_autoboot_build": "passed",
+    "ui_hitboxes": "all five tiles passed",
+    "ui_preview": "visually inspected"
+  },
+  "hardware_tests": {
+    "software_entry_from_recovery": "passed twice",
+    "software_entry_from_debian": "passed",
+    "idle_return": "passed",
+    "last_command_to_recovery_ssh_seconds": 130.53,
+    "ram_boot_known_recovery": "passed",
+    "fastboot_continue": "passed",
+    "write_command_rejection": "passed using nonexistent partition target",
+    "one_time_request_clear_after_return": "passed",
+    "debian_return": "passed",
+    "physical_new_button": "pending owner confirmation"
+  },
+  "post_boot_hashes": {
+    "recovery_image_sha256": "dc8c4804ddd5e0dc9c7a781d5d3c20c6e0e66e59c38a18ce03e1a883a58125fb",
+    "boot_partition_sha256": "bd2ebd8190e7a6c0cb1145be71733a7d03dd453c26ae8e7c952741f90ba6dc53",
+    "request": "clear",
+    "battery_percent": 100
+  },
+  "backup": {
+    "path": "private/recovery-fastboot/recovery-before.bin",
+    "bytes": 79691776,
+    "sha256": "488614872014fb76b4e65ad6140ad956fab253100481ea87eece021af24ac294"
+  },
+  "limitations": [
+    "Idle timer does not interrupt a blocked command handler or recover a hung Linux kernel.",
+    "No Wi-Fi transport in lk2nd.",
+    "Physical new-button confirmation pending.",
+    "24/7 server qualification and platform-57 reset investigation remain unfinished."
+  ],
+  "final_state": {
+    "kernel_package": "6.18.56-55",
+    "base_package": "0.1.16",
+    "default_target": "multi-user.target",
+    "health_timer": "active",
+    "failed_units": "",
+    "system_state": "running",
+    "request": "clear",
+    "wifi_state": "100 (connected)",
+    "battery_percent": 100,
+    "boot_image_sha256": "e13c9e4c36d1e7aa43b99deab638a1c61b6170121f200f36026b465c3f503694",
+    "recovery_image_sha256": "dc8c4804ddd5e0dc9c7a781d5d3c20c6e0e66e59c38a18ce03e1a883a58125fb"
+  }
+}

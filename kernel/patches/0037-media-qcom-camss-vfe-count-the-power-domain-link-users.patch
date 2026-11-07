@@ -1,0 +1,89 @@
+From: tabS3 bring-up <noreply@localhost>
+Subject: [PATCH] media: qcom: camss: vfe: count the users of the VFE power-domain link
+
+On platforms where the CSID powers through the VFE (vfe_parent_dev_ops),
+csid_set_power() takes the VFE (vfe_get() adds the device link to the
+VFE's power domain) before the ISPIF powers up, and ispif_reset() then
+requests and releases the same two domains around its reset. Those
+releases delete the link vfe_get() holds and clear vfe->genpd_link, so
+the later vfe_put() dereferences NULL in device_link_del() (MSM8996,
+SM-T825: "Unable to handle kernel NULL pointer dereference at virtual
+address 000000000000034c", vfe_pm_domain_off+0x30). Count the users of
+the link under a mutex and only add and delete it at the edges.
+
+Assisted-by: Claude:claude-fable-5-1
+---
+diff -ruN a/drivers/media/platform/qcom/camss/camss-vfe.c b/drivers/media/platform/qcom/camss/camss-vfe.c
+--- a/drivers/media/platform/qcom/camss/camss-vfe.c	2026-10-13 23:29:18.709088195 +0300
++++ b/drivers/media/platform/qcom/camss/camss-vfe.c	2026-10-13 23:29:18.731622281 +0300
+@@ -877,8 +877,12 @@
+ 	if (!vfe->genpd)
+ 		return;
+ 
+-	device_link_del(vfe->genpd_link);
+-	vfe->genpd_link = NULL;
++	mutex_lock(&vfe->genpd_lock);
++	if (vfe->genpd_link_count && !--vfe->genpd_link_count) {
++		device_link_del(vfe->genpd_link);
++		vfe->genpd_link = NULL;
++	}
++	mutex_unlock(&vfe->genpd_lock);
+ }
+ 
+ /*
+@@ -888,18 +892,27 @@
+ int vfe_pm_domain_on(struct vfe_device *vfe)
+ {
+ 	struct camss *camss = vfe->camss;
++	int ret = 0;
+ 
+ 	if (!vfe->genpd)
+ 		return 0;
+ 
+-	vfe->genpd_link = device_link_add(camss->dev, vfe->genpd,
+-					  DL_FLAG_STATELESS |
+-					  DL_FLAG_PM_RUNTIME |
+-					  DL_FLAG_RPM_ACTIVE);
+-	if (!vfe->genpd_link)
+-		return -EINVAL;
++	mutex_lock(&vfe->genpd_lock);
++	if (!vfe->genpd_link_count) {
++		vfe->genpd_link = device_link_add(camss->dev, vfe->genpd,
++						  DL_FLAG_STATELESS |
++						  DL_FLAG_PM_RUNTIME |
++						  DL_FLAG_RPM_ACTIVE);
++		if (!vfe->genpd_link) {
++			ret = -EINVAL;
++			goto out;
++		}
++	}
++	vfe->genpd_link_count++;
++out:
++	mutex_unlock(&vfe->genpd_lock);
+ 
+-	return 0;
++	return ret;
+ }
+ 
+ static int vfe_match_clock_names(struct vfe_device *vfe,
+@@ -1884,6 +1897,7 @@
+ 	}
+ 
+ 	mutex_init(&vfe->power_lock);
++	mutex_init(&vfe->genpd_lock);
+ 	vfe->power_count = 0;
+ 
+ 	mutex_init(&vfe->stream_lock);
+diff -ruN a/drivers/media/platform/qcom/camss/camss-vfe.h b/drivers/media/platform/qcom/camss/camss-vfe.h
+--- a/drivers/media/platform/qcom/camss/camss-vfe.h	2026-10-13 23:29:18.710865104 +0300
++++ b/drivers/media/platform/qcom/camss/camss-vfe.h	2026-10-13 23:29:18.731107995 +0300
+@@ -166,6 +166,9 @@
+ 	struct camss_video_ops video_ops;
+ 	struct device *genpd;
+ 	struct device_link *genpd_link;
++	/* vfe_get() and ispif_reset() both request the domain */
++	struct mutex genpd_lock;
++	unsigned int genpd_link_count;
+ };
+ 
+ struct camss_subdev_resources;

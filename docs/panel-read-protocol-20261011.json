@@ -1,0 +1,186 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-11T08:12:52.282601+00:00",
+  "source_analysis_commit": "13e2adb",
+  "source_analysis_document": "docs/panel-ams968hh01.md",
+  "prior_experiments": "docs/panel-experiments-20261011.json",
+  "device": {
+    "model": "SM-T825 LTE rev05",
+    "kernel_package": "6.19.5-25",
+    "kernel_build": 10,
+    "environment": "Native Debian"
+  },
+  "preconditions": {
+    "display_state": "Automatically blanked before the tests: bl_power=4, panel power retained by the existing driver. Stayed off throughout.",
+    "screen_daemon": "Paused all tabs3-screen.service processes with SIGSTOP and resumed the same processes with SIGCONT in a cleanup trap, preserving their existing off state. Did not restart the daemon because its startup forces the screen on.",
+    "frame_submissions": "Held tty1 in KD_GRAPHICS with the existing measurement helper. Waited three seconds, then required zero kickoffs before every packet. Restored original console mode on exit.",
+    "fixup": "Existing boot fixup had completed long before the measurements; no fixup replay or reset.",
+    "human_visual_confirmation": false,
+    "new_driver_changes_or_images": false,
+    "clock_or_gpio_configuration_writes": false
+  },
+  "R1": {
+    "status": "pass",
+    "question": "Does the proposed vendor read method retrieve known calibration instead of the previous response?",
+    "sequence": [
+      {
+        "seed": "HS DA=42",
+        "offset": "5a",
+        "read_mode": "HS",
+        "request": "24 d8 01 1",
+        "expected": "33",
+        "actual": "33"
+      },
+      {
+        "seed": "HS DB=40",
+        "offset": "5b",
+        "read_mode": "HS",
+        "request": "24 d8 01 1",
+        "expected": "51",
+        "actual": "51"
+      },
+      {
+        "seed": "HS DC=16",
+        "offset": "5b",
+        "read_mode": "HS",
+        "request": "24 d8 01 1",
+        "expected": "51",
+        "actual": "51"
+      },
+      {
+        "seed": "HS DA=42",
+        "offset": "5a",
+        "read_mode": "HS",
+        "request": "24 d8 01 1",
+        "expected": "33",
+        "actual": "33"
+      },
+      {
+        "seed": "HS DB=40",
+        "offset": "5a",
+        "read_mode": "LP",
+        "request": "lp 24 d8 01 1",
+        "expected": "33",
+        "actual": "33"
+      },
+      {
+        "seed": "HS DC=16",
+        "offset": "5b",
+        "read_mode": "LP",
+        "request": "lp 24 d8 01 1",
+        "expected": "51",
+        "actual": "51"
+      }
+    ],
+    "offset_write": "HS 15 b0 <offset> before each vendor read",
+    "conclusion": "Known D8 calibration reads work in both HS and LP in this static, display-off-but-powered state. They return the requested offset value independently of the preceding ID response.",
+    "limits": "Does not establish that the same requests work during active frame transfers or cold initialization."
+  },
+  "R2": {
+    "status": "pass",
+    "method": "For each offset, seed once with ID DA=42 and once with ID DB=40, then issue HS 15 b0 <offset> followed by HS 24 d2 01 1.",
+    "values": {
+      "70": {
+        "after_ID_42": "08",
+        "after_ID_40": "08"
+      },
+      "67": {
+        "after_ID_42": "1b",
+        "after_ID_40": "1b"
+      },
+      "36": {
+        "after_ID_42": "12",
+        "after_ID_40": "12"
+      },
+      "4d": {
+        "after_ID_42": "05",
+        "after_ID_40": "05"
+      }
+    },
+    "conclusion": "D2 returns distinct, stable values at the four queried offsets, independent of the ID seed. ELVSS 1b, ACL 12 and averaging 05 agree with the intended normal settings.",
+    "limits": "This snapshot is after the current boot fixup and an automatic display-off. It is not a pre-fixup or freshly failed recovery snapshot, and does not prove that the output stage latched or visibly used those values."
+  },
+  "R3": {
+    "status": "pass_live_readback_at_offset_36",
+    "method": "With frames stopped and the display already off, write B2[36]=10 plus update key, then read D2[36] after two different ID seeds. Write B2[36]=12 plus update key, then repeat the two ID-seeded reads.",
+    "acl_off_packets": [
+      "15 b0 36",
+      "39 b2 10",
+      "15 b0 35",
+      "39 b2 01"
+    ],
+    "acl_off_reads": [
+      "10",
+      "10"
+    ],
+    "acl_on_packets": [
+      "15 b0 36",
+      "39 b2 12",
+      "15 b0 35",
+      "39 b2 01"
+    ],
+    "acl_on_reads": [
+      "12",
+      "12"
+    ],
+    "cleanup": "Sent the ACL-on sequence again from the EXIT trap; all four transfers succeeded.",
+    "conclusion": "D2[36] tracks controlled writes to B2[36] in this state. It is live readback of this tested setting, not an unchanging factory default.",
+    "limits": [
+      "One off/on cycle with two independent ID-seeded reads per phase.",
+      "Does not prove every B2 offset has the same read semantics or that B1 has a corresponding readable bank.",
+      "No pixel data was sent and no optical output was observed. A live register value is not proof of correct panel emission or a repaired wake path."
+    ]
+  },
+  "measurement_controls": {
+    "trace_entries": 73,
+    "trace_entries_retained": 73,
+    "frame_kickoffs": 0,
+    "transmit_done_callbacks": 0,
+    "enabled_timeout_events": 0,
+    "enabled_underrun_events": 0,
+    "new_dmesg_lines": 0,
+    "script_abort_gates": [
+      "Abort on any unexpected frame kickoff before a command.",
+      "Abort if R1 calibration or identity controls do not return the expected byte; do not attempt R2/R3."
+    ],
+    "cleanup": "ACL-on writes on R3 exit, console mode restored by helper, tracing disabled and instance removed, paused service resumed by outer trap."
+  },
+  "next_measurements": [
+    "Use the now-validated D2 path for B2 drive-setting snapshots at defined lifecycle stages, with no frames during reads.",
+    "For E2, capture before the timer fixup using a controlled diagnostic boot; record reset, TCON-ready, display-on and first-frame ordering separately.",
+    "For E3, compare the same D2 offsets before and after the compression re-latch, then separately assess the picture and current. A correct visible baseline is still needed.",
+    "Keep E1 dimming, colour validation and wake observation pending until the user is home."
+  ],
+  "interpretation_cautions": [
+    "Passing static LP reads does not prove that streaming is the only reason previous LP reads failed; that would need a controlled comparison.",
+    "Absence of B1/B2 reads in Samsung source alone does not prove they are universally write-only; the earlier direct B1/B2 method is empirically unreliable here.",
+    "These measurements validate instrumentation and one live readback relationship. They do not identify the display failure root cause or validate patches 0026/0027."
+  ],
+  "final_state": {
+    "environment": "Debian",
+    "automatic_screen_blanking": "active and process resumed (state Ss)",
+    "bl_power": 4,
+    "ACL_15_percent_setting": "12, verified before repeated successful cleanup writes",
+    "battery_percent": 63,
+    "battery_temp_C": 22.3,
+    "battery_status": "Charging",
+    "net_battery_current_microamps": 249511,
+    "charger_input_limit_microamps": 500000,
+    "failed_systemd_units": 0,
+    "trace_instances_remaining": 0,
+    "kprobes_remaining": 0
+  },
+  "committed_evidence": {
+    "results.txt": "docs/panel-measurements-20261011/r1-r3-results.txt",
+    "commands-and-frames.trace": "docs/panel-measurements-20261011/r1-r3-commands-and-frames.trace"
+  },
+  "private_evidence_directory": "private/panel-read-protocol-20261011",
+  "evidence_sha256": {
+    "after-dmesg.txt": "fadcfa33ca7fb7f3ab3cb699d9aa5a5f715e7f7a6c453b8a12c01eda45da7ce6",
+    "before-dmesg.txt": "fadcfa33ca7fb7f3ab3cb699d9aa5a5f715e7f7a6c453b8a12c01eda45da7ce6",
+    "before-state.txt": "740b8bd64b1af67c77c2b46bc591ae0df8eda3d6ec64231825d67a16408c2559",
+    "commands-and-frames.trace": "03a71e6bc867a477f2956cad4939da647725cdcd0488a4914c05bdbb751398c4",
+    "panel-r1-r3.sh": "4e3c1207798ba3929f310cb877aa4e9722b0b8abe0b4b34d72e2a186e9d1c203",
+    "results.txt": "5df8271a1bb7f99a6e581f232a979600d1bc2af7c8defd7770d55b5c5d5e46d3"
+  }
+}

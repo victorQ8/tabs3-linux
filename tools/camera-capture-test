@@ -1,0 +1,76 @@
+#!/bin/sh
+# Run on the SM-T825 as root (package 62+): capture raw frames from a camera
+# through the CAMSS RDI path and report what the pipeline did.
+# Usage: [CAM=rear|front] camera-capture-test [WIDTHxHEIGHT] [FRAMES] [OUTPUT]
+# Rear (IMX258, CSIPHY0): 4208x3120, 2104x1560 (default), 1048x780.
+# Front (S5K5E3, CSIPHY2, package 65+): 2576x1932 (default), 640x480.
+set -u
+cam=${CAM:-rear}
+case $cam in
+    rear) pattern='imx258 [0-9]*-001a'; phy=0; csid=0; ispif=0; rdi=0; defsize=2104x1560 ;;
+    # CSID2 and CSID3 fail to power up on MSM8996 (-EINVAL); CSID1 and the
+    # second ISPIF/RDI pair keep the front camera independent of the rear's.
+    front) pattern='s5k5e3 [0-9]*-0010'; phy=2; csid=1; ispif=1; rdi=1; defsize=2576x1932 ;;
+    *) echo "CAM must be rear or front" >&2; exit 1 ;;
+esac
+size=${1:-$defsize}
+frames=${2:-10}
+out=${3:-/run/tabs3-work/$cam-$size.raw}
+width=${size%x*}
+height=${size#*x}
+mdev=/dev/media0
+[ -e "$mdev" ] || { echo "no $mdev: the camera did not probe" >&2; exit 1; }
+sensor=$(media-ctl -d $mdev -p | sed -n "s/^- entity [0-9]*: \($pattern\).*/\1/p")
+[ -n "$sensor" ] || { echo "no sensor entity matching '$pattern'" >&2; exit 1; }
+video=$(media-ctl -d $mdev -e msm_vfe0_video$rdi)
+echo "sensor '$sensor', video node $video, $size, $frames frames"
+
+# Link validation failures are only logged at debug level.
+dbg=/sys/kernel/debug/dynamic_debug/control
+[ -w $dbg ] && { echo 'file v4l2-subdev.c +p' > $dbg; echo 'file media-entity.c +p' > $dbg; }
+
+media-ctl -d $mdev -r
+for link in "\"msm_csiphy$phy\":1->\"msm_csid$csid\":0[1]" "\"msm_csid$csid\":1->\"msm_ispif$ispif\":0[1]" \
+            "\"msm_ispif$ispif\":1->\"msm_vfe0_rdi$rdi\":0[1]"; do
+    media-ctl -d $mdev -l "$link" || echo "link $link failed"
+done
+# The sensor picks the Bayer order itself (it follows its flip controls);
+# the rest of the pipeline must use the code it reports.
+media-ctl -d $mdev -V "\"$sensor\":0[fmt:SBGGR10_1X10/$size field:none]" || echo 'sensor format failed'
+code=$(media-ctl -d $mdev --get-v4l2 "\"$sensor\":0" | sed -n 's/.*fmt:\([A-Z0-9_]*\)\/.*/\1/p' | head -1)
+[ -n "$code" ] || code=SBGGR10_1X10
+fmt="fmt:$code/$size field:none"
+echo "sensor code $code"
+for e in msm_csiphy$phy msm_csid$csid msm_ispif$ispif msm_vfe0_rdi$rdi; do
+    media-ctl -d $mdev -V "\"$e\":0[$fmt]" || echo "$e format failed"
+done
+case $code in
+    SBGGR10_1X10) pix=pBAA ;;
+    SGBRG10_1X10) pix=pGAA ;;
+    SGRBG10_1X10) pix=pgAA ;;
+    *) pix=pRAA ;;
+esac
+echo '== pad formats'
+media-ctl -d $mdev -p | awk -v want="$sensor|msm_csiphy$phy |msm_csid$csid |msm_ispif$ispif |msm_vfe0_rdi$rdi " '/^- entity/{p = ($0 ~ want)} p && /entity|pad[0-9]|fmt:|->/'
+v4l2-ctl -d "$video" --set-fmt-video=width=$width,height=$height,pixelformat=$pix
+v4l2-ctl -d "$video" --get-fmt-video | grep -E 'Width|Pixel|Bytes'
+
+echo '== streaming'
+rm -f "$out"
+timeout 60 v4l2-ctl -d "$video" --stream-mmap=4 --stream-count=$frames --stream-poll \
+    --stream-to="$out" 2>&1 | tail -3
+if [ -s "$out" ]; then
+    ls -l "$out"
+    python3 - "$out" "$width" "$height" <<'PY'
+import sys
+path, w, h = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
+frame = (w * 10 // 8 + 7) // 8 * 8 * h   # rows padded to 8 bytes
+data = open(path, 'rb').read(frame)
+print(f'first frame: {len(data)} of {frame} bytes, mean {sum(data) / len(data):.1f}, '
+      f'min {min(data)}, max {max(data)}, unique {len(set(data))}')
+PY
+else
+    echo 'no frames captured'
+fi
+echo '== kernel log'
+dmesg | grep -iE 'imx258|s5k5e3|camss|csi|vfe|ispif|dw9807|mismatch|pipeline' | tail -15

@@ -1,0 +1,152 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/* Home, Volume, and Recent/Back touch keys. */
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
+
+/*
+ * Buttons, from this tablet's stock DTB. Home and Volume Up are PM8994
+ * GPIOs 2 and 3 (gpio_keys); Volume Down is the PON RESIN input (pon_2).
+ * Recent and Back are capacitive keys on a Coreriver TC305K (0x20) behind
+ * the stock bit-banged I2C on TLMM 21 (SDA) / 22 (SCL), interrupt TLMM 64
+ * (level low), powered by PM8994 L19 at 2.2 V (vtouch_2p2) with its key
+ * LEDs enabled by TLMM 118. The stock DTB gives L19 no other active consumer
+ * (its DSI "oled-vdda" entry belongs to an unused reference panel supply set).
+ * The book cover's hall sensor is PM8994 GPIO 7 (stock hall_flip, active
+ * low, SW_FLIP); it is a lid switch here. systemd-logind ignores it
+ * (tabs3-base), so a closed cover only informs applications.
+ */
+#include <dt-bindings/input/input.h>
+
+/ {
+	gpio-keys {
+		compatible = "gpio-keys";
+		pinctrl-names = "default";
+		pinctrl-0 = <&home_key_default>, <&vol_up_key_default>,
+			    <&hall_default>;
+
+		switch-cover {
+			label = "Book Cover";
+			gpios = <&pm8994_gpios 7 GPIO_ACTIVE_LOW>;
+			linux,input-type = <EV_SW>;
+			linux,code = <SW_LID>;
+			debounce-interval = <15>;
+			wakeup-source;
+		};
+
+		key-home {
+			label = "Home";
+			gpios = <&pm8994_gpios 2 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_HOMEPAGE>;
+			debounce-interval = <15>;
+			wakeup-source;
+		};
+
+		key-volume-up {
+			label = "Volume Up";
+			gpios = <&pm8994_gpios 3 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_VOLUMEUP>;
+			debounce-interval = <15>;
+		};
+	};
+
+	vreg_touchkey_led: regulator-touchkey-led {
+		compatible = "regulator-fixed";
+		regulator-name = "vreg_touchkey_led";
+		gpio = <&tlmm 118 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+		pinctrl-names = "default";
+		pinctrl-0 = <&touchkey_led_en_default>;
+	};
+
+	i2c-touchkey {
+		compatible = "i2c-gpio";
+		sda-gpios = <&tlmm 21 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+		scl-gpios = <&tlmm 22 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+		i2c-gpio,delay-us = <2>;
+		pinctrl-0 = <&touchkey_i2c_default>;
+		pinctrl-names = "default";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		touchkey@20 {
+			compatible = "coreriver,tc305k-touchkey";
+			reg = <0x20>;
+			interrupt-parent = <&tlmm>;
+			interrupts = <64 IRQ_TYPE_LEVEL_LOW>;
+			vcc-supply = <&vreg_l19a_2p2>;
+			vdd-supply = <&vreg_touchkey_led>;
+			linux,keycodes = <KEY_APPSELECT KEY_BACK>;
+			pinctrl-0 = <&touchkey_int_default>;
+			pinctrl-names = "default";
+		};
+	};
+};
+
+&pm8994_resin {
+	linux,code = <KEY_VOLUMEDOWN>;
+	status = "okay";
+};
+
+&rpm_requests {
+	regulators-0 {
+		vreg_l19a_2p2: l19 {
+			regulator-name = "vreg_l19a_2p2";
+			regulator-min-microvolt = <2200000>;
+			regulator-max-microvolt = <2200000>;
+		};
+	};
+};
+
+&pm8994_gpios {
+	/* stock: input, no pull, VIN S4 */
+	home_key_default: home-key-state {
+		pins = "gpio2";
+		function = PMIC_GPIO_FUNC_NORMAL;
+		input-enable;
+		bias-disable;
+		power-source = <PM8994_GPIO_S4>;
+	};
+
+	/* stock: input, 30 uA pull-up, VIN S4 */
+	vol_up_key_default: vol-up-key-state {
+		pins = "gpio3";
+		function = PMIC_GPIO_FUNC_NORMAL;
+		input-enable;
+		bias-pull-up;
+		power-source = <PM8994_GPIO_S4>;
+	};
+
+	/* stock hall_flip: input, no pull, VIN S4 */
+	hall_default: hall-state {
+		pins = "gpio7";
+		function = PMIC_GPIO_FUNC_NORMAL;
+		input-enable;
+		bias-disable;
+		power-source = <PM8994_GPIO_S4>;
+	};
+};
+
+&tlmm {
+	touchkey_i2c_default: touchkey-i2c-default-state {
+		pins = "gpio21", "gpio22";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	touchkey_int_default: touchkey-int-default-state {
+		pins = "gpio64";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	touchkey_led_en_default: touchkey-led-en-default-state {
+		pins = "gpio118";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+		output-low;
+	};
+};

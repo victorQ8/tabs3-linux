@@ -1,0 +1,46 @@
+#!/bin/sh
+set -eu
+
+# This package must never configure a gadget on an unrelated machine.
+tr '\000' '\n' < /sys/firmware/devicetree/base/compatible | grep -qx 'samsung,gts3llte' || {
+    echo 'Expected samsung,gts3llte device tree' >&2
+    exit 1
+}
+# Built in on the tabS3 kernels. Never let a missing or mismatched
+# /lib/modules stop USB SSH: that is how the tablet is reached to repair it.
+modprobe libcomposite 2>/dev/null || true
+modprobe usb_f_ncm 2>/dev/null || true
+mountpoint -q /sys/kernel/config || mount -t configfs configfs /sys/kernel/config
+set -- /sys/class/udc/*
+if [ "$#" -ne 1 ] || [ ! -e "$1" ]; then
+    echo 'Need exactly one USB device controller' >&2
+    exit 1
+fi
+udc=${1##*/}
+gadget=/sys/kernel/config/usb_gadget/tabs3
+mkdir -p "$gadget"
+cd "$gadget"
+if [ -s UDC ] && [ "$(cat UDC)" = "$udc" ]; then
+    exit 0
+fi
+# Linux Foundation composite gadget ID, for local development.
+echo 0x1d6b > idVendor
+echo 0x0104 > idProduct
+echo 0x0200 > bcdUSB
+echo 0x0100 > bcdDevice
+mkdir -p strings/0x409 configs/c.1/strings/0x409 functions/ncm.usb0
+echo tabs3-development > strings/0x409/serialnumber
+echo tabS3 > strings/0x409/manufacturer
+echo 'Debian Tab S3 LTE' > strings/0x409/product
+echo 'USB network' > configs/c.1/strings/0x409/configuration
+echo 250 > configs/c.1/MaxPower
+echo 02:54:53:33:00:01 > functions/ncm.usb0/host_addr
+echo 02:54:53:33:00:02 > functions/ncm.usb0/dev_addr
+echo 'usb%d' > functions/ncm.usb0/ifname
+[ -L configs/c.1/ncm.usb0 ] || ln -s functions/ncm.usb0 configs/c.1/ncm.usb0
+# USB 2 only. Since kernel package 77 the controller also has its USB 3 PHY,
+# and as a gadget it tries USB 3 first; after a host session its USB 3 link
+# stayed in Rx.Detect and never fell back to USB 2, so the PC saw nothing
+# (2026-10-15). USB networking does not need USB 3.
+echo high-speed > max_speed
+echo "$udc" > UDC

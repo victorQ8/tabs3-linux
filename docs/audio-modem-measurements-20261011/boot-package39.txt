@@ -1,0 +1,17 @@
+#25
+linux-tabs3	6.19.5-39
+tabs3-base	0.1.7
+tabs3-desktop	0.1.8
+remoteproc remoteproc1: Booting fw image qcom/msm8996/samsung/gts3llte/adsp.mdt, size 7196
+tm2-touchkey 2-0020: TC305K firmware 0x18
+remoteproc remoteproc1: remote processor adsp is now up
+qcom,slim-ngd-ctrl 91c0000.slim-ngd: SLIM SAT: Rcvd master capability
+qcom,slim-ngd-ctrl 91c0000.slim-ngd: SLIM controller Registered
+wcd9335-slim 217:1a0:1:0: WCD9335 CODEC version is v2.0
+qcom,slim-ngd-ctrl 91c0000.slim-ngd: SLIM SAT: Rcvd master capability
+remoteproc remoteproc0: Booting fw image qcom/msm8996/samsung/gts3llte/mba.mbn, size 213824
+qcom-q6v5-mss 2080000.remoteproc: MBA booted without debug policy, loading mpss
+remoteproc remoteproc0: remote processor 2080000.remoteproc is now up
+qcom,slim-ngd-ctrl 91c0000.slim-ngd: SLIM SAT: Rcvd master capability
+ 0 [SMT825         ]: apq8096 - SM-T825
+                      SM-T825

@@ -1,0 +1,32 @@
+# tracer: nop
+#
+# entries-in-buffer/entries-written: 20/20   #P:4
+#
+#                                _-----=> irqs-off/BH-disabled
+#                               / _----=> need-resched
+#                              | / _---=> hardirq/softirq
+#                              || / _--=> preempt-depth
+#                              ||| / _-=> migrate-disable
+#                              |||| /     delay
+#           TASK-PID     CPU#  |||||  TIMESTAMP  FUNCTION
+#              | |         |   |||||     |         |
+              sh-595     [000] ...1.   249.524650: tracing_mark_write: STATIC_VERIFY_START
+              sh-595     [000] ...1.   252.547614: tracing_mark_write: SEND 06 da 1
+              sh-595     [000] ...1.   252.566922: tracing_mark_write: SEND 06 da 1
+              sh-595     [000] ...1.   252.586745: tracing_mark_write: SEND lp 06 da 1
+              sh-595     [000] ...1.   252.600359: tracing_mark_write: SEND 06 da 1
+              sh-595     [001] ...1.   252.621197: tracing_mark_write: SEND 06 0a 1
+              sh-595     [001] ...1.   252.634041: tracing_mark_write: SEND 06 0e 1
+              sh-595     [001] ...1.   252.647818: tracing_mark_write: SEND 06 0f 1
+              sh-595     [001] ...1.   252.660907: tracing_mark_write: SEND 15 b0 51
+              sh-595     [001] ...1.   252.675753: tracing_mark_write: SEND 24 b1 01 1
+              sh-595     [001] ...1.   252.691200: tracing_mark_write: SEND 15 b0 d9
+              sh-595     [001] ...1.   252.707936: tracing_mark_write: SEND 24 b1 01 1
+              sh-595     [001] ...1.   252.724270: tracing_mark_write: SEND 15 b0 4d
+              sh-595     [001] ...1.   252.741017: tracing_mark_write: SEND 24 b2 01 1
+              sh-595     [001] ...1.   252.753902: tracing_mark_write: SEND 15 b0 36
+              sh-595     [001] ...1.   252.770880: tracing_mark_write: SEND 24 b2 01 1
+              sh-595     [000] ...1.   252.784227: tracing_mark_write: SEND 15 b0 67
+              sh-595     [001] ...1.   252.796594: tracing_mark_write: SEND 24 b2 01 1
+              sh-595     [001] ...1.   252.813430: tracing_mark_write: SEND 15 b0 35
+              sh-595     [001] ...1.   252.818918: tracing_mark_write: STATIC_READ_END

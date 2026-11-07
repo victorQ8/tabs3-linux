@@ -1,0 +1,550 @@
+Subject: [PATCH] drm/panel: samsung-ams968hh01: complete SM-T825 support
+
+The port's draft driver never lit the Galaxy Tab S3 LTE (SM-T825) panel.
+This is the hardware-verified result of the bring-up, squashed from the
+series used during it (formerly 0005-0015, 0018, 0019, 0023, 0025-0027,
+the panel parts of 0028/0029, and 0031):
+
+- Write the B1/B2 register pages with DCS long packets, as Samsung's
+  driver does, in the requested LP or HS mode.
+- Run the links at the stock 893.2 Mbps; a wider front porch keeps
+  60 Hz. The ANA38401 TCON is clocked from the continuous DSI HS clock.
+- Leave reset with the clock lane in LP-11
+  (MIPI_DSI_CLOCK_DEFER_CONTINUOUS) and fail when TCON_RDY never rises
+  instead of continuing.
+- Send set_tear_on after display on, as downstream mdss_dsi does.
+- Apply the stock normal operating conditions (ACL on, smart-ACL ELVSS)
+  before the first bright frame.
+- Read the factory MTP gamma calibration (accepted when two reads agree)
+  and generate 65 calibrated brightness levels, exposed through a
+  backlight device. Normal levels only; the HBM tables are not exposed.
+- Sleep is a real panel power-off and wake repeats prepare/enable: a
+  retained-supply DCS sleep/wake failed on bright content.
+
+The bring-up instruments are dropped: the stock_clock, tear_on,
+mtp_gamma, diag and read_hs module parameters (their verified defaults
+are now fixed), the debugfs raw DSI command file, the DDI register dumps
+and the startup checkpoint messages. The MTP dump is now dev_dbg. The
+backlight device makes the driver depend on BACKLIGHT_CLASS_DEVICE.
+
+--- a/drivers/gpu/drm/panel/Kconfig
++++ b/drivers/gpu/drm/panel/Kconfig
+@@ -763,6 +763,7 @@
+ 	tristate "Samsung AMS968HH01 QXGA dual-DSI command mode panel"
+ 	depends on OF
+ 	depends on DRM_MIPI_DSI
++	depends on BACKLIGHT_CLASS_DEVICE
+ 	help
+ 	  Say Y or M here if you want to enable support for the Samsung
+ 	  AMS968HH01 2048x1536 AMOLED panel with the Anapass ANA38401 driver
+--- a/drivers/gpu/drm/panel/panel-samsung-ams968hh01.c
++++ b/drivers/gpu/drm/panel/panel-samsung-ams968hh01.c
+@@ -10,9 +10,10 @@
+  * Derived from the downstream Samsung display driver and its device tree
+  * (drivers/video/msm/mdss/samsung/ANA38401_AMS968HH01).
+  *
+- * UNTESTED DRAFT - not yet built or run on hardware.
++ * SM-T825: LP11 reset ordering and full-power wake verified on hardware.
+  */
+ 
++#include <linux/backlight.h>
+ #include <linux/delay.h>
+ #include <linux/gpio/consumer.h>
+ #include <linux/iopoll.h>
+@@ -20,6 +21,8 @@
+ #include <linux/of.h>
+ #include <linux/of_graph.h>
+ #include <linux/regulator/consumer.h>
++#include <linux/slab.h>
++#include <linux/string.h>
+ 
+ #include <drm/drm_mipi_dsi.h>
+ #include <drm/drm_modes.h>
+@@ -27,12 +30,22 @@
+ #include <drm/drm_probe_helper.h>
+ #include <video/mipi_display.h>
+ 
++#include "ams968hh01-dimming.h"
++
+ struct ams968hh01 {
+ 	struct drm_panel panel;
+ 	struct mipi_dsi_device *dsi[2];
+ 	struct regulator *vdd;
+ 	struct gpio_desc *reset_gpio;
+ 	struct gpio_desc *tcon_ready_gpio;
++	bool vdd_on;
++	bool enabled;		/* between enable() and disable() */
++	u8 gamma[AMS_GAMMA_LEVELS][AMS_GAMMA_BYTES];
++	struct backlight_device *backlight;
++	unsigned int brightness;
++	unsigned int applied_brightness;
++	bool gamma_valid;
++	struct mutex cmd_lock;
+ };
+ 
+ static inline struct ams968hh01 *to_ams968hh01(struct drm_panel *panel)
+@@ -43,14 +56,21 @@
+ /*
+  * Full-panel mode. The msm DSI host halves the horizontal timings per link
+  * in bonded mode, so these are twice the downstream per-link values
+- * (1024 active, hfp 212, hpw 16, hbp 108; vfp 10, vpw 2, vbp 6).
++ * (1024 active, hpw 16, hbp 108; vfp 10, vpw 2, vbp 6).
++ *
++ * Downstream overrides the bit clock with qcom,mdss-dsi-panel-clockrate =
++ * 893.2 MHz. The ANA38401 TCON runs from the continuous DSI HS clock and its
++ * UPLL is programmed for that rate. In command mode the porches never reach
++ * the wire, so widen the front porch (downstream: 212 per link) to keep
++ * 60 Hz at the higher pixel clock:
++ * 297733 kHz / 2 links * 24 bpp / 4 lanes = 893.2 Mbps per lane.
+  */
+ static const struct drm_display_mode ams968hh01_mode = {
+-	.clock = 253613,		/* 2720 * 1554 * 60 Hz / 1000 */
++	.clock = 297733,		/* 3194 * 1554 * 59.98 Hz / 1000 */
+ 	.hdisplay = 2048,
+-	.hsync_start = 2048 + 424,
+-	.hsync_end = 2048 + 424 + 32,
+-	.htotal = 2048 + 424 + 32 + 216,
++	.hsync_start = 2048 + 898,
++	.hsync_end = 2048 + 898 + 32,
++	.htotal = 2048 + 898 + 32 + 216,
+ 	.vdisplay = 1536,
+ 	.vsync_start = 1536 + 10,
+ 	.vsync_end = 1536 + 10 + 2,
+@@ -60,66 +80,260 @@
+ 	.type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED,
+ };
+ 
++/* Samsung explicitly uses DCS long packets for B1/B2 register writes,
++ * including writes with only one parameter. The generic DCS helper would
++ * select a short packet for those two-byte payloads.
++ */
++static void ams968hh01_write_register(struct mipi_dsi_multi_context *ctx,
++				    const void *data, size_t len)
++{
++	struct mipi_dsi_device *dsi = ctx->dsi;
++	struct mipi_dsi_msg msg = {
++		.channel = dsi->channel,
++		.type = MIPI_DSI_DCS_LONG_WRITE,
++		.flags = (dsi->mode_flags & MIPI_DSI_MODE_LPM) ? MIPI_DSI_MSG_USE_LPM : 0,
++		.tx_len = len,
++		.tx_buf = data,
++	};
++	ssize_t ret;
++
++	if (ctx->accum_err)
++		return;
++	if (!dsi->host->ops || !dsi->host->ops->transfer) {
++		ctx->accum_err = -ENOSYS;
++		return;
++	}
++	ret = dsi->host->ops->transfer(dsi->host, &msg);
++	if (ret < 0) {
++		ctx->accum_err = ret;
++		dev_err(&dsi->dev, "panel long write failed: %zd\n", ret);
++	}
++}
++
++#define ams968hh01_register_seq(ctx, seq...) do { \
++	static const u8 data[] = { seq }; \
++	ams968hh01_write_register(ctx, data, ARRAY_SIZE(data)); \
++} while (0)
++
++/*
++ * Factory gamma calibration (MTP): 33 bytes in register page D8 at global
++ * parameter offsets 0x5a..0x7a, register order per colour V11 V23 V35 V51
++ * V87 V151 V203 V255lsb V3 V255msb VT. Static-panel reads were verified in both LP and HS.
++ */
++static int ams968hh01_read_mtp_once(struct ams968hh01 *ctx, u8 *mtp)
++{
++	static const u8 pos[] = { 0x5a, 0x62, 0x6a, 0x72, 0x7a };
++	struct mipi_dsi_device *dsi = ctx->dsi[0];
++	unsigned long mode_flags = dsi->mode_flags;
++	ssize_t ret = 0;
++	int i;
++
++	dsi->mode_flags &= ~MIPI_DSI_MODE_LPM;
++	for (i = 0; i < ARRAY_SIZE(pos); i++) {
++		u8 len = i < 4 ? 8 : 1;
++		u8 params[2] = { 0xd8, len };
++
++		ret = mipi_dsi_dcs_write(dsi, 0xb0, &pos[i], 1);
++		if (ret < 0)
++			break;
++		ret = mipi_dsi_generic_read(dsi, params, sizeof(params), mtp + i * 8, len);
++		if (ret != len) {
++			ret = ret < 0 ? ret : -EIO;
++			break;
++		}
++	}
++	dsi->mode_flags = mode_flags;
++	return ret < 0 ? ret : 0;
++}
++
++/*
++ * The first read after the init sequence returned zeros on SM-T825, so
++ * start with a throwaway ID read (expect DA = 0x42) and accept the MTP only
++ * when two consecutive reads agree.
++ */
++static int ams968hh01_read_mtp(struct ams968hh01 *ctx, u8 *mtp)
++{
++	struct mipi_dsi_device *dsi = ctx->dsi[0];
++	unsigned long mode_flags = dsi->mode_flags;
++	u8 check[33], id = 0;
++	int tries, ret;
++
++	dsi->mode_flags &= ~MIPI_DSI_MODE_LPM;
++	mipi_dsi_dcs_read(dsi, 0xda, &id, 1);
++	ret = mipi_dsi_dcs_read(dsi, 0xda, &id, 1);
++	dsi->mode_flags = mode_flags;
++	if (ret != 1 || id != 0x42) {
++		dev_warn(&dsi->dev, "unexpected DDI ID read %d: %02x\n", ret, id);
++		return ret < 0 ? ret : -ENODEV;
++	}
++
++	for (tries = 0; tries < 3; tries++) {
++		ret = ams968hh01_read_mtp_once(ctx, mtp);
++		if (!ret)
++			ret = ams968hh01_read_mtp_once(ctx, check);
++		if (!ret && !memcmp(mtp, check, sizeof(check)))
++			return 0;
++	}
++	return ret ? ret : -EIO;
++}
++
++/* cmd_lock covers the complete stock brightness tuple and update key.
++ * Normal levels only: the panel's HBM tables are deliberately not exposed.
++ */
++static int ams968hh01_apply_brightness(struct ams968hh01 *ctx, unsigned int level)
++{
++	struct mipi_dsi_device *dsi = ctx->dsi[0];
++	struct mipi_dsi_multi_context xfer = { .dsi = dsi };
++	const u8 *entry = ams_brightness_data[level];
++	u8 aid[] = { 0x90, entry[1], 0x00, entry[2] };
++	u8 elvss[] = { 0xb2, entry[3] };
++	u8 caps[] = { 0xb2, entry[4] };
++	u8 gamma[34] = { 0x83 };
++	unsigned long flags = dsi->mode_flags;
++
++	if (!ctx->gamma_valid)
++		return -EIO;
++	memcpy(gamma + 1, ctx->gamma[entry[0]], AMS_GAMMA_BYTES);
++	dsi->mode_flags &= ~MIPI_DSI_MODE_LPM;
++	ams968hh01_write_register(&xfer, aid, sizeof(aid));
++	mipi_dsi_dcs_write_seq_multi(&xfer, 0xb0, 0x4d);
++	ams968hh01_register_seq(&xfer, 0xb2, 0x05);
++	mipi_dsi_dcs_write_seq_multi(&xfer, 0xb0, 0x49);
++	ams968hh01_register_seq(&xfer, 0xb2, 0x7f);
++	mipi_dsi_dcs_write_seq_multi(&xfer, 0xb0, 0x36);
++	ams968hh01_register_seq(&xfer, 0xb2, 0x12);
++	mipi_dsi_dcs_write_seq_multi(&xfer, 0xb0, 0x67);
++	ams968hh01_write_register(&xfer, elvss, sizeof(elvss));
++	mipi_dsi_dcs_write_seq_multi(&xfer, 0xb0, 0x6d);
++	ams968hh01_write_register(&xfer, caps, sizeof(caps));
++	ams968hh01_write_register(&xfer, gamma, sizeof(gamma));
++	mipi_dsi_dcs_write_seq_multi(&xfer, 0xb0, 0x35);
++	ams968hh01_register_seq(&xfer, 0xb2, 0x01);
++	dsi->mode_flags = flags;
++	if (!xfer.accum_err)
++		ctx->applied_brightness = level;
++	return xfer.accum_err;
++}
++
++/* Stock brightness 0 is the minimum 2-nit setting, not display-off.
++ * Full screen blanking belongs to DRM: retained-supply DCS off/on failed
++ * on this panel. Do not reintroduce it through bl_power.
++ */
++static int ams968hh01_bl_update(struct backlight_device *bl)
++{
++	struct ams968hh01 *ctx = bl_get_data(bl);
++	unsigned int level = bl->props.brightness;
++	int ret = 0;
++
++	if (level > 255)
++		return -EINVAL;
++	if (bl->props.power != BACKLIGHT_POWER_ON)
++		return -EOPNOTSUPP;
++	mutex_lock(&ctx->cmd_lock);
++	if (ctx->enabled && !backlight_is_blank(bl))
++		ret = ams968hh01_apply_brightness(ctx, level);
++	if (!ret)
++		ctx->brightness = level;
++	mutex_unlock(&ctx->cmd_lock);
++	return ret;
++}
++
++static int ams968hh01_bl_get(struct backlight_device *bl)
++{
++	struct ams968hh01 *ctx = bl_get_data(bl);
++	int value;
++
++	mutex_lock(&ctx->cmd_lock);
++	value = ctx->enabled ? ctx->applied_brightness : 0;
++	mutex_unlock(&ctx->cmd_lock);
++	return value;
++}
++
++static const struct backlight_ops ams968hh01_bl_ops = {
++	.update_status = ams968hh01_bl_update,
++	.get_brightness = ams968hh01_bl_get,
++};
++
++/* Stock ACL-on and smart-ACL ELVSS at 360 nit, temperature above 0 C.
++ * The on-command list alone leaves cold-start ELVSS and ACL disabled.
++ * Apply normal conditions before the first bright frame.
++ * Verified on SM-T825: otherwise bright graphics wash out and roll.
++ */
++static void ams968hh01_normal_conditions(struct mipi_dsi_multi_context *ctx)
++{
++	mipi_dsi_dcs_write_seq_multi(ctx, 0xb0, 0x4d);
++	ams968hh01_register_seq(ctx, 0xb2, 0x05);
++	mipi_dsi_dcs_write_seq_multi(ctx, 0xb0, 0x49);
++	ams968hh01_register_seq(ctx, 0xb2, 0x7f);
++	mipi_dsi_dcs_write_seq_multi(ctx, 0xb0, 0x36);
++	ams968hh01_register_seq(ctx, 0xb2, 0x12);
++	mipi_dsi_dcs_write_seq_multi(ctx, 0xb0, 0x67);
++	ams968hh01_register_seq(ctx, 0xb2, 0x1b);
++	mipi_dsi_dcs_write_seq_multi(ctx, 0xb0, 0x35);
++	ams968hh01_register_seq(ctx, 0xb2, 0x01);
++}
++
+ /* Downstream qcom,mdss-dsi-on-command. B0 = register offset, B1/B2 = write. */
+ static void ams968hh01_init(struct mipi_dsi_multi_context *ctx)
+ {
+ 	mipi_dsi_dcs_write_seq_multi(ctx, 0xb0, 0x34);
+-	mipi_dsi_dcs_write_seq_multi(ctx, 0xb2, 0x64, 0x00);	/* check fail off */
++	ams968hh01_register_seq(ctx, 0xb2, 0x64, 0x00);	/* check fail off */
+ 	mipi_dsi_dcs_write_seq_multi(ctx, 0xb0, 0x75);
+-	mipi_dsi_dcs_write_seq_multi(ctx, 0xb2, 0x28);		/* INTR setting */
++	ams968hh01_register_seq(ctx, 0xb2, 0x28);		/* INTR setting */
+ 	mipi_dsi_dcs_write_seq_multi(ctx, 0xb0, 0x51);
+-	mipi_dsi_dcs_write_seq_multi(ctx, 0xb1, 0x06);		/* dual DSI */
++	ams968hh01_register_seq(ctx, 0xb1, 0x06);		/* dual DSI */
+ 	mipi_dsi_dcs_write_seq_multi(ctx, 0xb0, 0xd9);
+-	mipi_dsi_dcs_write_seq_multi(ctx, 0xb1, 0x08);		/* Anapass compression mode */
++	ams968hh01_register_seq(ctx, 0xb1, 0x08);		/* Anapass compression mode */
+ 	mipi_dsi_dcs_write_seq_multi(ctx, 0xb0, 0x7f);
+-	mipi_dsi_dcs_write_seq_multi(ctx, 0xb2, 0x15);		/* TSP HTE / VTE */
++	ams968hh01_register_seq(ctx, 0xb2, 0x15);		/* TSP HTE / VTE */
+ 
+-	mipi_dsi_dcs_set_tear_on_multi(ctx, MIPI_DSI_DCS_TEAR_MODE_VBLANK);
+ 	mipi_dsi_dcs_set_tear_scanline_multi(ctx, 1526);
+ 
+ 	mipi_dsi_dcs_write_seq_multi(ctx, 0xb0, 0xbc);
+-	mipi_dsi_dcs_write_seq_multi(ctx, 0xb2, 0x04);		/* gamma offset index */
++	ams968hh01_register_seq(ctx, 0xb2, 0x04);		/* gamma offset index */
+ 
+-	/* Brightness condition set: fixed 360 nit gamma for now */
++	/* Hidden startup reference; enable applies the calibrated requested level. */
+ 	mipi_dsi_dcs_write_seq_multi(ctx, 0x83,
+ 				     0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00, 0x80, 0x80, 0x00,
+ 				     0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00, 0x80, 0x80, 0x00,
+ 				     0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00, 0x80, 0x80, 0x00);
+ 
+ 	mipi_dsi_dcs_write_seq_multi(ctx, 0x90, 0x00, 0x00, 0x0e);	/* AID, 360 nit */
+-	mipi_dsi_dcs_write_seq_multi(ctx, 0xb0, 0x67);
+-	mipi_dsi_dcs_write_seq_multi(ctx, 0xb2, 0x0f);		/* ELVSS, 360 nit */
+-	mipi_dsi_dcs_write_seq_multi(ctx, 0xb0, 0x4d);
+-	mipi_dsi_dcs_write_seq_multi(ctx, 0xb2, 0x04);		/* 16 frame avg, ACL off */
+-	mipi_dsi_dcs_write_seq_multi(ctx, 0xb0, 0x36);
+-	mipi_dsi_dcs_write_seq_multi(ctx, 0xb2, 0x10);		/* ACL off */
++	ams968hh01_normal_conditions(ctx);
+ 	mipi_dsi_dcs_write_seq_multi(ctx, 0xb0, 0x6d);
+-	mipi_dsi_dcs_write_seq_multi(ctx, 0xb2, 0x85);		/* CAPS on */
++	ams968hh01_register_seq(ctx, 0xb2, 0x85);		/* CAPS on */
+ 	mipi_dsi_dcs_write_seq_multi(ctx, 0xb0, 0x35);
+-	mipi_dsi_dcs_write_seq_multi(ctx, 0xb2, 0x01);		/* gamma update key */
++	ams968hh01_register_seq(ctx, 0xb2, 0x01);		/* gamma update key */
+ 	mipi_dsi_dcs_write_seq_multi(ctx, 0xb0, 0xd0);
+-	mipi_dsi_dcs_write_seq_multi(ctx, 0xb1, 0x1d);		/* UPLL_F = 35 */
++	ams968hh01_register_seq(ctx, 0xb1, 0x1d);		/* UPLL_F = 35 */
+ 	mipi_dsi_msleep(ctx, 215);
+ }
+ 
++/* Stock sleep is a real panel power-off. Wake repeats prepare/enable.
++ * A retained-supply DCS 28/29 wake failed on bright content even with
++ * correct drive-register readback; a full cold start was verified. */
+ static void ams968hh01_power_off(struct ams968hh01 *ctx)
+ {
+ 	gpiod_set_value_cansleep(ctx->reset_gpio, 1);
+ 	usleep_range(5000, 6000);
+ 	regulator_disable(ctx->vdd);
+-	msleep(10);
++	ctx->vdd_on = false;
++	msleep(25);
+ }
+ 
+-static int ams968hh01_prepare(struct drm_panel *panel)
++static int ams968hh01_prepare_locked(struct drm_panel *panel)
+ {
+ 	struct ams968hh01 *ctx = to_ams968hh01(panel);
+ 	struct mipi_dsi_multi_context dsi_ctx = { .dsi = ctx->dsi[0] };
+ 	int val, ret;
+ 
+-	ret = regulator_enable(ctx->vdd);
+-	if (ret)
+-		return ret;
+-	msleep(10);
++	if (!ctx->vdd_on) {
++		ret = regulator_enable(ctx->vdd);
++		if (ret)
++			return ret;
++		ctx->vdd_on = true;
++		msleep(10);
++	}
+ 
+ 	/*
+ 	 * The DSI lanes are already in LP11 here (prepare_prev_first). The
+@@ -131,8 +345,11 @@
+ 	/* The DDI raises TCON_RDY once it accepts commands (downstream: up to 1 s) */
+ 	ret = read_poll_timeout(gpiod_get_value_cansleep, val, val,
+ 				1000, 1000000, false, ctx->tcon_ready_gpio);
+-	if (ret)
+-		dev_warn(panel->dev, "TCON_RDY not asserted, continuing anyway\n");
++	if (ret) {
++		dev_err(panel->dev, "TCON_RDY not asserted\n");
++		ams968hh01_power_off(ctx);
++		return ret;
++	}
+ 	usleep_range(1000, 2000);
+ 
+ 	ams968hh01_init(&dsi_ctx);
+@@ -140,35 +357,89 @@
+ 		ams968hh01_power_off(ctx);
+ 		return dsi_ctx.accum_err;
+ 	}
+-
++	if (!ctx->gamma_valid) {
++		struct ams_dimming_work *work;
++		u8 mtp[33] = { 0 };
++
++		ret = ams968hh01_read_mtp(ctx, mtp);
++		if (ret) {
++			dev_err(panel->dev, "MTP read failed: %d\n", ret);
++			ams968hh01_power_off(ctx);
++			return ret;
++		}
++		work = kzalloc(sizeof(*work), GFP_KERNEL);
++		if (!work) {
++			ams968hh01_power_off(ctx);
++			return -ENOMEM;
++		}
++		ret = ams_generate_gamma(mtp, ctx->gamma, work);
++		kfree(work);
++		if (ret) {
++			dev_err(panel->dev, "Invalid MTP dimming data: %d\n", ret);
++			ams968hh01_power_off(ctx);
++			return ret;
++		}
++		ctx->gamma_valid = true;
++		dev_dbg(panel->dev, "MTP %*ph\n", 33, mtp);
++		dev_dbg(panel->dev, "generated 65 calibrated gamma levels; default level %u (%u nit)\n",
++			ctx->brightness, ams_candela[ams_brightness_data[ctx->brightness][0]]);
++	}
+ 	return 0;
+ }
+ 
++static int ams968hh01_prepare(struct drm_panel *panel)
++{
++	struct ams968hh01 *ctx = to_ams968hh01(panel);
++	int ret;
++
++	mutex_lock(&ctx->cmd_lock);
++	ret = ams968hh01_prepare_locked(panel);
++	mutex_unlock(&ctx->cmd_lock);
++	return ret;
++}
++
+ static int ams968hh01_enable(struct drm_panel *panel)
+ {
+ 	struct ams968hh01 *ctx = to_ams968hh01(panel);
+ 	struct mipi_dsi_multi_context dsi_ctx = { .dsi = ctx->dsi[0] };
+ 
++	mutex_lock(&ctx->cmd_lock);
++	dsi_ctx.accum_err = ams968hh01_apply_brightness(ctx, ctx->brightness);
+ 	mipi_dsi_dcs_set_display_on_multi(&dsi_ctx);
+ 	mipi_dsi_msleep(&dsi_ctx, 50);
+-
++	/* As downstream mdss_dsi: tear on after display on */
++	mipi_dsi_dcs_set_tear_on_multi(&dsi_ctx, MIPI_DSI_DCS_TEAR_MODE_VBLANK);
++	ctx->enabled = !dsi_ctx.accum_err;
++	mutex_unlock(&ctx->cmd_lock);
+ 	return dsi_ctx.accum_err;
+ }
+ 
+ static int ams968hh01_disable(struct drm_panel *panel)
+ {
+ 	struct ams968hh01 *ctx = to_ams968hh01(panel);
+-	struct mipi_dsi_multi_context dsi_ctx = { .dsi = ctx->dsi[0] };
+-
++	struct mipi_dsi_device *dsi = ctx->dsi[0];
++	struct mipi_dsi_multi_context dsi_ctx = { .dsi = dsi };
++	unsigned long mode_flags;
++
++	mutex_lock(&ctx->cmd_lock);
++	mode_flags = dsi->mode_flags;
++	dsi->mode_flags &= ~MIPI_DSI_MODE_LPM;
++	mipi_dsi_dcs_set_tear_off_multi(&dsi_ctx);
+ 	mipi_dsi_dcs_set_display_off_multi(&dsi_ctx);
+ 	mipi_dsi_msleep(&dsi_ctx, 100);
+-
++	dsi->mode_flags = mode_flags;
++	ctx->enabled = false;
++	mutex_unlock(&ctx->cmd_lock);
+ 	return dsi_ctx.accum_err;
+ }
+ 
+ static int ams968hh01_unprepare(struct drm_panel *panel)
+ {
+-	ams968hh01_power_off(to_ams968hh01(panel));
++	struct ams968hh01 *ctx = to_ams968hh01(panel);
++
++	mutex_lock(&ctx->cmd_lock);
++	ams968hh01_power_off(ctx);
++	mutex_unlock(&ctx->cmd_lock);
+ 	return 0;
+ }
+ 
+@@ -197,12 +468,26 @@
+ 	struct mipi_dsi_host *dsi1_host;
+ 	struct device_node *dsi1;
+ 	struct ams968hh01 *ctx;
++	const struct backlight_properties props = {
++		.type = BACKLIGHT_RAW,
++		.scale = BACKLIGHT_SCALE_NON_LINEAR,
++		.max_brightness = 255,
++		.brightness = 86,
++		.power = BACKLIGHT_POWER_ON,
++	};
+ 	int ret, i;
+ 
+ 	ctx = devm_kzalloc(dev, sizeof(*ctx), GFP_KERNEL);
+ 	if (!ctx)
+ 		return -ENOMEM;
+ 
++	ctx->brightness = props.brightness;
++	mutex_init(&ctx->cmd_lock);
++	ctx->backlight = devm_backlight_device_register(dev, "ams968hh01", dev, ctx,
++						    &ams968hh01_bl_ops, &props);
++	if (IS_ERR(ctx->backlight))
++		return dev_err_probe(dev, PTR_ERR(ctx->backlight), "failed to register brightness control\n");
++
+ 	ctx->vdd = devm_regulator_get(dev, "vdd");
+ 	if (IS_ERR(ctx->vdd))
+ 		return dev_err_probe(dev, PTR_ERR(ctx->vdd), "failed to get vdd\n");
+@@ -243,8 +528,14 @@
+ 	for (i = 0; i < ARRAY_SIZE(ctx->dsi); i++) {
+ 		ctx->dsi[i]->lanes = 4;
+ 		ctx->dsi[i]->format = MIPI_DSI_FMT_RGB888;
+-		/* command mode, init commands in LP, continuous clock */
+-		ctx->dsi[i]->mode_flags = MIPI_DSI_MODE_LPM;
++		/*
++		 * Command mode, init commands in LP, continuous clock. The
++		 * DDI must leave reset with the clock lane in LP-11: a clock
++		 * started before TCON_RDY made early register writes
++		 * ineffective on SM-T825 (measured twice).
++		 */
++		ctx->dsi[i]->mode_flags = MIPI_DSI_MODE_LPM |
++					  MIPI_DSI_CLOCK_DEFER_CONTINUOUS;
+ 
+ 		ret = mipi_dsi_attach(ctx->dsi[i]);
+ 		if (ret < 0) {

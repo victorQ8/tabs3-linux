@@ -1,0 +1,4 @@
+Linux (none) 6.19.5-gts3l1 #13 SMP PREEMPT 2026-10-10 00:00:00 UTC aarch64 GNU/Linux
+console=tty0 rdinit=/init clk_ignore_unused pd_ignore_unused loglevel=8 ignore_loglevel panic=30 tabs3.mode=recovery msm.prefer_mdp5=0
+145
+0

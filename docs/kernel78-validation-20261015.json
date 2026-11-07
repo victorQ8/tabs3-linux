@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-15T17:20:00+00:00",
+  "installed": {
+    "linux-tabs3": "6.18.56-78 (modules installed over Wi-Fi at 16:20, boot partition written from recovery at 19:54 local, readback verified); 6.18.56-79 built (the flash controls), not installed",
+    "boot_partition": "package 78 combined image, sha256 ee15ba068e45202f151e7bce710404b8d5d1ab13289957bffe401ab22356b9b5 (private/images/package78/)",
+    "tabs3-base": "0.1.30",
+    "tabs3-dashboard": "0.1.9 (Codex)"
+  },
+  "previous": "6.18.56-76",
+  "change": "package 77: usb3.dtsi (QMP USB 3 PHY on, dwc3 at super-speed on both PHYs with the PHY's pipe clock, the SuperSpeed redriver's enable on PM8994 GPIO 14 as a fixed regulator that the s2mm005 driver keeps on while a partner is attached); package 78: patch 0044, the rear flash LED as a LED class flash device in the SM5705 charger driver (flash.dtsi: torch to 180 mA, flash to 1200 mA, 800 ms)",
+  "path": [
+    "19:46: package 78 booted from RAM with the PC cable (SSH after 29 s): role device, USB networking up, white:flash registered (torch to 180 mA, max_brightness 18), the s2mm005 probed, the QMP PHY bound (pipe clock 125 MHz), usb3_redriver registered",
+    "19:54: boot partition written from recovery, Debian 78 from disk, keeper and dashboard active",
+    "20:01: the Ethernet adapter (RTL8156, a USB 3 device) through the owner's USB-C to USB-A OTG adapter: enumerated at high speed (480), 16.5 MB/s for 60 MB as on USB 2; the SuperSpeed root hub's port stayed powered in Rx.Detect (no receiver seen), the redriver enable high (PM8994 gpio14 out high), l28 and l12 on, the PHY clocked. The OTG adapter is most likely USB 2 only, and the hub is a USB 2 hub (its product string), so no SuperSpeed partner has been tried yet",
+    "Samsung's stock code: the PHY driver selects no Type-C lane and the controller driver never reads the CC orientation; the notifier drives the redriver enable high on attach (GPIO 1017 in its numbering, earlier on this model for an external SSD); the lanes are switched outside the processor",
+    "20:11: the hub without its charger's power taken over: the tablet sourced it from the battery at about 1 A (the hub did not answer as a source); the owner replugged it",
+    "20:17: torch on at 50 mA (brightness 5) for five seconds from the hub's VBUS: FLED1CNTL1 0x1d (torch), FLED1CNTL4 0x04 (50 mA), operation mode 5 kept; seen lit by the owner; off again, FLED1CNTL1 0x1c",
+    "package 78's LED lacked the flash controls (flash_brightness, flash_strobe, flash_timeout): LED_DEV_CAP_FLASH was not set; patch 0044 v2 sets it (package 79, built)"
+  ],
+  "unknown": [
+    "SuperSpeed with a real USB 3 partner (the owner's M.2 enclosure, to be found): the redriver and the PHY are on; if one plug orientation only links, the lane switch is not automatic",
+    "the flash pulse (package 79)"
+  ],
+  "pending_on_hardware": [
+    "flash package 79 (PC cable), then one flash pulse",
+    "SuperSpeed with a USB 3 device"
+  ]
+}

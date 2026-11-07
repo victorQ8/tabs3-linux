@@ -1,0 +1,50 @@
+#!/bin/sh
+# Select the always-on server profile without removing optional desktop packages.
+set -eu
+[ "$(id -u)" = 0 ] || { echo 'Run as root.' >&2; exit 1; }
+tr '\000' '\n' < /sys/firmware/devicetree/base/compatible |
+    grep -qx 'samsung,gts3llte' || { echo 'Not an SM-T825.' >&2; exit 1; }
+
+install -d /etc/systemd/logind.conf.d /etc/systemd/system/tabs3-screen.service.d
+cat > /etc/systemd/logind.conf.d/70-tabs3-server.conf <<'EOF'
+[Login]
+HandleLidSwitch=ignore
+HandleLidSwitchExternalPower=ignore
+HandleLidSwitchDocked=ignore
+IdleAction=ignore
+EOF
+cat > /etc/systemd/system/tabs3-screen.service.d/server.conf <<'EOF'
+[Service]
+Environment=TABS3_SCREEN_IDLE=60
+Environment=TABS3_KEYLIGHT_SECONDS=0
+EOF
+for unit in greetd.service phosh.service sddm.service lightdm.service; do
+    if [ "$(systemctl show "$unit" -p LoadState --value)" != not-found ]; then
+        systemctl disable --now "$unit"
+    fi
+done
+systemctl set-default multi-user.target
+systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
+# Desktop audio sessions otherwise start at SSH login and keep the DSP busy.
+systemctl --global mask pipewire.service pipewire.socket pipewire-pulse.service pipewire-pulse.socket wireplumber.service mpris-proxy.service filter-chain.service
+if id dev >/dev/null 2>&1; then
+    uid=$(id -u dev)
+    if [ -S "/run/user/$uid/bus" ]; then
+        runuser -u dev -- env XDG_RUNTIME_DIR="/run/user/$uid" systemctl --user daemon-reload
+        for unit in pipewire.service pipewire.socket pipewire-pulse.service pipewire-pulse.socket wireplumber.service mpris-proxy.service filter-chain.service; do
+            if runuser -u dev -- env XDG_RUNTIME_DIR="/run/user/$uid" systemctl --user is-active --quiet "$unit"; then
+                runuser -u dev -- env XDG_RUNTIME_DIR="/run/user/$uid" systemctl --user stop "$unit"
+            fi
+        done
+    fi
+fi
+systemctl daemon-reload
+systemctl restart systemd-logind.service
+systemctl enable --now ssh.service tabs3-screen.service getty@tty1.service
+systemctl enable --now tabs3-server-cpu-limit.service
+systemctl enable --now tabs3-server-health.timer
+systemctl enable --now tabs3-battery-keeper.timer tabs3-power-guard.timer
+systemctl enable --now tabs3-rtc-offset.service tabs3-rtc-offset-save.timer
+systemctl restart tabs3-screen.service
+/usr/sbin/tabs3-server-maintenance
+echo 'Server profile enabled: console boot, no system sleep, conservative CPU ceiling, screen off after 60 seconds.'

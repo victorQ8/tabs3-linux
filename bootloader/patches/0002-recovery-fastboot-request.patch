@@ -1,0 +1,156 @@
+Subject: [PATCH] SM-T825: consume one-shot recovery fastboot request and bound idle time
+
+Only enabled in the dedicated recovery-fastboot build. Helpers and protocol
+are in bootloader/files, copied into this tree by the build script.
+
+--- a/app/aboot/aboot.c
++++ b/app/aboot/aboot.c
+@@ -32,6 +32,7 @@
+ 
+ #include <app.h>
+ #include <debug.h>
++#include <lk2nd/recovery-fastboot.h>
+ #include <arch/arm.h>
+ #include <string.h>
+ #include <stdlib.h>
+@@ -5655,6 +5656,9 @@
+ 	boot_into_recovery = 1;
+ 	dprintf(INFO, "Recovery boot was forced with compile-time flag.\n");
+ #endif
++	if (tabs3_fastboot_consume())
++		boot_into_fastboot = true;
++
+ 	if (!boot_into_fastboot)
+ 	{
+ #if WITH_LK2ND_BOOT
+--- a/app/aboot/fastboot.c
++++ b/app/aboot/fastboot.c
+@@ -37,6 +37,7 @@
+ #include <kernel/event.h>
+ #include <dev/udc.h>
+ #include "fastboot.h"
++#include <lk2nd/recovery-fastboot.h>
+ 
+ #ifdef USB30_SUPPORT
+ #include <usb30_udc.h>
+@@ -580,6 +581,9 @@
+ 
+ 		r = usb_if.usb_read(buffer, MAX_RSP_SIZE);
+ 		if (r < 0) break;
++		if (!tabs3_fastboot_begin_command()) {
++			thread_exit(0);
++		}
+ 		buffer[r] = 0;
+ 		dprintf(INFO,"fastboot: %s\n", buffer);
+ 
+@@ -602,6 +606,11 @@
+ #endif
+ 
+ 		fastboot_state = STATE_COMMAND;
++		if (!tabs3_fastboot_command_allowed((const char *)buffer)) {
++			fastboot_fail("Recovery fastboot supports RAM boot only; use tabs3-recovery for writes");
++			tabs3_fastboot_end_command();
++			goto again;
++		}
+ 
+ 		for (cmd = cmdlist; cmd; cmd = cmd->next) {
+ 			const char *arg = (const char*)&buffer[cmd->prefix_len];
+@@ -633,6 +642,7 @@
+ 				}
+ 			}
+ #endif
++			tabs3_fastboot_end_command();
+ 			goto again;
+ 		}
+ 
+@@ -640,6 +650,7 @@
+ 			fastboot_info("Check 'fastboot oem help' for a list of supported commands.");
+ 
+ 		fastboot_fail("unknown command");
++		tabs3_fastboot_end_command();
+ 
+ 	}
+ 	fastboot_state = STATE_OFFLINE;
+@@ -762,6 +773,7 @@
+ 	thread_resume(thr);
+ 
+ 	usb_if.udc_start();
++	tabs3_fastboot_start();
+ 
+ 	return 0;
+ 
+@@ -777,5 +789,6 @@
+ 
+ void fastboot_stop(void)
+ {
++	tabs3_fastboot_stop();
+ 	usb_if.udc_stop();
+ }
+--- a/lk2nd/project/base.mk
++++ b/lk2nd/project/base.mk
+@@ -84,3 +84,10 @@
+ ifeq ($(EMMC_BOOT), 1)
+ MODULES += lk2nd/boot
+ endif
++
++ifeq ($(LK2ND_RECOVERY_FASTBOOT), 1)
++ifneq ($(LK2ND_FORCE_RECOVERY):$(LK2ND_PARTITION_BASE),1:recovery)
++$(error Recovery fastboot requires the forced-recovery build)
++endif
++DEFINES += LK2ND_RECOVERY_FASTBOOT=1
++endif
+--- a/lk2nd/rules.mk
++++ b/lk2nd/rules.mk
+@@ -22,4 +22,8 @@
+ $(BUILDDIR)/$(LOCAL_DIR)/%.o: CFLAGS := $(CFLAGS) -Wmissing-prototypes
+ 
+ OBJS += $(LOCAL_DIR)/init.o
++ifeq ($(LK2ND_RECOVERY_FASTBOOT), 1)
++OBJS += $(LOCAL_DIR)/recovery-fastboot.o
++endif
++
+ include $(LOCAL_DIR)/util/rules.mk
+--- a/lk2nd/device/menu/menu.c
++++ b/lk2nd/device/menu/menu.c
+@@ -15,6 +15,7 @@
+ #include <lk2nd/device/keys.h>
+ #include <lk2nd/util/minmax.h>
+ #include <lk2nd/version.h>
++#include <lk2nd/recovery-fastboot.h>
+ 
+ #include "../device.h"
+ 
+@@ -130,8 +131,10 @@
+ 	boot_into_recovery = 1;
+ 	cmd_continue(NULL, NULL, 0);
+ }
++#if !LK2ND_RECOVERY_FASTBOOT
+ static void opt_bootloader(void) { reboot_device(FASTBOOT_MODE); }
+ static void opt_edl(void)        { reboot_device(EMERGENCY_DLOAD); }
++#endif
+ static void opt_shutdown(void)   { shutdown_device(); }
+ 
+ static struct {
+@@ -142,8 +145,10 @@
+ 	{ "  Reboot  ", GREEN,  opt_reboot },
+ 	{ " Continue ", WHITE,  opt_continue },
+ 	{ " Recovery ", ORANGE, opt_recovery },
++#if !LK2ND_RECOVERY_FASTBOOT
+ 	{ "Bootloader", ORANGE, opt_bootloader },
+ 	{ "    EDL   ", RED,    opt_edl },
++#endif
+ 	{ " Shutdown ", RED,    opt_shutdown },
+ };
+ 
+@@ -267,7 +272,10 @@
+ 				y, incr, true, ">> %s <<",
+ 				menu_options[sel].name
+ 			);
+-			menu_options[sel].action();
++			if (tabs3_fastboot_begin_command()) {
++				menu_options[sel].action();
++				tabs3_fastboot_end_command();
++			}
+ 			break;
+ 		case KEY_VOLUMEUP:
+ 			if (sel == 0)

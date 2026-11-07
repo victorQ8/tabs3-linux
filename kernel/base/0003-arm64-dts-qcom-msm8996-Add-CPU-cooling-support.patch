@@ -1,0 +1,160 @@
+From 75f96c0beb9d4799bca9e060d637755ef529b402 Mon Sep 17 00:00:00 2001
+From: Yassine Oudjana <y.oudjana@protonmail.com>
+Date: Fri, 4 Jun 2021 15:03:39 +0400
+Subject: [PATCH] arm64: dts: qcom: msm8996: Add CPU cooling support
+
+Add second trip points and cooling maps for all CPUs.
+
+Fixes: 90173a954a22 ("arm64: dts: qcom: msm8996: Add CPU opps")
+Signed-off-by: Yassine Oudjana <y.oudjana@protonmail.com>
+Tested-by: Guilherme G. Piccoli <gpiccoli@igalia.com>
+Link: https://lore.kernel.org/linux-arm-msm/jmayJcXoExAK2G7UBIXMz5CDN0BYgYkFZguHlPNRFOU@cp4-web-038.plabs.ch/
+(cherry picked from commit 699af09973d95f7d3bd1de583a91725cb217bef5)
+---
+ arch/arm64/boot/dts/qcom/msm8996.dtsi | 84 +++++++++++++++++++++++++--
+ 1 file changed, 80 insertions(+), 4 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/qcom/msm8996.dtsi b/arch/arm64/boot/dts/qcom/msm8996.dtsi
+index 33608b1d7d0..4ab25787e9a 100644
+--- a/arch/arm64/boot/dts/qcom/msm8996.dtsi
++++ b/arch/arm64/boot/dts/qcom/msm8996.dtsi
+@@ -3791,7 +3791,13 @@
+ 
+ 			trips {
+ 				cpu0_alert0: trip-point0 {
+-					temperature = <75000>;
++					temperature = <85000>;
++					hysteresis = <2000>;
++					type = "passive";
++				};
++
++				cpu0_alert1: trip-point1 {
++					temperature = <90000>;
+ 					hysteresis = <2000>;
+ 					type = "passive";
+ 				};
+@@ -3802,6 +3808,19 @@
+ 					type = "critical";
+ 				};
+ 			};
++
++			cooling-maps {
++				map0 {
++					trip = <&cpu0_alert0>;
++					cooling-device = <&cpu0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
++							 <&cpu1 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++				};
++				map1 {
++					trip = <&cpu0_alert1>;
++					cooling-device = <&cpu0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
++							 <&cpu1 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++				};
++			};
+ 		};
+ 
+ 		cpu1-thermal {
+@@ -3811,7 +3830,13 @@
+ 
+ 			trips {
+ 				cpu1_alert0: trip-point0 {
+-					temperature = <75000>;
++					temperature = <85000>;
++					hysteresis = <2000>;
++					type = "passive";
++				};
++
++				cpu1_alert1: trip-point1 {
++					temperature = <90000>;
+ 					hysteresis = <2000>;
+ 					type = "passive";
+ 				};
+@@ -3822,6 +3847,19 @@
+ 					type = "critical";
+ 				};
+ 			};
++
++			cooling-maps {
++				map0 {
++					trip = <&cpu1_alert0>;
++					cooling-device = <&cpu0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
++							 <&cpu1 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++				};
++				map1 {
++					trip = <&cpu1_alert1>;
++					cooling-device = <&cpu0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
++							 <&cpu1 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++				};
++			};
+ 		};
+ 
+ 		cpu2-thermal {
+@@ -3831,7 +3869,13 @@
+ 
+ 			trips {
+ 				cpu2_alert0: trip-point0 {
+-					temperature = <75000>;
++					temperature = <85000>;
++					hysteresis = <2000>;
++					type = "passive";
++				};
++
++				cpu2_alert1: trip-point1 {
++					temperature = <90000>;
+ 					hysteresis = <2000>;
+ 					type = "passive";
+ 				};
+@@ -3842,6 +3886,19 @@
+ 					type = "critical";
+ 				};
+ 			};
++
++			cooling-maps {
++				map0 {
++					trip = <&cpu2_alert0>;
++					cooling-device = <&cpu2 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
++							 <&cpu3 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++				};
++				map1 {
++					trip = <&cpu2_alert1>;
++					cooling-device = <&cpu2 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
++							 <&cpu3 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++				};
++			};
+ 		};
+ 
+ 		cpu3-thermal {
+@@ -3851,7 +3908,13 @@
+ 
+ 			trips {
+ 				cpu3_alert0: trip-point0 {
+-					temperature = <75000>;
++					temperature = <85000>;
++					hysteresis = <2000>;
++					type = "passive";
++				};
++
++				cpu3_alert1: trip-point1 {
++					temperature = <90000>;
+ 					hysteresis = <2000>;
+ 					type = "passive";
+ 				};
+@@ -3862,6 +3925,19 @@
+ 					type = "critical";
+ 				};
+ 			};
++
++			cooling-maps {
++				map0 {
++					trip = <&cpu3_alert0>;
++					cooling-device = <&cpu2 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
++							 <&cpu3 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++				};
++				map1 {
++					trip = <&cpu3_alert1>;
++					cooling-device = <&cpu2 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
++							 <&cpu3 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++				};
++			};
+ 		};
+ 
+ 		gpu-top-thermal {

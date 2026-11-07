@@ -1,0 +1,20 @@
+#!/bin/sh
+set -eu
+
+# The SM-T825 QCA6174 trains its PCIe link shortly after the qcom-pcie
+# driver's link timeout, so it is not enumerated at boot. Rescan until it
+# appears. Only runs on the gts3llte device tree.
+tr '\000' '\n' < /sys/firmware/devicetree/base/compatible | grep -qx 'samsung,gts3llte' || exit 0
+[ -e /sys/bus/pci/devices/0000:00:00.0 ] || exit 0
+
+tries=0
+while [ ! -e /sys/bus/pci/devices/0000:01:00.0 ]; do
+    tries=$((tries + 1))
+    if [ "$tries" -gt 60 ]; then
+        echo 'QCA6174 did not appear on PCIe0' >&2
+        exit 1
+    fi
+    echo 1 > /sys/bus/pci/rescan
+    sleep 0.5
+done
+echo "QCA6174 on PCIe0 after $tries rescan(s)"

@@ -1,0 +1,61 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/* Fixed firmware carve-outs inside the stock modem and peripheral regions. */
+
+/*
+ * Firmware carve-outs. This tablet's signed images span more than the
+ * mainline MSM8996 regions: modem.mdt 0x6c00000 at 0x88800000 (Samsung's
+ * stock modem region), the relocatable adsp.mdt 0x2100000, slpi.mdt
+ * 0xa00000 and venus.mdt 0x4ff020. Stock loads ADSP, Venus, SLPI and the
+ * GPU zap image dynamically into one peripheral region,
+ * 0x8f400000-0x92500000 (49 MiB, exactly those four), and TrustZone only
+ * authenticates them inside it (package 52 tried the RAM right after it for
+ * the SLPI: "failed to authenticate image"). Lay out the fixed mainline
+ * regions inside it instead: ADSP, GPU zap, SLPI and Venus fill it. The
+ * modem's MBA is not authenticated by TrustZone (the modem's own
+ * authenticator runs it, and the hypervisor assigns its memory), so it
+ * lives right after the peripheral region, where stock allocated it only
+ * until the modem was up (package 56; packages 53-55 kept it inside, in
+ * Venus's place).
+ */
+/ {
+	reserved-memory {
+		/delete-node/ mpss@88800000;
+		mpss_mem: mpss@88800000 {
+			reg = <0x0 0x88800000 0x0 0x6c00000>;
+			no-map;
+		};
+
+		/delete-node/ adsp@8ea00000;
+		adsp_mem: adsp@8f400000 {
+			reg = <0x0 0x8f400000 0x0 0x2100000>;
+			no-map;
+		};
+
+		/delete-node/ gpu@90f00000;
+		gpu_mem: gpu@91500000 {
+			compatible = "shared-dma-pool";
+			reg = <0x0 0x91500000 0x0 0x100000>;
+			no-map;
+		};
+
+		/delete-node/ slpi@90500000;
+		slpi_mem: slpi@91600000 {
+			reg = <0x0 0x91600000 0x0 0xa00000>;
+			no-map;
+		};
+
+		/delete-node/ venus@91000000;
+		venus_mem: venus@92000000 {
+			reg = <0x0 0x92000000 0x0 0x500000>;
+			no-map;
+		};
+
+		/delete-node/ mba@91500000;
+		mba_mem: mba@92500000 {
+			reg = <0x0 0x92500000 0x0 0x200000>;
+			no-map;
+		};
+
+		/delete-node/ memory@91700000;
+	};
+};

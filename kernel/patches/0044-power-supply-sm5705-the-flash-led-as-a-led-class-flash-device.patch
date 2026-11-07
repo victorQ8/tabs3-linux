@@ -1,0 +1,345 @@
+From: tabS3 bring-up <noreply@localhost>
+Subject: [PATCH] power: supply: sm5705: the flash LED as a LED class flash device
+
+The Galaxy Tab S3's rear flash LED hangs on the SM5705's first flash
+output. Register it as a LED class flash device from a "led" child with
+the flash LED properties: brightness is the torch in 10 mA steps up to
+led-max-microamp, flash_brightness and flash_strobe a pulse that the
+chip's one-shot timer ends (flash-max-timeout-us, 100 ms steps). The
+torch runs from VBUS while a source feeds the buck and a flash pulse
+always from the battery, as the vendor's operation table does: the USB
+OTG boost serves while the port is sourced, and the charger's flash
+boost mode (operation mode 6, 4.5 V) otherwise, held until the LED
+ends, with the buck-off and charging modes applied again after it.
+Register layout from the vendor's leds-sm5705 driver.
+
+Assisted-by: Claude:claude-fable-5-1
+---
+diff -ruN a/drivers/power/supply/Kconfig b/drivers/power/supply/Kconfig
+--- a/drivers/power/supply/Kconfig	2026-10-15 16:03:02.420316180 +0300
++++ b/drivers/power/supply/Kconfig	2026-10-15 16:03:02.496822137 +0300
+@@ -311,9 +311,11 @@
+ config CHARGER_SM5705
+ 	tristate "Silicon Mitus SM5705 charger"
+ 	depends on I2C && IIO && GPIOLIB
++	depends on LEDS_CLASS_FLASH || !LEDS_CLASS_FLASH
+ 	help
+ 	  SM-T825 charging control, temperature monitoring and fail-closed
+-	  current limits for the Silicon Mitus SM5705.
++	  current limits for the Silicon Mitus SM5705, and its flash LED as a
++	  LED class flash device where the device tree describes one.
+ 
+ config BATTERY_BQ27XXX
+ 	tristate "BQ27xxx battery driver"
+diff -ruN a/drivers/power/supply/sm5705_charger.c b/drivers/power/supply/sm5705_charger.c
+--- a/drivers/power/supply/sm5705_charger.c	2026-10-15 16:03:02.420159103 +0300
++++ b/drivers/power/supply/sm5705_charger.c	2026-10-15 19:56:23.260627562 +0300
+@@ -5,12 +5,14 @@
+  */
+ #include <linux/gpio/consumer.h>
+ #include <linux/iio/consumer.h>
++#include <linux/led-class-flash.h>
+ #include <linux/mutex.h>
+ #include <linux/pm.h>
+ #include <linux/i2c.h>
+ #include <linux/module.h>
+ #include <linux/of.h>
+ #include <linux/power_supply.h>
++#include <linux/property.h>
+ #include <linux/power/sm5705_charger.h>
+ #include <linux/regulator/driver.h>
+ #include <linux/workqueue.h>
+@@ -52,6 +54,21 @@
+ #define SM5705_FLEDCNTL6_BSTOUT		GENMASK(3, 0)
+ #define SM5705_BSTOUT_4500MV		0x5
+ #define SM5705_BSTOUT_5100MV		0xb
++/* The first flash LED: [1:0] of CNTL1 is the mode, CNTL2 the one-shot
++ * timer ([4] off, [3:0] 100 ms + 100 ms steps), CNTL3 the flash current
++ * (300 mA + 25 mA steps up to 700, 50 mA steps above), CNTL4 the torch
++ * current (10 mA + 10 mA steps). Operation mode 6 boosts for the LED.
++ */
++#define SM5705_FLED1CNTL1	0x17
++#define SM5705_FLED1CNTL1_MODE		GENMASK(1, 0)
++#define SM5705_FLED_OFF			0
++#define SM5705_FLED_TORCH		1
++#define SM5705_FLED_FLASH		2
++#define SM5705_FLED1CNTL2	0x18
++#define SM5705_FLED1CNTL2_TIMER_OFF	BIT(4)
++#define SM5705_FLED1CNTL3	0x19
++#define SM5705_FLED1CNTL4	0x1a
++#define SM5705_MODE_FLASH_BOOST	6
+ #define SM5705_DEVICEID		0x37
+ 
+ #define SM5705_POLL_MS		1000
+@@ -97,6 +114,10 @@
+ 	bool muic_held;		/* D+/D- held on USB, automatic switching off */
+ 	int partner_ua;		/* the partner's contract while it supplies */
+ 	u8 muic_ctrl, muic_mansw1;
++	struct led_classdev_flash fled;
++	struct delayed_work fled_off;	/* ends a flash pulse after the chip's timer */
++	bool fled_boost;	/* operation mode FLASH_BOOST held for the LED */
++	u32 flash_ua;
+ };
+ 
+ static int sm5705_chg_read(struct sm5705_chg *chg, u8 reg, u8 *val)
+@@ -203,7 +224,8 @@
+ {
+ 	int err, ret;
+ 
+-	err = sm5705_update_verified(chg, SM5705_CNTL, SM5705_CNTL_MODE, SM5705_MODE_CHG_ON);
++	err = sm5705_update_verified(chg, SM5705_CNTL, SM5705_CNTL_MODE,
++				     chg->fled_boost ? SM5705_MODE_FLASH_BOOST : SM5705_MODE_CHG_ON);
+ 	if (err)
+ 		return err;
+ 	chg->otg_on = false;
+@@ -310,6 +332,11 @@
+ 
+ 	if (chg->suspended == suspended)
+ 		return 0;
++	if (chg->fled_boost) {
++		/* The LED holds the mode; its end applies the new one. */
++		chg->suspended = suspended;
++		return 0;
++	}
+ 	ret = sm5705_update_verified(chg, SM5705_CNTL, SM5705_CNTL_MODE,
+ 				     suspended ? SM5705_MODE_SUSPEND : SM5705_MODE_CHG_ON);
+ 	if (ret)
+@@ -419,6 +446,7 @@
+ 		dev_err_ratelimited(&chg->client->dev, "cannot confirm charging disabled\n");
+ 	/* Never leave the system on the battery after a fault. */
+ 	chg->force_discharge = false;
++	chg->fled_boost = false;
+ 	if (chg->suspended &&
+ 	    !sm5705_update_verified(chg, SM5705_CNTL, SM5705_CNTL_MODE, SM5705_MODE_CHG_ON))
+ 		chg->suspended = false;
+@@ -774,6 +802,219 @@
+ 	.n_voltages = 1,
+ };
+ 
++/*
++ * The flash LED on the SM5705's first flash output as a LED class flash
++ * device: brightness is the torch in 10 mA steps, flash_brightness and
++ * flash_strobe a pulse that the chip's one-shot timer ends. The torch runs
++ * from VBUS while a source feeds the buck and a flash pulse always from
++ * the battery (the vendor's operation table); the USB OTG boost serves
++ * while the port is sourced, and the charger's flash boost mode (4.5 V)
++ * otherwise, held until the LED ends.
++ */
++#if IS_ENABLED(CONFIG_LEDS_CLASS_FLASH)
++static struct sm5705_chg *sm5705_fled_chg(struct led_classdev_flash *fled)
++{
++	return container_of(fled, struct sm5705_chg, fled);
++}
++
++/* Called with lock held. */
++static int sm5705_fled_power(struct sm5705_chg *chg, bool on, bool flash)
++{
++	u8 s1 = 0;
++	int ret;
++
++	if (!on) {
++		if (!chg->fled_boost)
++			return 0;
++		chg->fled_boost = false;
++		return sm5705_update_verified(chg, SM5705_CNTL, SM5705_CNTL_MODE,
++					      chg->suspended ? SM5705_MODE_SUSPEND : SM5705_MODE_CHG_ON);
++	}
++	if (chg->fled_boost || chg->otg_on)
++		return 0;
++	ret = sm5705_chg_read(chg, SM5705_STATUS1, &s1);
++	if (ret)
++		return ret;
++	if (!flash && (s1 & SM5705_STATUS1_VBUSPOK) && !chg->suspended)
++		return 0;
++	/* The boost runs from the battery. */
++	if (!sm5705_otg_temp_ok(chg))
++		return -ERANGE;
++	ret = sm5705_update_verified(chg, SM5705_FLEDCNTL6, SM5705_FLEDCNTL6_BSTOUT,
++				     SM5705_BSTOUT_4500MV);
++	if (!ret)
++		ret = sm5705_update_verified(chg, SM5705_CNTL, SM5705_CNTL_MODE,
++					     SM5705_MODE_FLASH_BOOST);
++	if (ret)
++		return ret;
++	chg->fled_boost = true;
++	return 0;
++}
++
++/* Called with lock held. */
++static int sm5705_fled_mode(struct sm5705_chg *chg, u8 mode)
++{
++	return sm5705_update_verified(chg, SM5705_FLED1CNTL1, SM5705_FLED1CNTL1_MODE, mode);
++}
++
++/* Called with lock held: the LED off and the charger's mode back. */
++static int sm5705_fled_end(struct sm5705_chg *chg)
++{
++	int err = sm5705_fled_mode(chg, SM5705_FLED_OFF);
++	int ret = sm5705_fled_power(chg, false, false);
++
++	return err ?: ret;
++}
++
++static int sm5705_torch_set(struct led_classdev *cdev, enum led_brightness value)
++{
++	struct sm5705_chg *chg = sm5705_fled_chg(lcdev_to_flcdev(cdev));
++	int ret;
++
++	mutex_lock(&chg->lock);
++	cancel_delayed_work(&chg->fled_off);
++	if (value == LED_OFF) {
++		ret = sm5705_fled_end(chg);
++		goto out;
++	}
++	ret = sm5705_update_verified(chg, SM5705_FLED1CNTL4, 0x1f, value - 1);
++	if (!ret)
++		ret = sm5705_fled_power(chg, true, false);
++	if (!ret)
++		ret = sm5705_fled_mode(chg, SM5705_FLED_TORCH);
++	if (ret)
++		sm5705_fled_end(chg);
++out:
++	mutex_unlock(&chg->lock);
++	return ret;
++}
++
++static int sm5705_flash_brightness_set(struct led_classdev_flash *fled, u32 brightness)
++{
++	sm5705_fled_chg(fled)->flash_ua = brightness;
++	return 0;
++}
++
++static int sm5705_flash_strobe_set(struct led_classdev_flash *fled, bool state)
++{
++	struct sm5705_chg *chg = sm5705_fled_chg(fled);
++	u32 ma = clamp_t(u32, chg->flash_ua / 1000, 300, 1500);
++	u32 ms = clamp_t(u32, fled->timeout.val / 1000, 100, 1600);
++	u8 current_code = ma < 700 ? (ma - 300) / 25 : (ma - 700) / 50 + 15;
++	int ret;
++
++	mutex_lock(&chg->lock);
++	cancel_delayed_work(&chg->fled_off);
++	if (!state) {
++		ret = sm5705_fled_end(chg);
++		goto out;
++	}
++	ret = sm5705_update_verified(chg, SM5705_FLED1CNTL2,
++				     SM5705_FLED1CNTL2_TIMER_OFF | 0xf, ms / 100 - 1);
++	if (!ret)
++		ret = sm5705_update_verified(chg, SM5705_FLED1CNTL3, 0x1f, current_code);
++	if (!ret)
++		ret = sm5705_fled_power(chg, true, true);
++	if (!ret)
++		ret = sm5705_fled_mode(chg, SM5705_FLED_FLASH);
++	if (ret)
++		sm5705_fled_end(chg);
++	else
++		schedule_delayed_work(&chg->fled_off, msecs_to_jiffies(ms + 100));
++out:
++	mutex_unlock(&chg->lock);
++	return ret;
++}
++
++static int sm5705_flash_strobe_get(struct led_classdev_flash *fled, bool *state)
++{
++	*state = delayed_work_pending(&sm5705_fled_chg(fled)->fled_off);
++	return 0;
++}
++
++/* The core keeps fled->timeout.val; the strobe writes it. */
++static int sm5705_flash_timeout_set(struct led_classdev_flash *fled, u32 timeout)
++{
++	return 0;
++}
++
++static void sm5705_fled_off_work(struct work_struct *work)
++{
++	struct sm5705_chg *chg = container_of(work, struct sm5705_chg, fled_off.work);
++
++	mutex_lock(&chg->lock);
++	sm5705_fled_end(chg);
++	mutex_unlock(&chg->lock);
++}
++
++static const struct led_flash_ops sm5705_fled_ops = {
++	.flash_brightness_set = sm5705_flash_brightness_set,
++	.strobe_set = sm5705_flash_strobe_set,
++	.strobe_get = sm5705_flash_strobe_get,
++	.timeout_set = sm5705_flash_timeout_set,
++};
++
++static void sm5705_fled_stop(void *data)
++{
++	struct sm5705_chg *chg = data;
++
++	cancel_delayed_work_sync(&chg->fled_off);
++	mutex_lock(&chg->lock);
++	sm5705_fled_end(chg);
++	mutex_unlock(&chg->lock);
++}
++
++/* A "led" child with the flash LED properties registers the LED. */
++static int sm5705_fled_register(struct sm5705_chg *chg)
++{
++	struct device *dev = &chg->client->dev;
++	struct led_init_data init_data = {};
++	struct fwnode_handle *node;
++	u32 torch_ua = 180000, flash_ua = 1200000, timeout_us = 800000;
++	int ret;
++
++	node = device_get_named_child_node(dev, "led");
++	if (!node)
++		return 0;
++	fwnode_property_read_u32(node, "led-max-microamp", &torch_ua);
++	fwnode_property_read_u32(node, "flash-max-microamp", &flash_ua);
++	fwnode_property_read_u32(node, "flash-max-timeout-us", &timeout_us);
++	INIT_DELAYED_WORK(&chg->fled_off, sm5705_fled_off_work);
++	chg->fled.led_cdev.max_brightness = clamp_t(u32, (torch_ua / 1000 - 10) / 10 + 1, 1, 32);
++	chg->fled.led_cdev.brightness_set_blocking = sm5705_torch_set;
++	chg->fled.led_cdev.flags = LED_DEV_CAP_FLASH;
++	chg->fled.ops = &sm5705_fled_ops;
++	chg->fled.brightness.min = 300000;
++	chg->fled.brightness.max = clamp_t(u32, flash_ua, 300000, 1500000);
++	chg->fled.brightness.step = 25000;
++	chg->fled.brightness.val = chg->fled.brightness.max;
++	chg->flash_ua = chg->fled.brightness.val;
++	chg->fled.timeout.min = 100000;
++	chg->fled.timeout.max = clamp_t(u32, timeout_us, 100000, 1600000);
++	chg->fled.timeout.step = 100000;
++	chg->fled.timeout.val = chg->fled.timeout.max;
++	init_data.fwnode = node;
++	mutex_lock(&chg->lock);
++	ret = sm5705_fled_mode(chg, SM5705_FLED_OFF);
++	mutex_unlock(&chg->lock);
++	if (!ret)
++		ret = devm_add_action_or_reset(dev, sm5705_fled_stop, chg);
++	if (!ret)
++		ret = devm_led_classdev_flash_register_ext(dev, &chg->fled, &init_data);
++	fwnode_handle_put(node);
++	if (ret)
++		return dev_err_probe(dev, ret, "cannot register the flash LED\n");
++	dev_info(dev, "flash LED: torch to %u mA, flash to %u mA for %u ms at most\n",
++		 torch_ua / 1000, chg->fled.brightness.max / 1000, chg->fled.timeout.max / 1000);
++	return 0;
++}
++#else
++static int sm5705_fled_register(struct sm5705_chg *chg)
++{
++	return 0;
++}
++#endif
++
+ static void sm5705_chg_poll(struct work_struct *work)
+ {
+ 	struct sm5705_chg *chg = container_of(work, struct sm5705_chg, poll.work);
+@@ -877,6 +1118,10 @@
+ 	if (IS_ERR(chg->otg))
+ 		return dev_err_probe(dev, PTR_ERR(chg->otg), "cannot register USB OTG VBUS\n");
+ 
++	ret = sm5705_fled_register(chg);
++	if (ret)
++		return ret;
++
+ 	schedule_delayed_work(&chg->poll, 0);
+ 
+ 	dev_info(dev, "SM5705 charger, device ID 0x%02x\n", id);

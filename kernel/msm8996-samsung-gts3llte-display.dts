@@ -1,0 +1,25 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/* SM-T825 display variant, also used by the recovery: panel, touch, Wi-Fi,
+ * Bluetooth, charging, buttons and microSD. Each topic is a .dtsi below;
+ * pin numbers and supply voltages match this tablet's stock DTB.
+ */
+#include "msm8996-samsung-gts3llte-emmc.dts"
+
+/* Allow only verified TE, panel, I2C, touch interrupt, PCIe0 (Wi-Fi),
+ * BLSP1 UART2 (Bluetooth, TLMM 41-44), the SM5705 bit-banged I2C pins
+ * (6/7, 32/33; the stock kernel drives them the same way) and the stock
+ * touch-key pins (I2C 21/22, interrupt 64, LED enable 118) and the microSD
+ * card detect (95). All other pins, including the secure fingerprint/SPI
+ * pins, remain reserved.
+ */
+&tlmm {
+	gpio-reserved-ranges = <0 6>, <8 2>, <11 10>, <23 9>, <34 1>, <38 3>, <47 4>,
+			       <53 11>, <65 30>, <96 22>, <119 4>, <124 19>, <144 6>;
+};
+
+#include "msm8996-samsung-gts3llte-panel.dtsi"
+#include "msm8996-samsung-gts3llte-touch.dtsi"
+#include "msm8996-samsung-gts3llte-wifi-bt.dtsi"
+#include "msm8996-samsung-gts3llte-power.dtsi"
+#include "msm8996-samsung-gts3llte-input.dtsi"
+#include "msm8996-samsung-gts3llte-sdcard.dtsi"

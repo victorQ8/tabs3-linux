@@ -1,0 +1,44 @@
+From 17b07fbf0a7d3afecbda73a5d48c21dd16fb240c Mon Sep 17 00:00:00 2001
+From: Vladimir Lypak <vladimir.lypak@gmail.com>
+Date: Sat, 18 May 2024 15:44:28 +0300
+Subject: [PATCH] media: qcom: venus: move 8x8 transform to V3
+
+According to downsream H264_TRANSFORM_8X8 is supported on HFI V3.
+
+Signed-off-by: Vladimir Lypak <vladimir.lypak@gmail.com>
+---
+ drivers/media/platform/qcom/venus/hfi_cmds.c | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/media/platform/qcom/venus/hfi_cmds.c b/drivers/media/platform/qcom/venus/hfi_cmds.c
+index 778f4988d97e..4e2a893618df 100644
+--- a/drivers/media/platform/qcom/venus/hfi_cmds.c
++++ b/drivers/media/platform/qcom/venus/hfi_cmds.c
+@@ -1174,6 +1174,13 @@ pkt_session_set_property_3xx(struct hfi_session_set_property_pkt *pkt,
+ 		pkt->shdr.hdr.size += sizeof(u32) + sizeof(*intra);
+ 		break;
+ 	}
++	case HFI_PROPERTY_PARAM_VENC_H264_TRANSFORM_8X8: {
++		struct hfi_h264_8x8_transform *in = pdata, *tm = prop_data;
++
++		tm->enable_type = in->enable_type;
++		pkt->shdr.hdr.size += sizeof(u32) + sizeof(*tm);
++		break;
++	}
+ 	case HFI_PROPERTY_PARAM_VDEC_CONTINUE_DATA_TRANSFER:
+ 		/* for 3xx fw version session_continue is used */
+ 		break;
+@@ -1251,13 +1258,6 @@ pkt_session_set_property_4xx(struct hfi_session_set_property_pkt *pkt,
+ 		break;
+ 	}
+ 
+-	case HFI_PROPERTY_PARAM_VENC_H264_TRANSFORM_8X8: {
+-		struct hfi_h264_8x8_transform *in = pdata, *tm = prop_data;
+-
+-		tm->enable_type = in->enable_type;
+-		pkt->shdr.hdr.size += sizeof(u32) + sizeof(*tm);
+-		break;
+-	}
+ 	case HFI_PROPERTY_PARAM_VENC_SESSION_QP_RANGE_V2: {
+ 		struct hfi_quantization_range_v2 *in = pdata, *range = prop_data;
+ 		u32 min_qp, max_qp;

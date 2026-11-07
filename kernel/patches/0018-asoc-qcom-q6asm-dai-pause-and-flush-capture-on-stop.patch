@@ -1,0 +1,32 @@
+Subject: [PATCH] ASoC: qcom: q6asm-dai: pause and flush capture on stop
+
+Stopping a stream sends ASM_DATA_CMD_EOS in both directions. On the SM-T825
+(Samsung's MSM8996 ADSP firmware), a capture stream that received EOS then
+fails ASM_STREAM_CMD_CLOSE with ADSP_EFAILED, so re-preparing the PCM (as
+PipeWire does between recordings) fails in a loop. Qualcomm's downstream
+msm-pcm-q6-v2 never sends EOS to capture streams; it pauses and flushes
+them. Do the same and keep EOS for playback.
+
+--- a/sound/soc/qcom/qdsp6/q6asm-dai.c
++++ b/sound/soc/qcom/qdsp6/q6asm-dai.c
+@@ -348,6 +348,20 @@
+ 				       0, 0, 0);
+ 		break;
+ 	case SNDRV_PCM_TRIGGER_STOP:
++		/*
++		 * EOS only makes sense for playback. Samsung's MSM8996 ADSP
++		 * then refuses to close a capture stream, so stop capture
++		 * like the downstream driver does: pause, then flush.
++		 */
++		if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
++			ret = q6asm_cmd_nowait(prtd->audio_client,
++					       prtd->stream_id, CMD_PAUSE);
++			if (!ret)
++				ret = q6asm_cmd_nowait(prtd->audio_client,
++						       prtd->stream_id,
++						       CMD_FLUSH);
++			break;
++		}
+ 		ret = q6asm_cmd_nowait(prtd->audio_client, prtd->stream_id,
+ 				       CMD_EOS);
+ 		break;

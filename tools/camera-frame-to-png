@@ -1,0 +1,66 @@
+#!/usr/bin/env python3
+"""Decode a raw frame from tools/camera-capture-test into a viewable PNG.
+
+Usage: camera-frame-to-png RAW OUT.png [WIDTHxHEIGHT] [BAYER_ORDER]
+
+RAW is the capture file (or a gzip of it); the last complete frame in it is
+used. The frames are 10-bit packed Bayer (four pixels in five bytes, as the
+V4L2 pBAA family, each row padded to a multiple of 8 bytes), 2104x1560 BGGR
+by default: the IMX258's binned mode with the Bayer order the sensor reports. The output is half size (one pixel per
+2x2 Bayer cell), black level 64 removed, grey-world white balance, gamma 2.2.
+Needs python3-numpy and python3-pil on the PC.
+"""
+import gzip
+import sys
+
+import numpy as np
+from PIL import Image
+
+
+def main():
+    if len(sys.argv) < 3:
+        sys.exit(__doc__)
+    src, dst = sys.argv[1], sys.argv[2]
+    width, height = (int(v) for v in (sys.argv[3] if len(sys.argv) > 3 else '2104x1560').split('x'))
+    order = (sys.argv[4] if len(sys.argv) > 4 else 'BGGR').upper()
+    stride = (width * 10 // 8 + 7) // 8 * 8   # the VFE pads each row to 8 bytes (2632 for 2104)
+    data = open(src, 'rb').read()
+    magic = data.find(b'\x1f\x8b', 0, 4096)   # a gzip stream, possibly after a text header
+    if magic >= 0:
+        data = gzip.decompress(data[magic:])
+    frame_bytes = stride * height
+    if len(data) < frame_bytes:
+        sys.exit(f'{src}: {len(data)} bytes, less than one {width}x{height} frame ({frame_bytes})')
+    frame = np.frombuffer(data[len(data) // frame_bytes * frame_bytes - frame_bytes:][:frame_bytes],
+                          dtype=np.uint8)
+    rows = frame.reshape(height, stride)[:, :width * 10 // 8]   # drop the row padding
+    packed = rows.reshape(height, width // 4, 5).astype(np.uint16)
+    low = packed[:, :, 4]
+    pixels = np.empty((height, width // 4, 4), dtype=np.uint16)
+    for i in range(4):
+        pixels[:, :, i] = (packed[:, :, i] << 2) | ((low >> (2 * i)) & 3)
+    pixels = pixels.reshape(height, width)
+
+    planes = {'R': [], 'G': [], 'B': []}
+    cells = [pixels[0::2, 0::2], pixels[0::2, 1::2], pixels[1::2, 0::2], pixels[1::2, 1::2]]
+    for colour, cell in zip(order, cells):
+        planes[colour].append(cell.astype(np.float32))
+    r, g, b = (sum(planes[c]) / len(planes[c]) for c in 'RGB')
+    for name, plane in (('R', r), ('G', g), ('B', b)):
+        p1, p50, p99 = np.percentile(plane, [1, 50, 99])
+        print(f'{name}: mean {plane.mean():.0f}  p1 {p1:.0f}  p50 {p50:.0f}  p99 {p99:.0f}  '
+              f'saturated {100 * (plane >= 1020).mean():.2f} %  (10-bit, black level 64)')
+
+    black = 64.0
+    r, g, b = (np.clip(plane - black, 0, None) for plane in (r, g, b))
+    grey = max(float(g.mean()), 1.0)
+    r *= grey / max(float(r.mean()), 1.0)
+    b *= grey / max(float(b.mean()), 1.0)
+    white = max(float(np.percentile(g, 99.5)), 1.0)
+    rgb = np.clip(np.stack([r, g, b], axis=2) / white, 0, 1) ** (1 / 2.2)
+    Image.fromarray((rgb * 255).astype(np.uint8), 'RGB').save(dst)
+    print(f'wrote {dst} ({width // 2}x{height // 2}), white point {white:.0f}')
+
+
+if __name__ == '__main__':
+    main()

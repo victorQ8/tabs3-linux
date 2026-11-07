@@ -1,0 +1,52 @@
+#!/usr/bin/env python3
+"""Take a picture with the Tab S3's front or rear camera.
+
+Usage: tabs3-snapshot [--camera front|rear] [--size WxH] [--rotate DEG]
+                      [--focus auto|POSITION|none] [--steps N] [--quiet] OUT.png
+
+The frame is metered by a small exposure loop (tabs3_camera: exposure first,
+then analogue gain, then longer exposures) and decoded at half size with a
+grey-world white balance (colour needs python3-numpy; grey otherwise). Sizes
+are the sensors' modes: front 2576x1932 (default) or 640x480; rear 4208x3120,
+2104x1560 (default) or 1048x780. The rear camera's lens is focused by a
+contrast sweep (--focus auto, the default; a position 0 to 1023 or none
+instead). Run as root; the camera is powered only while the frames are
+taken, a few seconds in all.
+"""
+import argparse
+import sys
+import time
+
+sys.path.insert(0, '/usr/libexec')
+import tabs3_camera  # noqa: E402
+
+DEFAULT_SIZE = {'front': (2576, 1932), 'rear': (2104, 1560)}
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__.split('\n', 1)[0])
+    parser.add_argument('output', help='PNG (or any format PIL writes) to save')
+    parser.add_argument('--camera', choices=('front', 'rear'), default='front')
+    parser.add_argument('--size', help='sensor mode WxH (default: the camera\'s full mode, rear binned)')
+    parser.add_argument('--rotate', type=int, default=0, help='degrees counter-clockwise')
+    parser.add_argument('--focus', default='auto', help="auto (a sweep), a position 0 to 1023, or none")
+    parser.add_argument('--steps', type=int, default=6, help='exposure iterations at most')
+    parser.add_argument('--quiet', action='store_true')
+    args = parser.parse_args()
+    size = tuple(int(v) for v in args.size.split('x')) if args.size else DEFAULT_SIZE[args.camera]
+    focus = None if args.focus == 'none' else 'auto' if args.focus == 'auto' else int(args.focus)
+    log = (lambda msg: None) if args.quiet else (lambda msg: print(msg, flush=True))
+    start = time.monotonic()
+    try:
+        image, cam, stats = tabs3_camera.snapshot(args.camera, size, args.rotate, log, args.steps, focus)
+    except tabs3_camera.CameraError as exc:
+        sys.exit(f'tabs3-snapshot: {exc}')
+    image.save(args.output)
+    log(f'wrote {args.output} ({image.width}x{image.height}, {image.mode}) from a {cam.width}x{cam.height} '
+        f'{cam.order} frame, exposure {cam.exposure * cam.line_s * 1000:.1f} ms, gain {cam.gain:.2f}x, '
+        f'{time.monotonic() - start:.1f} s')
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

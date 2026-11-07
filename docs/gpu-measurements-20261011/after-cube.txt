@@ -1,0 +1,25 @@
+[    7.179315] adreno b00000.gpu: supply vdd not found, using dummy regulator
+[    7.180282] adreno b00000.gpu: supply vddcx not found, using dummy regulator
+[    7.258603] msm_dpu 901000.display-controller: [drm:adreno_request_fw [msm]] loaded qcom/a530_pm4.fw from new location
+[    7.261177] msm_dpu 901000.display-controller: [drm:adreno_request_fw [msm]] loaded qcom/a530_pfp.fw from new location
+[    7.263190] msm_dpu 901000.display-controller: [drm:adreno_request_fw [msm]] loaded qcom/a530v3_gpmu.fw2 from new location
+governor
+simple_ondemand
+cur_freq
+133000000
+available_frequencies
+133000000 214000000 315000000 401800000 510000000 560000000 624000000
+trans_stat
+     From  :   To
+           : 133000000 214000000 315000000 401800000 510000000 560000000 624000000   time(ms)
+* 133000000:         0         0         2         0         0         0         0     51008
+  214000000:         0         0         0         0         0         0         0         0
+  315000000:         2         0         0         0         0         0         1       128
+  401800000:         0         0         0         0         0         0         0         0
+  510000000:         0         0         0         0         0         0         0         0
+  560000000:         0         0         0         0         0         0         0         0
+  624000000:         3         0         1         0         0         0         0       220
+Total transition : 9
+214
+268
+active

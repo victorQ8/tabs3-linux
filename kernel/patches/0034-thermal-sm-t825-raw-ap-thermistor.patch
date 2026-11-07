@@ -1,0 +1,246 @@
+Subject: [PATCH] thermal: add calibrated raw VADC AP thermistor for SM-T825
+
+The stock table maps raw VADC 0x73 codes to tenths of a degree.
+The generic ADC thermal driver reads processed values, so passing this
+raw table to it would apply the wrong conversion. Use the raw IIO API and
+the exact 111 stock calibration points, returning milliCelsius to thermal.
+Out-of-table readings are reported as errors. This is a board-local driver;
+measured chassis temperatures and cooling policy still need validation.
+
+--- a/drivers/thermal/Kconfig
++++ b/drivers/thermal/Kconfig
+@@ -464,6 +464,13 @@
+ 
+ source "drivers/thermal/tegra/Kconfig"
+ 
++config GTS3L_SKIN_THERMAL
++	tristate "Samsung Galaxy Tab S3 AP thermistor"
++	depends on IIO && THERMAL_OF
++	help
++	  Read the SM-T825 AP thermistor using its stock raw VADC calibration.
++	  This complements the SoC junction and battery thermal protections.
++
+ config GENERIC_ADC_THERMAL
+ 	tristate "Generic ADC based thermal sensor"
+ 	depends on IIO
+--- a/drivers/thermal/Makefile
++++ b/drivers/thermal/Makefile
+@@ -61,6 +61,7 @@
+ obj-y				+= tegra/
+ obj-$(CONFIG_HISI_THERMAL)     += hisi_thermal.o
+ obj-y				+= mediatek/
++obj-$(CONFIG_GTS3L_SKIN_THERMAL)	+= gts3l-skin-thermal.o
+ obj-$(CONFIG_GENERIC_ADC_THERMAL)	+= thermal-generic-adc.o
+ obj-$(CONFIG_UNIPHIER_THERMAL)	+= uniphier_thermal.o
+ obj-$(CONFIG_AMLOGIC_THERMAL)     += amlogic_thermal.o
+--- /dev/null
++++ b/drivers/thermal/gts3l-skin-table.h
+@@ -0,0 +1,143 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/* Samsung SM-T825 stock AP thermistor table: raw VADC codes and milliCelsius.
++ * The stock temp_array is in tenths of a degree. Do not apply it to the
++ * VADC driver's generic processed thermistor temperatures.
++ */
++#ifndef GTS3L_SKIN_TABLE_H
++#define GTS3L_SKIN_TABLE_H
++struct gts3l_skin_point { int adc; int mc; };
++static const struct gts3l_skin_point gts3l_skin_table[] = {
++	{ 25831, 90000 },
++	{ 25887, 89000 },
++	{ 25943, 88000 },
++	{ 25998, 87000 },
++	{ 26054, 86000 },
++	{ 26110, 85000 },
++	{ 26155, 84000 },
++	{ 26200, 83000 },
++	{ 26245, 82000 },
++	{ 26290, 81000 },
++	{ 26335, 80000 },
++	{ 26396, 79000 },
++	{ 26457, 78000 },
++	{ 26518, 77000 },
++	{ 26579, 76000 },
++	{ 26640, 75000 },
++	{ 26701, 74000 },
++	{ 26762, 73000 },
++	{ 26824, 72000 },
++	{ 26885, 71000 },
++	{ 26946, 70000 },
++	{ 27029, 69000 },
++	{ 27112, 68000 },
++	{ 27196, 67000 },
++	{ 27279, 66000 },
++	{ 27362, 65000 },
++	{ 27452, 64000 },
++	{ 27542, 63000 },
++	{ 27632, 62000 },
++	{ 27722, 61000 },
++	{ 27812, 60000 },
++	{ 27916, 59000 },
++	{ 28020, 58000 },
++	{ 28125, 57000 },
++	{ 28229, 56000 },
++	{ 28333, 55000 },
++	{ 28467, 54000 },
++	{ 28602, 53000 },
++	{ 28736, 52000 },
++	{ 28871, 51000 },
++	{ 29005, 50000 },
++	{ 29106, 49000 },
++	{ 29206, 48000 },
++	{ 29307, 47000 },
++	{ 29407, 46000 },
++	{ 29508, 45000 },
++	{ 29737, 44000 },
++	{ 29966, 43000 },
++	{ 30196, 42000 },
++	{ 30425, 41000 },
++	{ 30654, 40000 },
++	{ 30817, 39000 },
++	{ 30980, 38000 },
++	{ 31144, 37000 },
++	{ 31307, 36000 },
++	{ 31470, 35000 },
++	{ 31681, 34000 },
++	{ 31891, 33000 },
++	{ 32102, 32000 },
++	{ 32312, 31000 },
++	{ 32523, 30000 },
++	{ 32718, 29000 },
++	{ 32912, 28000 },
++	{ 33107, 27000 },
++	{ 33301, 26000 },
++	{ 33496, 25000 },
++	{ 33752, 24000 },
++	{ 34008, 23000 },
++	{ 34263, 22000 },
++	{ 34519, 21000 },
++	{ 34775, 20000 },
++	{ 34850, 19000 },
++	{ 34925, 18000 },
++	{ 34999, 17000 },
++	{ 35074, 16000 },
++	{ 35149, 15000 },
++	{ 35452, 14000 },
++	{ 35755, 13000 },
++	{ 36058, 12000 },
++	{ 36361, 11000 },
++	{ 36664, 10000 },
++	{ 36808, 9000 },
++	{ 36952, 8000 },
++	{ 37097, 7000 },
++	{ 37241, 6000 },
++	{ 37385, 5000 },
++	{ 37599, 4000 },
++	{ 37812, 3000 },
++	{ 38026, 2000 },
++	{ 38239, 1000 },
++	{ 38453, 0 },
++	{ 38683, -1000 },
++	{ 38913, -2000 },
++	{ 39143, -3000 },
++	{ 39373, -4000 },
++	{ 39603, -5000 },
++	{ 39717, -6000 },
++	{ 39831, -7000 },
++	{ 39944, -8000 },
++	{ 40058, -9000 },
++	{ 40172, -10000 },
++	{ 40320, -11000 },
++	{ 40468, -12000 },
++	{ 40616, -13000 },
++	{ 40764, -14000 },
++	{ 40912, -15000 },
++	{ 41005, -16000 },
++	{ 41098, -17000 },
++	{ 41191, -18000 },
++	{ 41284, -19000 },
++	{ 41377, -20000 },
++};
++
++/* Reject open/short or uncalibrated readings instead of inventing a temperature. */
++static int gts3l_skin_convert(int raw, int *temp)
++{
++	unsigned int i;
++	const unsigned int count = sizeof(gts3l_skin_table) / sizeof(gts3l_skin_table[0]);
++
++	if (raw < gts3l_skin_table[0].adc || raw > gts3l_skin_table[count - 1].adc)
++		return -1;
++	for (i = 1; i < count; i++) {
++		const struct gts3l_skin_point *a = &gts3l_skin_table[i - 1];
++		const struct gts3l_skin_point *b = &gts3l_skin_table[i];
++
++		if (raw <= b->adc) {
++			*temp = a->mc + (raw - a->adc) * (b->mc - a->mc) /
++				(b->adc - a->adc);
++			return 0;
++		}
++	}
++	return -1;
++}
++#endif
+--- /dev/null
++++ b/drivers/thermal/gts3l-skin-thermal.c
+@@ -0,0 +1,62 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/* SM-T825 AP/skin thermistor using Samsung's raw-code calibration. */
++#include <linux/iio/consumer.h>
++#include <linux/module.h>
++#include <linux/of.h>
++#include <linux/platform_device.h>
++#include <linux/thermal.h>
++#include "gts3l-skin-table.h"
++
++struct gts3l_skin {
++	struct iio_channel *adc;
++};
++
++static int gts3l_skin_get_temp(struct thermal_zone_device *tz, int *temp)
++{
++	struct gts3l_skin *skin = thermal_zone_device_priv(tz);
++	int raw, ret;
++
++	ret = iio_read_channel_raw(skin->adc, &raw);
++	if (ret < 0)
++		return ret;
++	if (gts3l_skin_convert(raw, temp))
++		return -ERANGE;
++	return 0;
++}
++
++static const struct thermal_zone_device_ops gts3l_skin_ops = {
++	.get_temp = gts3l_skin_get_temp,
++};
++
++static int gts3l_skin_probe(struct platform_device *pdev)
++{
++	struct device *dev = &pdev->dev;
++	struct thermal_zone_device *tz;
++	struct gts3l_skin *skin;
++
++	skin = devm_kzalloc(dev, sizeof(*skin), GFP_KERNEL);
++	if (!skin)
++		return -ENOMEM;
++	skin->adc = devm_iio_channel_get(dev, "skin");
++	if (IS_ERR(skin->adc))
++		return dev_err_probe(dev, PTR_ERR(skin->adc), "skin ADC unavailable\n");
++	tz = devm_thermal_of_zone_register(dev, 0, skin, &gts3l_skin_ops);
++	return PTR_ERR_OR_ZERO(tz);
++}
++
++static const struct of_device_id gts3l_skin_match[] = {
++	{ .compatible = "samsung,gts3l-ap-thermistor" },
++	{}
++};
++MODULE_DEVICE_TABLE(of, gts3l_skin_match);
++
++static struct platform_driver gts3l_skin_driver = {
++	.probe = gts3l_skin_probe,
++	.driver = {
++		.name = "gts3l-skin-thermal",
++		.of_match_table = gts3l_skin_match,
++	},
++};
++module_platform_driver(gts3l_skin_driver);
++MODULE_DESCRIPTION("SM-T825 raw VADC AP thermistor");
++MODULE_LICENSE("GPL");

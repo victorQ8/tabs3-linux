@@ -1,0 +1,14 @@
+[Unit]
+Description=Limit sustained Tab S3 server heat using supported CPU frequencies
+After=systemd-udev-trigger.service
+Before=multi-user.target
+
+[Service]
+Type=oneshot
+Environment=TABS3_CPU_MAX_KHZ=1000000
+EnvironmentFile=-/etc/default/tabs3-server
+ExecStart=/usr/libexec/tabs3-server-cpu-limit
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

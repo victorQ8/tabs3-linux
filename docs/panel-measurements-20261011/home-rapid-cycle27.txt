@@ -1,0 +1,72 @@
+STARTUP_NO_FIXUP
+15 b0 5a
+ok 4
+24 d8 01 1
+33 (1 bytes)
+15 b0 d0
+ok 4
+24 d1 01 1
+1d (1 bytes)
+15 b0 5a
+ok 4
+24 d8 01 1
+33 (1 bytes)
+15 b0 51
+ok 4
+24 d1 01 1
+02 (1 bytes)
+15 b0 5a
+ok 4
+24 d8 01 1
+33 (1 bytes)
+15 b0 d9
+ok 4
+24 d1 01 1
+e5 (1 bytes)
+15 b0 5a
+ok 4
+24 d8 01 1
+33 (1 bytes)
+15 b0 70
+ok 4
+24 d2 01 1
+08 (1 bytes)
+15 b0 5a
+ok 4
+24 d8 01 1
+33 (1 bytes)
+15 b0 67
+ok 4
+24 d2 01 1
+0f (1 bytes)
+15 b0 5a
+ok 4
+24 d8 01 1
+33 (1 bytes)
+15 b0 36
+ok 4
+24 d2 01 1
+10 (1 bytes)
+15 b0 5a
+ok 4
+24 d8 01 1
+33 (1 bytes)
+15 b0 4d
+ok 4
+24 d2 01 1
+00 (1 bytes)
+15 b0 5a
+ok 4
+24 d8 01 1
+33 (1 bytes)
+15 b0 49
+ok 4
+24 d2 01 1
+99 (1 bytes)
+06 0a 1
+00 (1 bytes)
+06 0e 1
+80 (1 bytes)
+06 0f 1
+80 (1 bytes)
+END

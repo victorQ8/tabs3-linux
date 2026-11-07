@@ -1,0 +1,63 @@
+#!/usr/bin/env python3
+"""Log hardware button events on the SM-T825.
+
+Run on the tablet as root: sudo python3 -I buttons-log [SECONDS]
+Prints one line per key press/release from the power key, Home/Volume Up
+(gpio-keys), Volume Down (PON RESIN) and the Recent/Back touch keys, then a
+per-key summary. Stops after SECONDS (default 120) or Ctrl-C.
+"""
+import glob
+import os
+import select
+import struct
+import sys
+import time
+
+DEVICES = ("pm8941_pwrkey", "pm8941_resin", "gpio-keys", "tm2-touchkey")
+KEYS = {114: "VOLUMEDOWN", 115: "VOLUMEUP", 116: "POWER", 158: "BACK",
+        172: "HOMEPAGE", 580: "APPSELECT"}
+EVENT = struct.Struct("llHHi")  # struct input_event on 64-bit Linux
+EV_KEY = 1
+
+
+def open_devices():
+    fds = {}
+    for path in sorted(glob.glob("/sys/class/input/event*")):
+        with open(os.path.join(path, "device/name")) as f:
+            name = f.read().strip()
+        if name in DEVICES:
+            fd = os.open("/dev/input/" + os.path.basename(path), os.O_RDONLY | os.O_NONBLOCK)
+            fds[fd] = name
+    return fds
+
+
+def main():
+    seconds = float(sys.argv[1]) if len(sys.argv) > 1 else 120
+    fds = open_devices()
+    print("listening:", ", ".join(sorted(fds.values())) or "nothing", flush=True)
+    missing = sorted(set(DEVICES) - set(fds.values()))
+    if missing:
+        print("missing:", ", ".join(missing), flush=True)
+    presses = {}
+    end = time.monotonic() + seconds
+    try:
+        while fds and (left := end - time.monotonic()) > 0:
+            ready, _, _ = select.select(list(fds), [], [], left)
+            for fd in ready:
+                data = os.read(fd, EVENT.size * 64)
+                for off in range(0, len(data) - EVENT.size + 1, EVENT.size):
+                    sec, usec, etype, code, value = EVENT.unpack_from(data, off)
+                    if etype != EV_KEY or value == 2:
+                        continue
+                    key = KEYS.get(code, str(code))
+                    state = "down" if value else "up"
+                    print(f"{sec}.{usec:06d} {fds[fd]:<13} {key:<10} {state}", flush=True)
+                    if value:
+                        presses[key] = presses.get(key, 0) + 1
+    except KeyboardInterrupt:
+        pass
+    print("summary:", ", ".join(f"{k}={v}" for k, v in sorted(presses.items())) or "no presses")
+
+
+if __name__ == "__main__":
+    main()

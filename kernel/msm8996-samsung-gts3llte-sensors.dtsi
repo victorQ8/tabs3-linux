@@ -1,0 +1,85 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Snapdragon Sensor Core (SLPI): the motion sensors sit on the SLPI's own
+ * buses and are reached through its Sensor Manager service over QRTR.
+ * The LTE antenna's Semtech SX9310 grip (SAR) sensor is on a bit-banged I2C
+ * bus of the application processor instead.
+ */
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+
+/*
+ * Grip sensor, from the stock tree: the LTE antenna's SX9310 (stock
+ * i2c@17: SDA TLMM 81, SCL TLMM 82, interrupt TLMM 132) at 0x28, no pulls
+ * (the board has them). Its rails are the sensor DSP's: 2.8 V on L17 and
+ * 1.8 V I/O on LVS2, which the DSP only votes for once it runs (about 8 s
+ * after boot); without the supplies here the probe found no device at 6 s
+ * (ENXIO), while a later bind worked. The stock tree also lists a Wi-Fi
+ * antenna sensor (i2c@19: TLMM 49/50, interrupt 53); nothing answers on
+ * that bus here, so it is not described.
+ */
+/ {
+	i2c-grip-lte {
+		compatible = "i2c-gpio";
+		sda-gpios = <&tlmm 81 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+		scl-gpios = <&tlmm 82 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+		i2c-gpio,delay-us = <2>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&grip_lte_i2c_default>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		proximity@28 {
+			compatible = "semtech,sx9310";
+			reg = <0x28>;
+			interrupt-parent = <&tlmm>;
+			interrupts = <132 IRQ_TYPE_LEVEL_LOW>;
+			vdd-supply = <&vreg_l17a_2p8>;
+			svdd-supply = <&vreg_lvs2a_1p8>;
+			#io-channel-cells = <1>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&grip_lte_int_default>;
+		};
+	};
+};
+
+&tlmm {
+	grip_lte_i2c_default: grip-lte-i2c-default-state {
+		pins = "gpio81", "gpio82";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	grip_lte_int_default: grip-lte-int-default-state {
+		pins = "gpio132";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+};
+
+/* Stock SLPI supplies: CX (L26 corner, the ssc_cx domain), PX and sensors */
+&rpm_requests {
+	regulators-0 {
+		vreg_lvs2a_1p8: lvs2 {
+			regulator-name = "vreg_lvs2a_1p8";
+		};
+
+		/* Stock "vdd_sensor": the sensors' 2.8 V supply while the SLPI runs */
+		vreg_l17a_2p8: l17 {
+			regulator-name = "vreg_l17a_2p8";
+			regulator-min-microvolt = <2800000>;
+			regulator-max-microvolt = <2800000>;
+			regulator-always-on;
+		};
+	};
+};
+
+/* Its carve-out is in the stock peripheral region (carveouts.dtsi) */
+&slpi_pil {
+	firmware-name = "qcom/msm8996/samsung/gts3llte/slpi.mdt";
+	px-supply = <&vreg_lvs2a_1p8>;
+	status = "okay";
+};

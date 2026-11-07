@@ -1,0 +1,12 @@
+Package: tabs3-desktop
+Version: 0.1.10
+Architecture: all
+Maintainer: tabS3 Project <root@localhost>
+Depends: tabs3-base (>= 0.1.6), phosh-core, phrog, squeekboard, gnome-console, gnome-text-editor, libgl1-mesa-dri, libegl-mesa0, firmware-qcom-soc, network-manager, iwd, dconf-cli, python3, python3-gi, xwayland, alsa-ucm-conf, alsa-utils
+Conflicts: phosh-osk-stub
+Section: metapackages
+Priority: optional
+Description: Phosh desktop defaults for the Galaxy Tab S3 LTE
+ Provides the touch mapping, display scale and service integration for
+ native Debian on SM-T825. Requires the GPU device tree and this tablet's
+ own signed firmware. Activation is explicit; installation does not reboot.

@@ -1,0 +1,15 @@
+[Unit]
+Description=Hold the always-charging battery between 65 and 80 percent
+Documentation=file:/usr/libexec/tabs3-battery-keeper
+ConditionPathExists=/sys/class/power_supply/sm5705-charger/charge_behaviour
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/tabs3/battery.conf
+ExecStart=/usr/libexec/tabs3-battery-keeper
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateNetwork=yes
+NoNewPrivileges=yes
+CapabilityBoundingSet=

@@ -1,0 +1,87 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * The s2mm005 USB-C power-delivery controller: stock usbpd-s2mm005@33 on
+ * i2c@7579000 (BLSP1 QUP5, stock i2c_5, TLMM 83/84 as blsp_i2c5 at 100 kHz,
+ * interrupt TLMM 73). Mainline's msm8996.dtsi has no node for this QUP, so
+ * it is described here. Patch 0042's driver (packages 70 to 72) reads the
+ * chip, hands VBUS over to a hub that charges and sets the USB role from the
+ * controller's data role through the connector below; USB 3 orientation and
+ * the DisplayPort alternate mode would also go through this controller.
+ */
+#include <dt-bindings/clock/qcom,gcc-msm8996.h>
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+
+&soc {
+	blsp1_i2c5: i2c@7579000 {
+		compatible = "qcom,i2c-qup-v2.2.1";
+		reg = <0x7579000 0x1000>;
+		interrupts = <GIC_SPI 99 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&gcc GCC_BLSP1_QUP5_I2C_APPS_CLK>,
+			 <&gcc GCC_BLSP1_AHB_CLK>;
+		clock-names = "core", "iface";
+		clock-frequency = <100000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&blsp1_i2c5_default>;
+		dmas = <&blsp1_dma 20>, <&blsp1_dma 21>;
+		dma-names = "tx", "rx";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "okay";
+
+		usbpd: usbpd@33 {
+			compatible = "samsung,s2mm005";
+			reg = <0x33>;
+			/* stock usbpd,usbpd_int: TLMM 73, falling edge */
+			interrupts-extended = <&tlmm 73 IRQ_TYPE_EDGE_FALLING>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&usbpd_irq_default>;
+
+			connector {
+				compatible = "usb-c-connector";
+				label = "USB-C";
+				power-role = "dual";
+				data-role = "dual";
+
+				ports {
+					#address-cells = <1>;
+					#size-cells = <0>;
+
+					/* High speed: the driver sets the dwc3's role */
+					port@0 {
+						reg = <0>;
+						usbpd_hs: endpoint {
+							remote-endpoint = <&usb3_dwc3_hs>;
+						};
+					};
+				};
+			};
+		};
+	};
+};
+
+/* The USB role switch the driver sets (usb-host.dtsi makes dwc3 offer it) */
+&usb3_dwc3 {
+	port {
+		usb3_dwc3_hs: endpoint {
+			remote-endpoint = <&usbpd_hs>;
+		};
+	};
+};
+
+&tlmm {
+	/* stock i2c_5_active: 6 mA, no bias (external pull-ups) */
+	blsp1_i2c5_default: blsp1-i2c5-default-state {
+		pins = "gpio83", "gpio84";
+		function = "blsp_i2c5";
+		drive-strength = <6>;
+		bias-disable;
+	};
+
+	/* stock s2mm003_irq_active: input, no bias (external pull-up) */
+	usbpd_irq_default: usbpd-irq-default-state {
+		pins = "gpio73";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+};

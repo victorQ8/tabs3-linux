@@ -1,0 +1,155 @@
+#!/bin/bash
+# Screen sleep for the Tab S3 LTE AMOLED panel. A short power key press
+# toggles the display; a touch wakes it; after TABS3_SCREEN_IDLE seconds
+# without input it switches off. DRM blanking powers the panel down and
+# performs its full LP11/reset initialization on wake.
+# The Recent/Back key lights come on with a touch on the screen or the keys
+# and go off after TABS3_KEYLIGHT_SECONDS without one (0: never), and
+# whenever the screen is off, as on the stock firmware.
+# On the text console the kernel's VT layer itself unblanks the screen on any
+# key event, so the power key acts on release and every decision reads the
+# panel's real DPMS state instead of trusting a cached one.
+# Other programs wake the screen as a touch would by opening and closing the
+# pipe /run/tabs3-screen/wake for writing (tabs3-dashboard's presence wake).
+# The book cover's magnet (gpio-keys SW_LID) switches the screen off when the
+# cover closes over it and on when it opens; while it is closed, touch and
+# presence wakes are ignored and only the power key turns the screen on.
+set -u
+
+tr '\000' '\n' < /sys/firmware/devicetree/base/compatible | grep -qx 'samsung,gts3llte' || exit 0
+
+idle=${TABS3_SCREEN_IDLE:-300}
+keylight=${TABS3_KEYLIGHT_SECONDS:-3}
+led=/sys/class/leds/tm2-touchkey/brightness
+blank=/sys/class/graphics/fb0/blank
+for _ in $(seq 60); do
+    [ -e "$blank" ] && break
+    sleep 1
+done
+[ -e "$blank" ] || { echo 'No panel framebuffer' >&2; exit 1; }
+dpms=$(echo /sys/class/drm/card*-DSI-*/dpms)
+[ -r "$dpms" ] || { echo 'No DSI connector DPMS state' >&2; exit 1; }
+
+fifo=$(mktemp -u /run/tabs3-screen.XXXXXX)
+mkfifo -m 600 "$fifo"
+exec 3<>"$fifo"
+rm -f "$fifo"
+
+# struct input_event on arm64 is 24 bytes: 16 bytes of time, then type,
+# code (16 bit each) and value (32 bit). Read it as twelve 16-bit words.
+watch() {
+    local tag=$1 dev=$2
+    stdbuf -oL od -An -v -tu2 -w24 "$dev" | while read -r -a w; do
+        local type=${w[8]} code=${w[9]} value=${w[10]}
+        if [ "$tag" = power ]; then
+            # EV_KEY KEY_POWER, key up: the VT's own unblank for this key
+            # event then runs before the screen is blanked, not after
+            [ "$type" = 1 ] && [ "$code" = 116 ] && [ "$value" = 0 ] && echo power >&3
+        elif [ "$tag" = keys ]; then
+            # Recent/Back: light the keys, but do not wake the screen
+            [ "$type" = 1 ] && echo keys >&3
+        elif [ "$tag" = lid ]; then
+            # EV_SW SW_LID: 1 = the cover closed over the screen; Home and
+            # Volume Up on the same device wake the screen like a touch
+            if [ "$type" = 5 ] && [ "$code" = 0 ]; then
+                if [ "$value" = 1 ]; then echo lid_close >&3; else echo lid_open >&3; fi
+            elif [ "$type" = 1 ]; then
+                echo touch >&3
+            fi
+        elif [ "$type" = 1 ] || [ "$type" = 3 ]; then
+            echo touch >&3
+        fi
+    done
+}
+
+wake=/run/tabs3-screen/wake
+install -d -m 0755 /run/tabs3-screen
+rm -f "$wake"
+mkfifo -m 0622 "$wake"
+# Every writer that opens and closes the pipe is one wake request.
+while :; do cat "$wake" > /dev/null 2>&1; echo touch >&3; done &
+for ev in /sys/class/input/event*; do
+    name=$(cat "$ev/device/name" 2>/dev/null) || continue
+    case "$name" in
+        pm8941_pwrkey) watch power "/dev/input/${ev##*/}" & ;;
+        *Synaptics*|*s5807*) watch touch "/dev/input/${ev##*/}" & ;;
+        tm2-touchkey) watch keys "/dev/input/${ev##*/}" & ;;
+        gpio-keys) watch lid "/dev/input/${ev##*/}" & ;;
+    esac
+done
+trap 'kill 0' EXIT
+
+# Milliseconds since the epoch, in NOW, without forking.
+now_ms() { local t=$EPOCHREALTIME; NOW=$(( ${t%.*} * 1000 + 10#${t#*.} / 1000 )); }
+
+led_state=unknown
+key_at=0
+set_led() {
+    [ -w "$led" ] || return 0
+    [ "$led_state" = "$1" ] && return 0
+    if echo "$1" > "$led" 2>/dev/null; then led_state=$1; fi
+}
+screen_on() { local v; read -r v < "$dpms" && [ "$v" = On ]; }
+light_keys() {
+    [ "$keylight" -gt 0 ] && screen_on || return 0
+    set_led 1
+    now_ms
+    key_at=$(( NOW + keylight * 1000 ))
+}
+
+set_screen() {
+    if [ "$1" = on ]; then
+        screen_on || echo 0 > "$blank"
+        light_keys
+    else
+        set_led 0
+        screen_on && echo 4 > "$blank"
+    fi
+}
+set_led 0
+set_screen on
+lid=open
+
+now_ms
+idle_at=$(( NOW + idle * 1000 ))
+while :; do
+    now_ms
+    next=$idle_at
+    [ "$led_state" = 1 ] && [ "$key_at" -lt "$next" ] && next=$key_at
+    wait=$(( next - NOW ))
+    [ "$wait" -gt 0 ] || wait=1
+    printf -v timeout '%d.%03d' $(( wait / 1000 )) $(( wait % 1000 ))
+    if read -r -t "$timeout" event <&3; then
+        case "$event" in
+            power)
+                if screen_on; then
+                    set_screen off
+                    # A key event the VT saw just before can still unblank it
+                    sleep 0.3
+                    screen_on && echo 4 > "$blank"
+                else
+                    set_screen on
+                fi ;;
+            touch) [ "$lid" = closed ] || { set_screen on; light_keys; } ;;
+            keys) light_keys ;;
+            lid_close)
+                lid=closed
+                set_screen off
+                sleep 0.3
+                screen_on && echo 4 > "$blank" ;;
+            lid_open) lid=open; set_screen on; light_keys ;;
+        esac
+        # Any input keeps a lit screen awake; the keys alone never wake it.
+        if [ "$event" != keys ] || screen_on; then
+            now_ms
+            idle_at=$(( NOW + idle * 1000 ))
+        fi
+    else
+        now_ms
+        [ "$led_state" = 1 ] && [ "$NOW" -ge "$key_at" ] && set_led 0
+        if [ "$NOW" -ge "$idle_at" ]; then
+            set_screen off
+            idle_at=$(( NOW + idle * 1000 ))
+        fi
+    fi
+done

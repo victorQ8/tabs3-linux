@@ -1,0 +1,15 @@
+round=1 level=0 nominal_nit=2
+round=1 level=17 nominal_nit=20
+round=1 level=51 nominal_nit=60
+round=1 level=86 nominal_nit=111
+round=1 level=142 nominal_nit=183
+round=1 level=193 nominal_nit=249
+round=1 level=255 nominal_nit=360
+round=2 level=0 nominal_nit=2
+round=2 level=17 nominal_nit=20
+round=2 level=51 nominal_nit=60
+round=2 level=86 nominal_nit=111
+round=2 level=142 nominal_nit=183
+round=2 level=193 nominal_nit=249
+round=2 level=255 nominal_nit=360
+HOLD_DEFAULT_111_NIT

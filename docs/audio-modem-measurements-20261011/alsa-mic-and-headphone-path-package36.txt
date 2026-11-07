@@ -1,0 +1,10 @@
+ADC3: 96000 samples, rms 18.6 (-64.9 dBFS), peak 82, exact zeros 3904
+ADC4: 96000 samples, rms 16.1 (-66.2 dBFS), peak 74, exact zeros 4557
+ADC2: 96000 samples, rms 4.8 (-76.7 dBFS), peak 16, exact zeros 12433
+state: RUNNING
+hw_ptr      : 68639
+HPHR PA: HPHR PA: On  in 1 out 1 - R1545(0x609) mask 0x40
+HPHL PA: HPHL PA: On  in 1 out 1 - R1545(0x609) mask 0x80
+later state: RUNNING
+later hw_ptr      : 93599
+aplay exit=0

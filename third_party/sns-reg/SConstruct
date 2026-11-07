@@ -1,0 +1,32 @@
+import os
+
+env = Environment()
+env['ENV']['TERM'] = os.environ['TERM']
+
+env.Append(CCCOMSTR	= "  CC      $SOURCE")
+env.Append(LINKCOMSTR	= "  LD      $SOURCE")
+env.Append(RANLIBCOMSTR	= "  RANLIB  $SOURCE")
+env.Append(ARCOMSTR	= "  AR      $SOURCE")
+
+map = env.Library(
+	source = "map.c"
+)
+
+env.Program(
+	source = ["main.c", "qmi/sns_reg.c", map],
+	target = "sns-reg",
+	LIBS = ["qrtr"]
+)
+
+env.Program(
+	source = ["validator.c", map],
+	target = "sns-reg-validator"
+)
+
+env.Program(
+	source = ["generator.c", map],
+	target = "sns-reg-generator"
+)
+
+env.Default("sns-reg")
+env.Alias("tools", ["sns-reg-validator", "sns-reg-generator"])

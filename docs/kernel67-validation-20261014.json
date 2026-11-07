@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-14T19:40:00+00:00",
+  "installed": {
+    "linux-tabs3": "6.18.56-67 (modules installed, boot partition written from recovery at 22:32 local, readback verified)",
+    "boot_partition": "package 67 combined image, sha256 ff6a1421a59a8dcc77f5be5cd8906878235476ad5f9ec4075b7c2c8650dd83c0 (private/images/package67/)",
+    "tabs3-base": "0.1.26",
+    "tabs3-dashboard": "0.1.6"
+  },
+  "previous": "6.18.56-66",
+  "change": "CONFIG_GENERIC_ADC_THERMAL=y and, in kernel/msm8996-samsung-gts3llte-skin.dtsi, two VADC channels with generic-adc-thermal zones: pa-thermal (VADC_LR_MUX6_PU1_AMUX_THM3, the stock pa_therm0) and xo-thermal (VADC_LR_MUX3_BUF_PU1_XO_THERM, the stock xo_therm_buf), watch-only with a 'hot' trip at 75 C; no new patch (mainline already scales both channels as temperatures)",
+  "finding": "the stock tree's seven ADC thermistors map as: THM1 skin (Samsung's calibrated table, in use), THM2 battery and THM4 charger (Samsung's battery nodes, in use through the SM5705 drivers), THM3 power amplifier and the crystal (added), THM5 quiet_therm not populated (reads the 100 k table's floor, -40.000 C, constant)",
+  "path": [
+    "22:13: package 67 built with three new zones; RAM boot (SSH after 22 s): pa-thermal 28.5 C, xo-thermal 34.3 C, quiet-thermal -40.0 C constant over three readings ten seconds apart while pa and xo moved by tenths of a degree; 21 zones",
+    "22:25: quiet thermistor removed, device tree rebuilt (kernel unchanged)",
+    "22:32: boot partition written from recovery (flash-boot, readback verified), Debian back on package 67: 20 zones, pa-thermal 28 C, xo-thermal 32 C, skin-thermal 33 C; dashboard and screen services active; no thermal or ADC warning beyond the known VADC 'IRQ index 0 not found'"
+  ],
+  "unknown": [
+    "the absolute accuracy of the two new zones: the VADC's generic 100 k NTC and crystal tables, not Samsung's calibrated table (the skin zone and the crystal zone differ by one or two degrees at idle)"
+  ],
+  "pending_on_hardware": []
+}

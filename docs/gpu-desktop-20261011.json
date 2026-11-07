@@ -1,0 +1,194 @@
+{
+  "recorded_utc": "2026-10-11T10:22:50.191082+00:00",
+  "device": "SM-T825 LTE rev05; Adreno 530.2",
+  "kernel_package": "6.19.5-33",
+  "kernel_build": 18,
+  "desktop_validation": "Package 32 prevented the observed Phoc faults but retained 1.93 GB of GPU buffers after session exit. Package 33 adds final-reference cleanup: 12 ordinary editor cycles in each of two rendering configurations logged no GPU faults, and both sessions returned to the 13082624-byte baseline after exit. Physical package-33 confirmation and a longer soak remain; console default.",
+  "findings": {
+    "baseline": "GPU disabled in inherited MSM8996 DTS; display DRM node alone did not imply GPU support",
+    "package30": "Enabling GPU without MMCC vdd-gfx supply left gpu_gx stuck off; no hardware EGL context",
+    "stock_supply": "live.dts lines 11699-11749: gfx_corner CPR backed by phandle 0x1cb; lines 9907-9917: PM8004 S2, USID5 at 0x1700, 400000..1015000 uV, 500 us enable",
+    "fix": "GPU-only DTS adds PM8004 S2 and MMCC vdd-gfx-supply; preserves boot voltage, measured 1000 mV. Recovery remains display-only package29. No stock CPR port or adaptive voltage tuning claimed.",
+    "signed_firmware": "Stock apnhlos partition, mounted read-only; a530_zap.mdt plus b00/b01/b02; PAS13, relocatable LOAD segment. Copied privately, no binaries committed.",
+    "microcode": "Debian firmware-qcom-soc 20250410-2 provides qcom/a530_pm4.fw, a530_pfp.fw and a530v3_gpmu.fw2"
+  },
+  "validation": {
+    "EGL": "Mesa 25.0.7-2+deb13u1; Freedreno FD530; OpenGL 3.1 and GLES3.1",
+    "render": "Atomic KMS cube; 1440 frames recorded over 48.41 seconds (~29.745 fps), then controlled stdin close at 50 s. Not a peak performance benchmark.",
+    "faults": "Early KMS cube only: no GPU hang, SMMU fault or timeout in that capture. Later Phoc tests faulted on Mesa25 and fresh-boot Mesa26. See desktop_faults.",
+    "frequency": "simple_ondemand; 133..624 MHz OPPs exposed; mostly133 MHz during this workload, 9 transitions recorded",
+    "temperatures": "Battery21.4 C, charger board26.8 C after cube",
+    "physical_cube": "Not observed: owner was away during cube; later Wayland gears physically confirmed smooth with correct colours.",
+    "physical_desktop": "Owner confirmed typing, keyboard placement, colours, app switching, PIN login and smooth Wayland gears. Owner then confirmed unlocking after screen-off/on; no new fault log lines during that wake check.",
+    "host_regressions": "32 tests passed, including GPU mode/DTB guards and Wi-Fi migration; shell syntax and diff whitespace checks passed.",
+    "desktop_package": {
+      "version": "0.1.5",
+      "sha256": "7edd74bdd3710ef1299e9392575d6889ad36e087bebc72bbeba8c5f27ae7745e",
+      "changes": "Direct NetworkManager/IWD dependencies; bytecode excluded; shared version reader; activation leaves console as boot default.",
+      "installed": "Verified 0.1.5 on tablet; greetd manually active, greetd/phosh disabled, default multi-user.target. No failed system services. Temporary GPU flags and ioctl logger removed; idle timeout restored to 300 seconds."
+    },
+    "compiled_dtbs": "GPU installed, display recovery and headless diagnostic DTBs passed identity/storage/GPU-status guards in the builder container.",
+    "network": "USB SSH stayed available through activation; Wi-Fi SSH checked after IWD/NetworkManager restart. Fresh-boot Wi-Fi reconnect had also passed earlier in this session."
+  },
+  "limits": [
+    "Vulkan/Turnip does not support Adreno5xx; GTK4 will use OpenGL.",
+    "CPR/DVFS voltage policy and long GPU thermal load remain unqualified.",
+    "Screen-off does not validate whole-system suspend."
+  ],
+  "evidence": {
+    "first-probe.txt": {
+      "path": "docs/gpu-measurements-20261011/first-probe.txt",
+      "sha256": "150c589eb90b47ced5eb9e3ef511293a0e670c77bf65b75616d71bfb73fed2ca",
+      "format": "Capture with trailing whitespace normalized; values unchanged."
+    },
+    "supply-probe.txt": {
+      "path": "docs/gpu-measurements-20261011/supply-probe.txt",
+      "sha256": "1c841c6cd595f24036779a855a067f41f7a6b09cf83665c4a40e96a99b1404e9",
+      "format": "Capture with trailing whitespace normalized; values unchanged."
+    },
+    "kmscube.txt": {
+      "path": "docs/gpu-measurements-20261011/kmscube.txt",
+      "sha256": "90359d3fc76f9a00baaa4a3ca9e300e3f5bd87e489645118f9247517bd600068"
+    },
+    "after-cube.txt": {
+      "path": "docs/gpu-measurements-20261011/after-cube.txt",
+      "sha256": "1bd01e3641c346468cfe5c1c91a843f3d064c280f87e7d0efdd576ac692a37de"
+    },
+    "firmware-manifest.json": {
+      "path": "docs/gpu-measurements-20261011/firmware-manifest.json",
+      "sha256": "2c0aa7d9e19aa8ba11cef9d8cbf0dadbeb0a4e7580b39fc87a843ae6d2b8d714"
+    },
+    "desktop-fault-summary.txt": {
+      "path": "docs/gpu-measurements-20261011/desktop-fault-summary.txt",
+      "sha256": "bd41ab19343a8d45e1c319817f9d660a8eac3f6ec73ea1a970c083bb902cf1d6"
+    },
+    "mesa26-fault-summary.txt": {
+      "path": "docs/gpu-measurements-20261011/mesa26-fault-summary.txt",
+      "sha256": "fcf7178914d6557f081cf61457decc657a96faa0ffdab21903e8738f8862ebfd"
+    },
+    "phoc-default-app-hiprio.txt": {
+      "path": "docs/gpu-measurements-20261011/phoc-default-app-hiprio.txt",
+      "sha256": "b1a090c151d17cde4fe36dfb128842bf9916f95e1eab80fb97faa66c95aff2af"
+    },
+    "phoc-hiprio-app-hiprio.txt": {
+      "path": "docs/gpu-measurements-20261011/phoc-hiprio-app-hiprio.txt",
+      "sha256": "07459f093266e65a8164da3fa22efee185534e7597cda74483757bb506a57d2a"
+    },
+    "phoc-default-app-hiprio-repeat.txt": {
+      "path": "docs/gpu-measurements-20261011/phoc-default-app-hiprio-repeat.txt",
+      "sha256": "8f4d9229d3c1d88c4e9f0dc3c9672aaba895e9678d7d9e709e17822eb583b3ec"
+    },
+    "app-queue-abab.txt": {
+      "path": "docs/gpu-measurements-20261011/app-queue-abab.txt",
+      "sha256": "faa062677e04746b3535fd45b69e91f22f951762cafeffa69dc0eaa1cba0f837"
+    },
+    "queue-trace-and-latest-faults.txt": {
+      "path": "docs/gpu-measurements-20261011/queue-trace-and-latest-faults.txt",
+      "sha256": "15e62eaf7eb155ad5d8f65da201c727dafcc9eeb6d0c7c7629783e51380c3d68"
+    },
+    "desktop015-installed-checks.txt": {
+      "path": "docs/gpu-measurements-20261011/desktop015-installed-checks.txt",
+      "sha256": "7c85b99c4843987785b6bca45011456ef7824acd5c02314c66cbb021681d082f"
+    },
+    "package32-editor-cycles-default.txt": {
+      "path": "docs/gpu-measurements-20261011/package32-editor-cycles-default.txt",
+      "sha256": "3f52f2cfa3a20cd0138e87e90b6cf334d4854ef72a2e23aad62134c827c8bc38"
+    },
+    "package32-editor-cycles-sysmem.txt": {
+      "path": "docs/gpu-measurements-20261011/package32-editor-cycles-sysmem.txt",
+      "sha256": "e476d0943dd8c1b74ead09b23d2921bcd7ef67868c9f5b3381eba8af2e6ebc4a"
+    },
+    "package32-renderer-check.txt": {
+      "path": "docs/gpu-measurements-20261011/package32-renderer-check.txt",
+      "sha256": "79f1b7dfff8a7e7636a72ac9e6adade3daa74582162b6ca530d756d1700a691e"
+    },
+    "package32-cleanup-review.txt": {
+      "path": "docs/gpu-measurements-20261011/package32-cleanup-review.txt",
+      "sha256": "4fc8956bd33c1bc194d8de5fff41cb3f7f185f998825f7c70c287072b4432bf9"
+    },
+    "package33-desktop-default.txt": {
+      "path": "docs/gpu-measurements-20261011/package33-desktop-default.txt",
+      "sha256": "5b13b5030387e1f9fedcb30f82414360b9b29248c3a5d8c54df8370cf4e5f4aa"
+    },
+    "kernel33-host-tests.txt": {
+      "path": "docs/gpu-measurements-20261011/kernel33-host-tests.txt",
+      "sha256": "1608fb58c7d891543ce2e4ac699b563ccf9bba08bd84a0a2b2dc0bcffaa53ba0"
+    },
+    "package33-desktop-sysmem.txt": {
+      "path": "docs/gpu-measurements-20261011/package33-desktop-sysmem.txt",
+      "sha256": "f352bf00a5ae010a445a04c1ea32a65e61ff255a18c1e8adf0a0275892545065",
+      "format": "Capture with trailing whitespace normalized; values unchanged."
+    },
+    "package33-final-state.txt": {
+      "path": "docs/gpu-measurements-20261011/package33-final-state.txt",
+      "sha256": "cfbe3d789d2a651877a02a27409c6d36b7c48823d8f024f25798d718ea066e43",
+      "format": "Capture with trailing whitespace normalized; values unchanged."
+    }
+  },
+  "sources": [
+    "https://docs.mesa3d.org/drivers/freedreno.html",
+    "https://networkmanager.dev/docs/api/latest/NetworkManager.conf.html",
+    "https://docs.gtk.org/gtk4/running.html",
+    "https://github.com/torvalds/linux/commit/111fdd2198e6"
+  ],
+  "desktop_faults": {
+    "mesa25": "phoc translation READ fault, first captured 10:45 UTC",
+    "mesa26": "26.1.6-1~bpo13+1 still faults after a fresh boot, first at uptime277.57s",
+    "trigger": "Historical package-31 failures occurred during ordinary Text Editor open/scroll/close cycles. See the subsequent lifetime fix and package-33 validation below.",
+    "unsuccessful_tests": [
+      "WLR_DRM_NO_MODIFIERS=1 plus WLR_EGL_NO_MODIFIERS=1: later fault",
+      "FD_MESA_DEBUG=sysmem: faults at every repeated editor cycle",
+      "Disabling shell animations: fault still reproduced after a fresh compositor start"
+    ],
+    "policy": "Console remains default pending package-33 physical confirmation and longer qualification.",
+    "priority_experiment": {
+      "result": "Inconclusive; not packaged as a workaround.",
+      "comparison": "Apps held at hiprio. Removing the Phoc override produced 91 -> 101 logged fault lines on first NGL editor opening. Restoring it held 101. Repeating without it also held 101. Counts are rate-limited log lines, not total hardware faults.",
+      "queue_trace": "Default Phoc already requests priority0 for its main EGL context. Helper queues request priority1. GTK NGL application contexts request priority6 normally, priority0 with hiprio. Both application settings passed the short traced comparison, which does not prove either stable.",
+      "limits": "No causal fix or cross-ring preemption diagnosis established. Trace was a temporary ioctl logger; no kernel scheduling patch was made."
+    },
+    "status": "Premature unmapping addressed by 0032; its missing cleanup addressed by 0033. Package-33 validation below.",
+    "root_cause": "Kernel regression since 6.17 (111fdd2198e6, drm/msm drm_gpuvm conversion). msm_gem_close() unmaps and frees a BO's VMA in the closing context's VM. a5xx has no per-process pagetables, so every context shares the global VM and a dma-buf shared between a GTK GL client and phoc is one GEM object with one VMA. When the client closed its handle (old window buffers on open/resize/close), phoc's mapping went too; Mesa keeps the cached iova, so phoc read unmapped addresses (or another BO given that iova). v6.12 and v6.16 only updated memory accounting on close. Cairo windows use wl_shm and did not add faults in the recorded phase comparison.",
+    "fix": "Patch 0032 keeps the shared GPU mapping while other users still need it. Patch 0033 releases it at the final external VMA reference, after waiting for GPU work. The existing counter covers handles, dma-buf exports and framebuffers. Upstream status and wider GPU coverage need review before submission.",
+    "package32_validation": {
+      "stock_session": "phosh.service, no FD_MESA_DEBUG; 10 NGL + 2 Cairo editor cycles; 0 fault lines; phoc PID unchanged.",
+      "sysmem_session": "FD_MESA_DEBUG=sysmem for phoc and apps (faulted every cycle before); same 12 cycles; 0 fault lines.",
+      "renderer": "GSK_RENDERER=ngl confirmed GskGLRenderer with DRI file descriptors open.",
+      "limits": "Fault counts are dmesg lines. The trailing \"devcoredump: disabled\" is the devcoredump class attribute, not a dump. No physical observation was made of package 32; tablet left with greetd running, console default. Subsequent review found a cleanup defect: the mapping holds a GEM reference, so merely deferring teardown to object destruction retains buffers. Package 32 is not the completed fix.",
+      "reported_buffer_check": "Claude reported that the shared-buffer mapping survived the earlier close on package 32. This review checks the implementation and normal desktop behavior; that diagnostic was not rerun."
+    },
+    "cleanup_review": {
+      "package32": "4197 objects / 1933180928 bytes total, 1930604544 resident, unchanged after greetd and phosh stopped.",
+      "reason": "drm_gpuvm_bo_create takes a GEM reference; drm_gpuva_link holds the vm_bo. Skipping all global-VM teardown leaves a reference cycle. The final GEM destructor cannot break that cycle itself.",
+      "package33": "Extends existing vma_ref cleanup to the global GPU VM, waits for outstanding work, and uses existing VM/object locks. Keeps display cleanup and skips absent GPUs.",
+      "host_tests": "34 tests passed, including compiled lifecycle tests with and without KMS: shared references keep mappings, final release performs cleanup, GPU work is awaited, and unloaded GPUs are handled."
+    },
+    "package33_validation": {
+      "kernel": "linux-tabs3 6.19.5-33, build #18; normal boot installed and read back; recovery remains verified display-only package 29.",
+      "stock_session": {
+        "cycles": 12,
+        "fault_log_lines": 0,
+        "phoc_pid_start_and_end": 675,
+        "before_bytes": 13082624,
+        "after_bytes": 13082624,
+        "before_and_after_objects": 20
+      },
+      "sysmem_session": {
+        "cycles": 12,
+        "fault_log_lines": 0,
+        "phoc_pid_start_and_end": 2296,
+        "before_bytes": 13082624,
+        "after_bytes": 13082624,
+        "before_and_after_objects": 20
+      },
+      "workload": "Ordinary Text Editor launch, Page Down, on-screen keyboard show, and application close, followed by full session exit. Each configuration requested 10 NGL and 2 Cairo cycles. Renderer logs confirm GskGLRenderer in 9 stock / 8 sysmem cycles and GskCairoRenderer in 1 cycle per configuration; early launch cycles did not print a renderer confirmation, so those are not individually claimed as verified rendering.",
+      "host_tests": "34 regression tests passed, including final-reference cleanup with and without KMS.",
+      "restored_state": "greetd active; phosh inactive; both disabled; multi-user.target default; idle timeout 300 seconds; temporary rendering overrides removed; no failed system services.",
+      "health": "Battery 78%, 21.9 C; charger board 26.2 C; PC SDP input limit 500 mA. These are endpoint readings, not a thermal soak.",
+      "other_observations": "Four clk-rcg2 update_config warnings occurred at startup. Reboot also encountered user-session agent socket stop timeouts. Neither is explained or fixed by this GPU lifetime change.",
+      "limits": "No physical package-33 check yet. No long-session, whole-system suspend, or sustained GPU thermal qualification. Log counts are not a guarantee of absence of all GPU errors; host tests mock locking and do not establish concurrent correctness on other GPU generations.",
+      "network": "USB and Wi-Fi SSH both succeeded after validation; NetworkManager active."
+    }
+  },
+  "updated_utc": "2026-10-11T13:31:30.822167+00:00"
+}

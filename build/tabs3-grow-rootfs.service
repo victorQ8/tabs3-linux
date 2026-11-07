@@ -1,0 +1,13 @@
+[Unit]
+Description=Expand the Debian root filesystem to fill its device
+After=local-fs.target
+Before=ssh.service
+ConditionPathExists=!/var/lib/tabs3/root-expanded
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/tabs3-grow-rootfs
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

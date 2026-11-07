@@ -1,0 +1,230 @@
+{
+  "date": "2026-10-13",
+  "purpose": "Continuously running Debian server; desktop work retired by owner",
+  "installed": {
+    "kernel_package": "6.18.56-55",
+    "base_package": "0.1.13",
+    "recovery_package": "6.19.5-29",
+    "default_target": "multi-user.target",
+    "system_sleep": "masked",
+    "graphical_startup": "disabled",
+    "desktop_audio": "masked",
+    "screen_idle_seconds": 60,
+    "cpu_ceiling_requested_khz": 1000000,
+    "cpu_supported_ceilings_khz": {
+      "policy0": 960000,
+      "policy2": 940800
+    }
+  },
+  "factory_wifi": {
+    "efs_read_only": true,
+    "initial_address_matched": false,
+    "match_after_reconnect": true,
+    "match_after_reboot": true,
+    "usb_ssh_verified": true,
+    "wifi_ssh_verified": true,
+    "address_excluded": true
+  },
+  "cpuidle": {
+    "candidate": 56,
+    "mode": "headless read-only RAM probe",
+    "driver": "psci_idle",
+    "deep_state": "cpu-sleep-0",
+    "rejected_all_cores": 0,
+    "short_load_and_reboot_passed": true,
+    "installed": false,
+    "full_server_qualified": false
+  },
+  "platform": {
+    "candidate": 57,
+    "branch": "platform-audit-57",
+    "commit": "9c31681",
+    "normal_ram_boot": "unexpected reset",
+    "cpuidle_off_ram_boot": "unexpected reset",
+    "cause": "unresolved",
+    "installed": false,
+    "next": "Separate watchdog and camera-memory changes, then remaining platform nodes"
+  },
+  "memory": {
+    "baseline_memtotal_kb": 3367480,
+    "candidate_memtotal_kb": 3702680,
+    "qualified": false
+  },
+  "skin": {
+    "candidate_reading_millicelsius": 36344,
+    "calibration_points": 111,
+    "installed": false,
+    "cooling_and_surface_temperature_qualified": false
+  },
+  "sar": {
+    "candidate_probe": "ENXIO on WHOAMI for both stock bus addresses",
+    "stock_android_lte_sensor_verified": true,
+    "wifi_sensor_population_verified": false
+  },
+  "rtc": {
+    "system_ntp_synchronizes": true,
+    "hardware_clock_valid": false,
+    "allow_set_time": "candidate only",
+    "write_and_offline_reboot_verified": false
+  },
+  "rng": {
+    "compatible": "qcom,prng-ee",
+    "candidate_bound": true,
+    "mainline_trng_supported": false,
+    "hwrng_registered": false
+  },
+  "storage": {
+    "normal_max_clock_hz": 52000000,
+    "hs200_probe_built": true,
+    "hs400_probe_built": true,
+    "speed_probes_hardware_tested": false,
+    "life_time_raw": [
+      "0x01",
+      "0x01"
+    ],
+    "pre_eol_info_raw": "0x01"
+  },
+  "watchdog": {
+    "candidate_device_registered": true,
+    "keepalive_or_timeout_tested": false,
+    "systemd_runtime_watchdog_enabled": false
+  },
+  "usb3": {
+    "hardware_tested": false,
+    "current_host_mode": "USB 2.0",
+    "pd_policy_changed": false
+  },
+  "soaks": [
+    {
+      "boot_id": "329acf56-1db6-4d65-a12f-32c0f5cb094d",
+      "reason": "temperature or battery guard",
+      "exit_code": 0,
+      "elapsed_s": 525.4,
+      "sample_count": 103,
+      "kernel": "Linux tabs3 6.18.56-gts3l1 #13 SMP PREEMPT 2026-10-10 00:00:00 UTC aarch64 GNU/Linux",
+      "requested_cpu_ceiling_khz": null,
+      "max_soc_cpu_temp_mc": 95100,
+      "max_battery_temp_deci_c": 285,
+      "min_battery_current_ua": -810058,
+      "samples_sha256": "93c18e0b2c2ec9f0974fadea2e8488bf5f00a52f9b3f879454cd86d6ee40ec18"
+    },
+    {
+      "boot_id": "329acf56-1db6-4d65-a12f-32c0f5cb094d",
+      "reason": "completed",
+      "exit_code": 0,
+      "elapsed_s": 601.4,
+      "sample_count": 117,
+      "kernel": "Linux tabs3 6.18.56-gts3l1 #13 SMP PREEMPT 2026-10-10 00:00:00 UTC aarch64 GNU/Linux",
+      "requested_cpu_ceiling_khz": 1200000,
+      "max_soc_cpu_temp_mc": 92200,
+      "max_battery_temp_deci_c": 289,
+      "min_battery_current_ua": -944335,
+      "samples_sha256": "f8b451b4db70dad164a301dd25ae0e57dd90819227da8e02d7e56ff681424370"
+    },
+    {
+      "boot_id": "329acf56-1db6-4d65-a12f-32c0f5cb094d",
+      "reason": "completed",
+      "exit_code": 0,
+      "elapsed_s": 603.3,
+      "sample_count": 117,
+      "kernel": "Linux tabs3 6.18.56-gts3l1 #13 SMP PREEMPT 2026-10-10 00:00:00 UTC aarch64 GNU/Linux",
+      "requested_cpu_ceiling_khz": 1000000,
+      "max_soc_cpu_temp_mc": 90600,
+      "max_battery_temp_deci_c": 290,
+      "min_battery_current_ua": -777832,
+      "samples_sha256": "83cd18b68661b9c8032b019c730a817a7f9cb94eb01d45e385cb96560ceedacb"
+    }
+  ],
+  "limits": [
+    "No 24/7 qualification",
+    "Hardware sensors and thermal policy still need further tests",
+    "PC SDP remains at 500 mA; reported battery current is negative under heavy load",
+    "Candidate57 must not be installed; owner unavailable for further physical fastboot entry"
+  ],
+  "evidence": [
+    {
+      "path": "docs/server-measurements-20261013/1000-result.json",
+      "sha256": "f3cdb0e220ffc5282f0fdeae8e42f12f020b776f6a7101e82327257a4711223c"
+    },
+    {
+      "path": "docs/server-measurements-20261013/1000-samples.jsonl",
+      "sha256": "83cd18b68661b9c8032b019c730a817a7f9cb94eb01d45e385cb96560ceedacb"
+    },
+    {
+      "path": "docs/server-measurements-20261013/1000-stress.txt",
+      "sha256": "ec984e659352d35d6d5c8c327eee83140fb455d9413767cb4b47f00b350c4a36"
+    },
+    {
+      "path": "docs/server-measurements-20261013/1200-result.json",
+      "sha256": "da4f31ae35d7f698871d50ac872ab8015917295bc0a35ca617ffce615db3cf2c"
+    },
+    {
+      "path": "docs/server-measurements-20261013/1200-samples.jsonl",
+      "sha256": "f8b451b4db70dad164a301dd25ae0e57dd90819227da8e02d7e56ff681424370"
+    },
+    {
+      "path": "docs/server-measurements-20261013/1200-stress.txt",
+      "sha256": "b09ea8c699a1028ac837a8e0ce048d0ee2c7b35389985dea789816a15ce53820"
+    },
+    {
+      "path": "docs/server-measurements-20261013/cpu-idle-ram.txt",
+      "sha256": "29bb66539b3f7c86d990f8e9259db783c93b2e02c394e738caba387fcb583d2b"
+    },
+    {
+      "path": "docs/server-measurements-20261013/final-state.json",
+      "sha256": "6a66ba8ef7824df630adf925e8684e19187a8972647a6a286869b9c8a0fb619f"
+    },
+    {
+      "path": "docs/server-measurements-20261013/uncapped-result.json",
+      "sha256": "a9ad5cee3192b2c9974a8da5e6b2e81e58582232fa94cb6c1ba978448b16a311"
+    },
+    {
+      "path": "docs/server-measurements-20261013/uncapped-samples.jsonl",
+      "sha256": "93c18e0b2c2ec9f0974fadea2e8488bf5f00a52f9b3f879454cd86d6ee40ec18"
+    },
+    {
+      "path": "docs/server-measurements-20261013/uncapped-stress.txt",
+      "sha256": "98a490f01223085111ee0c780ea592c43779887361d0c2f06f50ca196276b634"
+    }
+  ],
+  "host_tests": {
+    "stable_branch": 43,
+    "experimental_branch_with_skin_driver": 44,
+    "passed": true
+  },
+  "final_reboot": {
+    "kernel": "Linux tabs3 6.18.56-gts3l1 #13 SMP PREEMPT 2026-10-10 00:00:00 UTC aarch64 GNU/Linux",
+    "kernel_package": "6.18.56-55",
+    "base_package": "0.1.13",
+    "uptime": "19.40",
+    "default_target": "multi-user.target",
+    "system_state": "running",
+    "failed_units": "",
+    "wifi_factory_address_matches": true,
+    "wifi_state": "100 (connected)",
+    "cpu_maximum_khz": {
+      "policy2": 940800,
+      "policy0": 960000
+    },
+    "services": {
+      "ssh": "active",
+      "NetworkManager": "active",
+      "greetd": "inactive",
+      "tabs3-screen": "active",
+      "tabs3-server-cpu-limit": "active",
+      "tabs3-wifi-address": "active"
+    },
+    "sleep_masked": true,
+    "battery_percent": 100,
+    "battery_temp_deci_c": 289,
+    "usb_ssh_return_seconds": 26.6
+  },
+  "partitions_unchanged": {
+    "boot_package": 55,
+    "recovery_package": 29,
+    "boot_sha256": "e13c9e4c36d1e7aa43b99deab638a1c61b6170121f200f36026b465c3f503694",
+    "recovery_sha256": "b2e4d3d21e6a128a02688d9a27145aecaf1caf27b4d12195b030467294d89c40",
+    "verified": true
+  },
+  "base_deb_sha256": "1da96108c4b94324f824532ac56093c69a055886ce42b5e243bfc1e9b4e62f13"
+}

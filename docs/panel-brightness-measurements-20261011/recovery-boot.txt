@@ -1,0 +1,8 @@
+Linux (none) 6.19.5-gts3l1 #14 SMP PREEMPT 2026-10-10 00:00:00 UTC aarch64 GNU/Linux
+console=tty0 rdinit=/init clk_ignore_unused pd_ignore_unused loglevel=8 ignore_loglevel panic=30 tabs3.mode=recovery msm.prefer_mdp5=0
+brightness=86
+actual_brightness=86
+max_brightness=255
+[    4.440358] panel-samsung-ams968hh01 994000.dsi.0: startup checkpoint: TCON_RDY=1 ret=0
+[    4.673142] panel-samsung-ams968hh01 994000.dsi.0: MTP 33 51 55 43 3a 53 5b 36 14 00 00 40 51 57 42 3c 53 5b 3c 0c 00 00 38 53 56 47 3d 55 5c 64 82 00 00
+[    4.673221] panel-samsung-ams968hh01 994000.dsi.0: Generated 65 calibrated gamma levels; default level 86 (111 nit)

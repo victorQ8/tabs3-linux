@@ -1,0 +1,33 @@
+Linux tabs3 6.19.5-gts3l1 #16 SMP PREEMPT 2026-10-10 00:00:00 UTC aarch64 GNU/Linux
+[    0.000000] OF: reserved mem: initialized node gpu@90f00000, compatible id shared-dma-pool
+[    0.000000] OF: reserved mem: 0x0000000090f00000..0x0000000090ffffff (1024 KiB) nomap non-reusable gpu@90f00000
+[    0.001369] pid_max: default: 32768 minimum: 301
+[    0.846679] iommu: Default domain type: Translated
+[    1.113833] PCI: CLS 0 bytes, default 64
+[    1.378616] platform b00000.gpu: Adding to iommu group 0
+[    2.155053] pci 0000:01:00.0: ASPM: default states L1
+[    3.949980] systemd[1]: Queued start job for default target multi-user.target.
+[    7.179315] adreno b00000.gpu: supply vdd not found, using dummy regulator
+[    7.180282] adreno b00000.gpu: supply vddcx not found, using dummy regulator
+[    7.206244] msm_dpu 901000.display-controller: bound b00000.gpu (ops msm_dsi_phy_driver_unregister [msm])
+[    7.258603] msm_dpu 901000.display-controller: [drm:adreno_request_fw [msm]] loaded qcom/a530_pm4.fw from new location
+[    7.261177] msm_dpu 901000.display-controller: [drm:adreno_request_fw [msm]] loaded qcom/a530_pfp.fw from new location
+[    7.263190] msm_dpu 901000.display-controller: [drm:adreno_request_fw [msm]] loaded qcom/a530v3_gpmu.fw2 from new location
+[    7.808259] panel-samsung-ams968hh01 994000.dsi.0: Generated 65 calibrated gamma levels; default level 86 (111 nit)
+GBM platform:
+EGL API version: 1.5
+EGL vendor string: Mesa Project
+EGL version string: 1.5
+EGL client APIs: OpenGL OpenGL_ES
+OpenGL core profile vendor: freedreno
+OpenGL core profile renderer: FD530
+OpenGL core profile version: 3.1 (Core Profile) Mesa 25.0.7-2+deb13u1
+OpenGL core profile shading language version: 1.40
+OpenGL compatibility profile vendor: freedreno
+OpenGL compatibility profile renderer: FD530
+OpenGL compatibility profile version: 3.1 (Core Profile) Mesa 25.0.7-2+deb13u1
+OpenGL compatibility profile shading language version: 1.40
+OpenGL ES profile vendor: freedreno
+OpenGL ES profile renderer: FD530
+OpenGL ES profile version: OpenGL ES 3.1 Mesa 25.0.7-2+deb13u1
+OpenGL ES profile shading language version: OpenGL ES GLSL ES 3.10

@@ -1,0 +1,22 @@
+# tracer: nop
+#
+# entries-in-buffer/entries-written: 10/10   #P:4
+#
+#                                _-----=> irqs-off/BH-disabled
+#                               / _----=> need-resched
+#                              | / _---=> hardirq/softirq
+#                              || / _--=> preempt-depth
+#                              ||| / _-=> migrate-disable
+#                              |||| /     delay
+#           TASK-PID     CPU#  |||||  TIMESTAMP  FUNCTION
+#              | |         |   |||||     |         |
+              sh-839     [002] ...1.   376.371002: tracing_mark_write: STATIC_VERIFY_START
+              sh-839     [002] ...1.   379.400484: tracing_mark_write: SEND 06 da 1
+              sh-839     [001] ...1.   379.427732: tracing_mark_write: SEND lp 06 db 1
+              sh-839     [001] ...1.   379.453534: tracing_mark_write: SEND lp 06 dc 1
+              sh-839     [001] ...1.   379.476169: tracing_mark_write: SEND lp 06 da 1
+              sh-839     [001] ...1.   379.502643: tracing_mark_write: SEND 06 db 1
+              sh-839     [003] ...1.   379.528487: tracing_mark_write: SEND lp 06 da 1
+              sh-839     [003] ...1.   379.553852: tracing_mark_write: SEND 06 dc 1
+              sh-839     [003] ...1.   379.581641: tracing_mark_write: SEND lp 06 db 1
+              sh-839     [003] ...1.   379.597636: tracing_mark_write: STATIC_READ_END

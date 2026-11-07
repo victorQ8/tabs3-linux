@@ -1,0 +1,144 @@
+From 1dd66ad12bd8d0fed786dd99b3f388f20bdcefa8 Mon Sep 17 00:00:00 2001
+From: dexq8 <dexq8@proton.me>
+Date: Mon, 12 Oct 2026 16:16:29 +0300
+Subject: [PATCH] drm/msm: keep shared global-VM mappings until the last user
+
+GPUs without per-process pagetables (a2xx..a5xx) give every context the
+global VM. A buffer shared through dma-buf, such as a Wayland client's
+window buffer imported by the compositor, is the same GEM object in both
+contexts and has a single VMA in that VM, and userspace caches its iova.
+
+Since the drm_gpuvm conversion, closing a handle unmaps and frees the
+object's VMA in the closing context's VM. With the global VM this also
+removes the mapping that other contexts still use: the iova is handed to
+the next allocation, and the compositor's later submits read unmapped or
+reused addresses. On an Adreno 530 (Samsung Galaxy Tab S3) this produced
+repeatable TRANSLATION faults in phoc when GTK GL windows were opened.
+
+Only skipping the teardown on handle close is not enough: the
+drm_gpuvm_bo holds a reference to the GEM object, so a mapping left for
+msm_gem_free_object() keeps the object alive for good (about 1.9 GB of
+buffers stayed resident after a desktop session).
+
+Use the existing vma_ref accounting, which counts handles, dma-buf
+exports and framebuffers, for the global GPU VM as well as for the KMS
+VM: keep the mapping while any of those users remain, and after the last
+one wait for outstanding GPU work and tear the mapping down under the VM
+and object locks. Private VMs and VM_BIND contexts are unchanged.
+
+Fixes: 111fdd2198e6 ("drm/msm: drm_gpuvm conversion")
+Cc: stable@vger.kernel.org # 6.17+
+Assisted-by: Claude:claude-opus-5-5
+Assisted-by: Codex
+---
+
+Notes:
+    Testing: runtime-tested on 6.19.5 (msm8996-mainline community patches) on an
+    Adreno 530 with the global VM (Samsung Galaxy Tab S3, SM-T825): no GPU faults
+    in 24 GTK editor open/close cycles under Phosh, the GEM object count returns
+    to its baseline after the session, and a two-client dma-buf reproducer
+    (share, close in one client, allocate again, re-query in the other) keeps the
+    mapping and frees the buffers. On v7.3-rc7 build-tested only (arm64, W=1).
+    Reproducer: https://github.com/victorQ8/tabs3-linux/blob/main/tools/gpu-shared-vma-check
+
+ drivers/gpu/drm/msm/msm_gem.c | 30 +++++++++++++++++++++++++++---
+ drivers/gpu/drm/msm/msm_gem.h |  5 +++--
+ 2 files changed, 30 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/gpu/drm/msm/msm_gem.c b/drivers/gpu/drm/msm/msm_gem.c
+index c4cff3d53d8..66323e295ca 100644
+--- a/drivers/gpu/drm/msm/msm_gem.c
++++ b/drivers/gpu/drm/msm/msm_gem.c
+@@ -52,6 +52,7 @@ static void put_iova_spaces(struct drm_gem_object *obj, struct drm_gpuvm *vm,
+ 
+ static void msm_gem_close(struct drm_gem_object *obj, struct drm_file *file)
+ {
++	struct msm_drm_private *priv = obj->dev->dev_private;
+ 	struct msm_context *ctx = file->driver_priv;
+ 	struct drm_exec exec;
+ 
+@@ -74,6 +75,15 @@ static void msm_gem_close(struct drm_gem_object *obj, struct drm_file *file)
+ 	if (msm_context_is_vmbind(ctx))
+ 		return;
+ 
++	/*
++	 * Without per-process pagetables every context shares the global VM,
++	 * so a buffer shared through dma-buf has a single VMA there, and other
++	 * contexts still holding the buffer keep using its iova.  The final
++	 * external VMA reference tears it down in msm_gem_vma_put().
++	 */
++	if (ctx->vm == priv->gpu->vm)
++		return;
++
+ 	/*
+ 	 * TODO we might need to kick this to a queue to avoid blocking
+ 	 * in CLOSE ioctl
+@@ -87,7 +97,7 @@ static void msm_gem_close(struct drm_gem_object *obj, struct drm_file *file)
+ }
+ 
+ /*
+- * Get/put for kms->vm VMA
++ * Get/put for shared GPU and display VMAs
+  */
+ 
+ void msm_gem_vma_get(struct drm_gem_object *obj)
+@@ -98,16 +108,30 @@ void msm_gem_vma_get(struct drm_gem_object *obj)
+ void msm_gem_vma_put(struct drm_gem_object *obj)
+ {
+ 	struct msm_drm_private *priv = obj->dev->dev_private;
++	struct drm_exec exec;
+ 
+ 	if (atomic_dec_return(&to_msm_bo(obj)->vma_ref))
+ 		return;
+ 
++	/*
++	 * A global GPU mapping must outlive every handle, dma-buf export and
++	 * framebuffer using the object, but must not keep the object alive
++	 * after all those references are gone.  The vm_bo itself holds a
++	 * GEM reference, so waiting for msm_gem_free_object() would leak it.
++	 * Finish outstanding GPU work before removing its mapping.
++	 */
++	if (priv->gpu && priv->gpu->vm) {
++		dma_resv_wait_timeout(obj->resv, DMA_RESV_USAGE_BOOKKEEP, false,
++				      MAX_SCHEDULE_TIMEOUT);
++		msm_gem_lock_vm_and_obj(&exec, obj, priv->gpu->vm);
++		put_iova_spaces(obj, priv->gpu->vm, true, "last-vma-ref");
++		drm_exec_fini(&exec);
++	}
++
+ 	if (!priv->kms)
+ 		return;
+ 
+ #ifdef CONFIG_DRM_MSM_KMS
+-	struct drm_exec exec;
+-
+ 	msm_gem_lock_vm_and_obj(&exec, obj, priv->kms->vm);
+ 	put_iova_spaces(obj, priv->kms->vm, true, "vma_put");
+ 	drm_exec_fini(&exec);     /* drop locks */
+diff --git a/drivers/gpu/drm/msm/msm_gem.h b/drivers/gpu/drm/msm/msm_gem.h
+index 7c6a8c01f91..04d6d36149d 100644
+--- a/drivers/gpu/drm/msm/msm_gem.h
++++ b/drivers/gpu/drm/msm/msm_gem.h
+@@ -249,14 +249,15 @@ struct msm_gem_object {
+ 	 *
+ 	 * 1) the BO is exported as a dma_buf
+ 	 * 2) the BO has open userspace handle
++	 * 3) the BO is held by a framebuffer
+ 	 *
+ 	 * All of those conditions will hold an reference to the BO,
+ 	 * preventing it from being freed.  So lazily keeping around the
+ 	 * VMA will not prevent the BO from being freed.  (Or rather, the
+ 	 * reference loop is harmless in this case.)
+ 	 *
+-	 * When the @vma_ref drops to zero, then kms->vm VMA will be
+-	 * torn down.
++	 * When the @vma_ref drops to zero, mappings in kms->vm and the
++	 * global GPU VM are torn down.
+ 	 */
+ 	atomic_t vma_ref;
+ };
+
+base-commit: 24a19b953e2a3d0ea5a8c4951a0ab8f32720c907
+-- 
+2.55.0
+

@@ -1,0 +1,40 @@
+[Unit]
+Description=Tab S3 LTE status dashboard on the panel, with presence wake
+Documentation=file:/usr/libexec/tabs3-dashboard
+# The framebuffer appears when the display driver probes, which can be after
+# multi-user.target: wait for dev-fb0.device (tagged for systemd by
+# 70-tabs3-dashboard.rules, which also starts this service when it appears)
+# instead of testing for /dev/fb0 once and giving up.
+BindsTo=dev-fb0.device
+After=dev-fb0.device tabs3-screen.service systemd-udev-trigger.service
+Wants=tabs3-screen.service
+
+[Service]
+ExecStart=/usr/libexec/tabs3-dashboard
+ExecStopPost=-/usr/bin/chvt 1
+Restart=on-failure
+RestartSec=5
+Nice=10
+# root only for the framebuffer, its virtual terminal and the wake pipe
+# (/run stays writable for the pipe)
+ProtectSystem=full
+ProtectHome=yes
+PrivateTmp=yes
+NoNewPrivileges=yes
+CapabilityBoundingSet=CAP_SYS_TTY_CONFIG
+RestrictAddressFamilies=AF_UNIX AF_NETLINK
+DevicePolicy=closed
+DeviceAllow=/dev/fb0 rw
+DeviceAllow=/dev/tty7 rw
+DeviceAllow=/dev/tty1 rw
+# the analog microphone for the sound-level presence wake
+DeviceAllow=/dev/snd/controlC0 rw
+DeviceAllow=/dev/snd/pcmC0D2c rw
+DeviceAllow=/dev/snd/timer rw
+# the front camera (CAMSS media device, video nodes and sensor subdevices)
+# for the camera presence wake
+DeviceAllow=/dev/media0 rw
+DeviceAllow=char-video4linux rw
+
+[Install]
+WantedBy=multi-user.target

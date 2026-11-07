@@ -1,0 +1,27 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/* Adreno 530 GPU and its PM8004 S2 supply. */
+
+/* Stock gfx_corner ultimately controls PM8004 S2 (SPMI USID 5, 0x1700).
+ * Preserve its 400000..1015000 uV constraints and 500 us enable delay.
+ * The boot voltage is retained; this does not implement stock CPR tuning.
+ */
+&pm8004_spmi_regulators {
+	vdd_gfx: s2 {
+		regulator-name = "vdd-gfx";
+		regulator-min-microvolt = <400000>;
+		regulator-max-microvolt = <1015000>;
+		regulator-enable-ramp-delay = <500>;
+	};
+};
+
+&mmcc {
+	vdd-gfx-supply = <&vdd_gfx>;
+};
+
+&gpu {
+	status = "okay";
+};
+
+&gpu_zap_shader {
+	firmware-name = "qcom/msm8996/samsung/gts3llte/a530_zap.mdt";
+};

@@ -1,0 +1,23 @@
+Y
+0
+[    7.636357] Modules linked in: panel_samsung_ams968hh01(+) ath10k_pci(+) ath10k_core ath mac80211 libarc4 msm hci_uart btqca bluetooth ubwc_config mdt_loader drm_dp_aux_bus drm_gpuvm drm_exec gpu_sched drm_display_helper cec drm_client_lib drm_kms_helper socinfo evdev cfg80211 rfkill pkcs8_key_parser fuse drm drm_panel_orientation_quirks nfnetlink ip_tables x_tables autofs4
+[    7.639813]  ams968hh01_probe+0x268/0x3c8 [panel_samsung_ams968hh01]
+[    7.640017]  ams968hh01_driver_init+0x2c/0xff8 [panel_samsung_ams968hh01]
+[    7.645017] Modules linked in: panel_samsung_ams968hh01(+) ath10k_pci(+) ath10k_core ath mac80211 libarc4 msm hci_uart btqca bluetooth ubwc_config mdt_loader drm_dp_aux_bus drm_gpuvm drm_exec gpu_sched drm_display_helper cec drm_client_lib drm_kms_helper socinfo evdev cfg80211 rfkill pkcs8_key_parser fuse drm drm_panel_orientation_quirks nfnetlink ip_tables x_tables autofs4
+[    7.648609]  ams968hh01_probe+0x268/0x3c8 [panel_samsung_ams968hh01]
+[    7.648801]  ams968hh01_driver_init+0x2c/0xff8 [panel_samsung_ams968hh01]
+[    7.652352] Modules linked in: panel_samsung_ams968hh01(+) ath10k_pci ath10k_core ath mac80211 libarc4 msm hci_uart btqca bluetooth ubwc_config mdt_loader drm_dp_aux_bus drm_gpuvm drm_exec gpu_sched drm_display_helper cec drm_client_lib drm_kms_helper socinfo evdev cfg80211 rfkill pkcs8_key_parser fuse drm drm_panel_orientation_quirks nfnetlink ip_tables x_tables autofs4
+[    7.655892]  ams968hh01_probe+0x268/0x3c8 [panel_samsung_ams968hh01]
+[    7.656093]  ams968hh01_driver_init+0x2c/0xff8 [panel_samsung_ams968hh01]
+[    7.659749] Modules linked in: panel_samsung_ams968hh01(+) ath10k_pci ath10k_core ath mac80211 libarc4 msm hci_uart btqca bluetooth ubwc_config mdt_loader drm_dp_aux_bus drm_gpuvm drm_exec gpu_sched drm_display_helper cec drm_client_lib drm_kms_helper socinfo evdev cfg80211 rfkill pkcs8_key_parser fuse drm drm_panel_orientation_quirks nfnetlink ip_tables x_tables autofs4
+[    7.663446]  ams968hh01_probe+0x268/0x3c8 [panel_samsung_ams968hh01]
+[    7.663642]  ams968hh01_driver_init+0x2c/0xff8 [panel_samsung_ams968hh01]
+[    7.689982] msm_dsi 994000.dsi: LP11 experiment: clock deferred, lane_ctrl=00000000
+[    7.713812] msm_dsi 996000.dsi: LP11 experiment: clock deferred, lane_ctrl=00000000
+[    7.809751] panel-samsung-ams968hh01 994000.dsi.0: startup checkpoint: reset released
+[    7.870880] panel-samsung-ams968hh01 994000.dsi.0: startup checkpoint: TCON_RDY=1 ret=0
+[    7.873212] msm_dsi 996000.dsi: LP11 experiment: first command starts clock, lane_ctrl=10000000
+[    7.873277] msm_dsi 994000.dsi: LP11 experiment: first command starts clock, lane_ctrl=10000000
+[    8.103180] panel-samsung-ams968hh01 994000.dsi.0: MTP 33 51 55 43 3a 53 5b 36 14 00 00 40 51 57 42 3c 53 5b 3c 0c 00 00 38 53 56 47 3d 55 5c 64 82 00 00
+[    8.103253] panel-samsung-ams968hh01 994000.dsi.0: 360 nit gamma b3 d1 d5 c3 ba d3 db 36 94 80 00 c0 d1 d7 c2 bc d3 db 3c 8c 80 00 b8 d3 d6 c7 bd d5 dc 64 80 80 00
+0

@@ -1,0 +1,15 @@
+[Unit]
+Description=Enumerate the Tab S3 LTE Wi-Fi card on PCIe0
+DefaultDependencies=no
+After=systemd-udev-trigger.service
+Before=iwd.service shutdown.target
+Conflicts=shutdown.target
+ConditionPathExists=/sys/firmware/devicetree/base/compatible
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/tabs3-wifi-pcie
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

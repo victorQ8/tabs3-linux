@@ -1,0 +1,23 @@
+From a612f05a559bf26237227354e3624b86cf9bc441 Mon Sep 17 00:00:00 2001
+From: tabs3-rebase <noreply@localhost>
+Date: Mon, 12 Oct 2026 15:30:02 +0300
+Subject: [PATCH] arm64: dts: qcom: msm8996: add gpu_zap_shader label
+
+msm8996.dtsi part of upstream 2377626fd216 (v6.19); the board's adreno.dtsi references &gpu_zap_shader.
+---
+ arch/arm64/boot/dts/qcom/msm8996.dtsi | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm64/boot/dts/qcom/msm8996.dtsi b/arch/arm64/boot/dts/qcom/msm8996.dtsi
+index 4ab25787e9a..2ed8563e350 100644
+--- a/arch/arm64/boot/dts/qcom/msm8996.dtsi
++++ b/arch/arm64/boot/dts/qcom/msm8996.dtsi
+@@ -1333,7 +1333,7 @@
+ 				};
+ 			};
+ 
+-			zap-shader {
++			gpu_zap_shader: zap-shader {
+ 				memory-region = <&gpu_mem>;
+ 			};
+ 		};

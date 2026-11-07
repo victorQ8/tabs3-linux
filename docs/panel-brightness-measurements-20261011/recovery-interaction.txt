@@ -1,0 +1,14 @@
+Screen off requested
+Screen on requested
+Recovery action: Check filesystem
+brightness=86
+actual_brightness=86
+boot      /dev/mmcblk0p28  79691776 bytes
+recovery  /dev/mmcblk0p29  79691776 bytes
+system    /dev/mmcblk0p44  4194304000 bytes
+userdata  /dev/mmcblk0p47  26226966016 bytes
+root ext4 d175936c-f57f-4e9c-9ac9-26aa0659feee: 30421266432 bytes, userdata + system, state clean
+0 51224536 linear 259:15 0
+51224536 8192000 linear 259:12 0
+root not mounted
+USB export: off

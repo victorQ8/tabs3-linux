@@ -1,0 +1,42 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/* Platform devices for unattended operation: watchdog, RTC, crypto engine. */
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+
+/*
+ * APSS watchdog, from the stock tree (qcom,msm-watchdog at 0x9830000: bark
+ * interrupt 28, bite 29, 15 s bark and 10 s pet). The kpss-wdt layout
+ * matches the downstream one (reset 0x4, enable 0x8, status 0xc, bark
+ * 0x10, bite 0x14). systemd pets it (tabs3-base). Bark notifies the
+ * pretimeout governor; bite resets the SoC. CPU0 must remain out of
+ * standalone collapse on this firmware for timeout recovery to work.
+ */
+&{/soc@0} {
+	watchdog@9830000 {
+		compatible = "qcom,kpss-wdt";
+		reg = <0x09830000 0x1000>;
+		clocks = <&sleep_clk>;
+		interrupts = <GIC_SPI 28 IRQ_TYPE_EDGE_RISING>;
+		timeout-sec = <30>;
+	};
+};
+
+/*
+ * Keep the PM8994 RTC read-only, as on stock. Enabling allow-set-time
+ * caused resets in package-56 RAM boots; deleting only that property
+ * survived NTP synchronization with all other candidate changes present.
+ * tabs3-rtc-offset restores UTC using a saved, NTP-verified offset.
+ */
+
+/*
+ * The crypto engine's BAM is set up by secure firmware on this tablet and
+ * its DMA channels are not described; the driver stayed in deferred probe
+ * forever. The CPUs' ARMv8 crypto extensions serve dm-crypt and TLS.
+ */
+&cryptobam {
+	status = "disabled";
+};
+
+&crypto {
+	status = "disabled";
+};

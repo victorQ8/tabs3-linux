@@ -1,0 +1,27 @@
+{
+  "kernel": "Linux tabs3 6.18.56-gts3l1 #13 SMP PREEMPT 2026-10-10 00:00:00 UTC aarch64 GNU/Linux",
+  "kernel_package": "6.18.56-55",
+  "base_package": "0.1.13",
+  "uptime": "19.40",
+  "default_target": "multi-user.target",
+  "system_state": "running",
+  "failed_units": "",
+  "wifi_factory_address_matches": true,
+  "wifi_state": "100 (connected)",
+  "cpu_maximum_khz": {
+    "policy2": 940800,
+    "policy0": 960000
+  },
+  "services": {
+    "ssh": "active",
+    "NetworkManager": "active",
+    "greetd": "inactive",
+    "tabs3-screen": "active",
+    "tabs3-server-cpu-limit": "active",
+    "tabs3-wifi-address": "active"
+  },
+  "sleep_masked": true,
+  "battery_percent": 100,
+  "battery_temp_deci_c": 289,
+  "usb_ssh_return_seconds": 26.6
+}

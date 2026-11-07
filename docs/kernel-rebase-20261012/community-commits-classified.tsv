@@ -1,0 +1,72 @@
+community_commit	subject	author	sm-t825	reason	pick onto 6.18.56 (6.18.7 series)	pick onto 7.2.10
+2206b03b	media: qcom: camss: Make ispif_reset go though VFE user counting logic	Yassine Oudjana	not needed	camera (CAMSS disabled on SM-T825)	clean	clean
+1b684ce1	dt-bindings: media: camss: qcom,msm8996-camss: Add CAMSS power domain	Yassine Oudjana	not needed	camera (CAMSS disabled on SM-T825)	clean	clean
+fb595211	arm64: dts: qcom: msm8996: Add CAMSS power domain and power-domain-names to CAMSS	Yassine Oudjana	not needed	camera (CAMSS disabled on SM-T825)	clean	clean
+55aa7069	media: qcom: camss: Add 8x96 power domain names	Yassine Oudjana	not needed	camera (CAMSS disabled on SM-T825)	clean	clean
+9825cdf0	drm/msm/dsi: improve power management	Vladimir Lypak	CARRY	panel 0005/0006 rely on DSI transfers outside bridge enable + 200 ms runtime-PM autosuspend (dsi_mgr_power_on, put_pm)	clean	clean
+9355925d	arm64: dts: qcom: msm8996-xiaomi-common: Fix TUSB320l interrupt polarity	Yassine Oudjana	not needed	DTS for another board	clean	clean
+a986f530	arm64: dts: qcom: msm8996-oneplus3t: Rebase on MSM8996 Pro	Yassine Oudjana	not needed	DTS for another board	clean	clean
+ddef7adc	arm64: dts: qcom: msm8996pro-oneplus3t: Add msm-id	Yassine Oudjana	not needed	DTS for another board	clean	clean
+982cdff2	arm64: dts: qcom: msm8996pro-xiaomi-scorpio: Remove DSI PHY clocks from MMCC	Yassine Oudjana	not needed	DTS for another board	clean	clean
+4ffe2541	arm64: dts: qcom: msm8996-{xiaomi/oneplus}-common: Remove clocks node	Yassine Oudjana	not needed	DTS for another board	clean	clean
+53547b2d	arm64: dts: qcom: msm8996-sony-xperia-tone: Add firmware paths	Yassine Oudjana	not needed	DTS for another board	clean	clean
+ba80ee9b	arm64: dts: qcom: msm8996-sony-xperia-tone: Remove maxcpus=2 from bootargs	Yassine Oudjana	not needed	DTS for another board	clean	clean
+4d7c4dc4	drm/panel: Add support for SONY JDI Synaptics panel	AngeloGioacchino Del Regno	not needed	panel driver for another device	clean	clean
+85b170c1	arm64: dts: qcom: msm8996-tone: Add display support	Konrad Dybcio	not needed	DTS for another board	clean	clean
+50a2f5af	arm64: dts: qcom: msm8996-sony-xperia-tone-kagura: add jdi panel	Konrad Dybcio	not needed	DTS for another board	clean	clean
+35cd64a2	arm64: dts: qcom: msm8996-sony-xperia-tone-keyaki: add jdi panel	Raidro Manchester	not needed	DTS for another board	clean	clean
+d6807558	drm/panel: Add Samsung S6E3FA3 MIPI DSI panel driver	Dr. Git	not needed	panel driver for another device	clean	clean
+6bdc3a71	drm/panel: Add Samsung S6E3FA5 MIPI DSI panel driver	Dr. Git	not needed	panel driver for another device	clean	clean
+3f7e1778	arm64: dts: qcom: msm8996-oneplus-common: Add display panel	Yassine Oudjana	not needed	DTS for another board	clean	clean
+16e52b9e	arm64: dts: qcom: msm8996 ZTE Axon 7 support	Dr. Git	not needed	DTS for another board	clean	clean
+d72db374	arm-smmu: implement qcom,no-smr-check	Konrad Dybcio	not needed	qcom,skip-init/no-smr-check (used only by xiaomi-scorpio DT)	clean	clean
+b73ce197	iommu/arm-smmu: Implement qcom,skip-init	Konrad Dybcio	not needed	qcom,skip-init/no-smr-check (used only by xiaomi-scorpio DT)	clean	clean
+c9b7db55	arm64: dts: qcom: msm8996-xiaomi-scorpio: Enable MDP SMMU	Yassine Oudjana	not needed	DTS for another board	clean	clean
+c5775815	HACK: arm64: dts: qcom: xiaomi-scorpio: Remove power-domains from MDP SMMU	Yassine Oudjana	not needed	DTS for another board	clean	clean
+3cf69b8e	drm/panel: Add driver for LG.Philips SW43101 DSI video mode panel	Yassine Oudjana	not needed	panel driver for another device	clean	clean
+a11cdd80	arm64: dts: qcom: msm8996-xiaomi-scorpio: Enable panel	Yassine Oudjana	not needed	DTS for another board	clean	clean
+54007910	dt-bindings: power: supply: Add DT schema for Qualcomm SMBCHG	Yassine Oudjana	not needed	PMI8994/PMI8996 charger/FG (SM-T825 uses SM5705, no PMI8994)	clean	clean
+e5f3d6c6	arm64: dts: qcom: pmi8994: Add SMBCHG	Yassine Oudjana	not needed	PMI8994/PMI8996 charger/FG (SM-T825 uses SM5705, no PMI8994)	clean	clean
+6f4d91d3	arm64: dts: qcom: pmi8996: Add SMBCHG	Yassine Oudjana	not needed	PMI8994/PMI8996 charger/FG (SM-T825 uses SM5705, no PMI8994)	clean	clean
+30cd69e6	arm64: dts: qcom: msm8996-xiaomi-*: Add battery data	Yassine Oudjana	not needed	PMI8994/PMI8996 charger/FG (SM-T825 uses SM5705, no PMI8994)	clean	clean
+6b78425a	arm64: dts: qcom: msm8996-xiaomi-*: Enable SMBCHG	Yassine Oudjana	not needed	PMI8994/PMI8996 charger/FG (SM-T825 uses SM5705, no PMI8994)	clean	clean
+3baa516e	soc: qcom: Add PMIC secure register write helpers	Yassine Oudjana	not needed	PMI8994/PMI8996 charger/FG (SM-T825 uses SM5705, no PMI8994)	clean	clean
+012af966	util_macros.h: Add macro to find closest smaller value in array	Yassine Oudjana	not needed	PMI8994/PMI8996 charger/FG (SM-T825 uses SM5705, no PMI8994)	clean	clean
+bd55e68a	power: supply: Add driver for Qualcomm SMBCHG	Yassine Oudjana	not needed	PMI8994/PMI8996 charger/FG (SM-T825 uses SM5705, no PMI8994)	clean	clean
+cb2d511d	arm64: dts: qcom: msm8996-oneplus-common: Enable SMBCHG	Yassine Oudjana	not needed	PMI8994/PMI8996 charger/FG (SM-T825 uses SM5705, no PMI8994)	clean	clean
+0815e75a	arm64: dts: qcom: msm8996-xiaomi-common: Add VBUS power supply to DWC3	Yassine Oudjana	not needed	DTS for another board	clean	clean
+54ec03c8	arm64: dts: qcom: msm8996-oneplus-common: Add VBUS power supply to DWC3	Yassine Oudjana	not needed	DTS for another board	clean	clean
+7bf172f8	usb: dwc3: Add support for VBUS power control	Mike Looijmans	CARRY	usb-host.dtsi vbus-supply = <&sm5705_otg_vbus> on &usb3_dwc3 (patch 0013); dwc3 core has no vbus regulator upstream (7.3-rc7)	clean	clean
+18894449	dt-bindings: power: supply: Add DT schema for qcom,fg	Yassine Oudjana	not needed	PMI8994/PMI8996 charger/FG (SM-T825 uses SM5705, no PMI8994)	clean	clean
+fc793f7e	arm64: dts: qcom: pmi8994: Add fuel gauge	Yassine Oudjana	not needed	PMI8994/PMI8996 charger/FG (SM-T825 uses SM5705, no PMI8994)	clean	clean
+d32e1ea5	arm64: dts: qcom: pmi8996: Add fuel gauge	Yassine Oudjana	not needed	PMI8994/PMI8996 charger/FG (SM-T825 uses SM5705, no PMI8994)	clean	clean
+56c991a6	arm64: dts: qcom: msm8996-xiaomi-*: Enable PMIC fuel gauge	Yassine Oudjana	not needed	PMI8994/PMI8996 charger/FG (SM-T825 uses SM5705, no PMI8994)	clean	clean
+49ae315f	power: supply: Add driver for Qualcomm PMIC fuel gauge	Joel Selvaraj	not needed	PMI8994/PMI8996 charger/FG (SM-T825 uses SM5705, no PMI8994)	clean	CONFLICT: drivers/power/supply/Makefile 
+b15a2e9e	dt-bindings: input: add Qualcomm SPMI haptics driver	Caleb Connolly	not needed	PMI8994 haptics (absent)	clean	clean
+78822012	input: add Qualcomm SPMI haptics driver	Caleb Connolly	not needed	PMI8994 haptics (absent)	clean	clean
+a571a865	arm64: dts: qcom: pmi8994: Add haptics	Yassine Oudjana	not needed	PMI8994 haptics (absent)	clean	clean
+45ac460a	arm64: dts: qcom: msm8996-xiaomi-*: Enable haptics	Yassine Oudjana	not needed	PMI8994 haptics (absent)	clean	clean
+699af099	arm64: dts: qcom: msm8996: Add CPU cooling support	Yassine Oudjana	CARRY (optional)	DT-only; keeps DTB identical; inert today because CONFIG_QCOM_TSENS is not set	clean	clean
+7a56aba8	arm64: dts: qcom: msm8996-xiaomi-common: Fix dsi0 supplies	Yassine Oudjana	not needed	DTS for another board	clean	clean
+09824945	arm64: dts: qcom: msm8996-xiaomi-gemini: Add second board-id	Yassine Oudjana	not needed	DTS for another board	clean	clean
+8c0e8f26	arm64: dts: qcom: msm8996-xiaomi-scorpio: Enable CAMSS	Yassine Oudjana	not needed	camera (CAMSS disabled on SM-T825)	clean	clean
+015df16f	media: i2c: Add a driver for Sony IMX318	Yassine Oudjana	not needed	camera (CAMSS disabled on SM-T825)	clean	clean
+e5f90619	dt-bindings: extcon: usbc-fusb301: Add bindings for FUSB301	Xhivat Hoxhiq	not needed	OnePlus Type-C controller	clean	clean
+efbd6e67	extcon: Add onsemi FUSB301 driver	Xhivat Hoxhiq	not needed	OnePlus Type-C controller	clean	clean
+d8d0a6a9	arm64: dts: qcom: msm8996-oneplus3: Add FUSB301	Xhivat Hoxhiq	not needed	OnePlus Type-C controller	clean	clean
+18142257	slimbus: qcom-ngd-ctrl: Register SSR notifier after all initialization steps	Yassine Oudjana	DROP (superseded)	upstream 2a9d50e9ea40 (v7.1) / 6.18.y 24ec89123fc moves SSR/PDR registration after NGD creation	CONFLICT: drivers/slimbus/qcom-ngd-ctrl.c 	CONFLICT: drivers/slimbus/qcom-ngd-ctrl.c 
+8737f6db	remoteproc: qcom: Report last event on SSR notifier registration	Yassine Oudjana	CARRY	NGD only starts on SSR AFTER_POWERUP or PDR; no pd-mapper in rootfs, so a late NGD probe would never see the ADSP come up	clean	clean
+33aef019	ASoC: dt-bindings: wcd9335: Add AIF4_CAP	Yassine Oudjana	not needed	WCD9335 AIF4_CAP (board uses AIF4_PB/AIF1_CAP)	clean	clean
+f3255756	ASoC: wcd9335: Add AIF4_CAP	Yassine Oudjana	not needed	WCD9335 AIF4_CAP (board uses AIF4_PB/AIF1_CAP)	clean	clean
+83f46aa0	arm64: dts: qcom: msm8996-xiaomi-*: Commonize and expand sound setup	Yassine Oudjana	not needed	DTS for another board	clean	clean
+2e971a2e	arm64: dts: qcom: msm8996pro-xiaomi-scorpio: Add rear camera lens	Yassine Oudjana	not needed	DTS for another board	clean	clean
+6bdbdc07	arm64: dts: qcom: msm8996-oneplus3: disable usb3 clock to support only USB2	Martin Lillepuu	not needed	DTS for another board	clean	clean
+e1304418	arm64: dts: qcom: msm8996pro-oneplus3t: use per panel dts	Martin Lillepuu	not needed	DTS for another board	clean	clean
+374afd1b	dt-bindings: arm: qcom: Add Xiaomi Mi 5s	Furkan Sonkaya	not needed	DTS for another board	clean	clean
+3aec597d	arm64: dts: qcom: msm8996pro: xiaomi-capricorn: Add support for Xiaomi Mi 5s	Furkan Sonkaya	not needed	DTS for another board	clean	clean
+41bd0aa7	net: qrtr: smd: Rename qdev to qsdev	Yassine Oudjana	not needed	sensor stack (SLPI dropped; CONFIG_QCOM_SNS_REG disabled)	clean	clean
+6d1bffde	net: qrtr: Turn QRTR into a bus	Yassine Oudjana	not needed	sensor stack (SLPI dropped; CONFIG_QCOM_SNS_REG disabled)	clean	CONFLICT: include/linux/mod_devicetable.h 
+21d9533a	net: qrtr: Define macro to convert QMI version and instance to QRTR instance	Yassine Oudjana	not needed	sensor stack (SLPI dropped; CONFIG_QCOM_SNS_REG disabled)	clean	CONFLICT: include/linux/soc/qcom/qrtr.h 
+6535eab1	iio: Add Qualcomm Sensor Manager driver	Yassine Oudjana	not needed	sensor stack (SLPI dropped; CONFIG_QCOM_SNS_REG disabled)	clean	clean
+ed4939cf	soc: qcom: Add in-kernel sensors registry implementation.	Alexey Minnekhanov	not needed	sensor stack (SLPI dropped; CONFIG_QCOM_SNS_REG disabled)	clean	clean
+1aed438c	remoteproc: qcom: Enable in-kernel sns-reg	Alexey Minnekhanov	not needed	sensor stack (SLPI dropped; CONFIG_QCOM_SNS_REG disabled)	clean	clean

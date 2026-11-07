@@ -1,0 +1,33 @@
+{
+ "schema_version": 1,
+ "recorded_utc": "2026-10-13T05:37:03+00:00",
+ "installed": {
+  "linux-tabs3": "6.18.56-48",
+  "tabs3-base": "0.1.12"
+ },
+ "method": "owner counted aloud for about 15 s; WCD9335 analog mic -> DEC0 -> SLIM TX0 -> MultiMedia3, 48 kHz mono S16_LE, ADC volume 12, arecord as root (PipeWire held no device); 5 s from ADC3, then 5 s from ADC4",
+ "results": {
+  "ADC3": {
+   "rms_dbfs": -49.6,
+   "peak_dbfs": -32.4,
+   "window_100ms_dbfs": {
+    "quietest": -63.8,
+    "median": -50.9,
+    "loudest": -43.7
+   }
+  },
+  "ADC4": {
+   "rms_dbfs": -49.3,
+   "peak_dbfs": -34.8,
+   "window_100ms_dbfs": {
+    "quietest": -66.4,
+    "median": -55.4,
+    "loudest": -42.5
+   }
+  },
+  "room_noise_reference": "ADC3 -65.4 dBFS rms (package 44, docs/kernel44-validation-20261013.json)",
+  "second_recording": "worked right after the first; no CMD_CLOSE timeout this time"
+ },
+ "conclusion": "both analog microphones pick up speech (15-22 dB level spread over 100 ms windows); speech peaks near -32 dBFS, so the default capture gain is low",
+ "recordings": "kept privately on the build PC, not in Git"
+}

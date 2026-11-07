@@ -1,0 +1,1016 @@
+#!/usr/bin/python3
+"""Server status on the Tab S3 LTE's own panel, plus a presence wake.
+
+Draws straight into the panel's framebuffer (no compositor, no web page):
+clock, uptime, load, CPU and temperatures, battery, memory, storage, the
+network addresses and rates, logins, the remote processors and the light
+sensor, with ten-minute history. Rendering pauses while the screen sleeps
+(tabs3-screen blanks it after an idle time).
+
+While the screen is off it watches the light sensor, the accelerometer,
+the microphone and the front camera: a sudden change of the illuminance (a
+shadow, a light switched on), a jolt felt by the tablet, a sound well above
+the room's floor or a change in the camera's coarse view of the room asks
+tabs3-screen to wake the screen, as a touch would. Settings:
+/etc/tabs3/dashboard.conf.
+"""
+import argparse
+import array
+import collections
+import fcntl
+import glob
+import math
+import os
+import re
+import signal
+import socket
+import subprocess
+import sys
+import threading
+import time
+
+from PIL import Image, ImageDraw, ImageFont
+
+from tabs3_dashboard_themes import THEMES, ThemeRenderer
+from tabs3_dashboard_power import battery_status, charge_behaviour, keeper_target, power_source
+
+try:
+    import tabs3_camera          # tabs3-base 0.1.25: the cameras' raw path
+except ImportError:
+    tabs3_camera = None
+
+CONF = '/etc/tabs3/dashboard.conf'
+FB = '/dev/fb0'
+FB_SYS = '/sys/class/graphics/fb0'
+DPMS = glob.glob('/sys/class/drm/card*-DSI-*/dpms')
+WAKE_PIPE = '/run/tabs3-screen/wake'
+THEME_STATE = '/var/lib/tabs3-dashboard/theme'
+FONTS = os.environ.get('TABS3_FONT_DIR', '/usr/share/fonts')
+VT = 7
+KDSETMODE, KD_TEXT, KD_GRAPHICS = 0x4B3A, 0, 1
+VT_ACTIVATE, VT_WAITACTIVE = 0x5606, 0x5607
+
+DEFAULTS = {
+    'REFRESH': 2.0,            # seconds between frames while the screen is on
+    'HISTORY_MINUTES': 10,
+    'WAKE_ON_LIGHT': 1,
+    'LIGHT_CHANGE_PERCENT': 35,  # relative illuminance change that wakes
+    'LIGHT_CHANGE_LUX': 3,       # and at least this many lux
+    'WAKE_ON_MOTION': 0,         # the tablet lives on a mount; 1 for a desk
+    'MOTION_THRESHOLD': 0.25,    # m/s^2 away from the resting magnitude
+    'WAKE_ON_SOUND': 1,          # a sound well above the room's floor wakes
+    'SOUND_RISE_DB': 15,         # dB above the quietest window of the last 30 s
+    'SOUND_MIN_DBFS': -50,       # and at least this loud at the microphone
+    'SOUND_DEVICE': 'hw:0,2',    # ALSA capture PCM of the analog microphone
+    'WAKE_ON_CAMERA': 1,         # the front camera watches the room while off
+    'CAMERA_INTERVAL': 4.0,      # seconds between two frames
+    'CAMERA_CHANGE_PERCENT': 3.5,  # change of the coarse picture that wakes
+    'WAKE_HOLDOFF': 15,          # seconds between two presence wakes
+    'SETTLE_AFTER_OFF': 6,       # seconds to ignore the sensors after screen off
+    'PIXEL_SHIFT_SECONDS': 180,  # move the picture a few pixels now and then
+    'FONT_SET': 'b612',          # one of FONT_SETS below
+    'THEME': 'original',        # original, observatory, folio, terminal or silicon
+}
+
+# Typefaces by role: clock, text, status (a heavier cut), label (small caps),
+# unit (light), figures (monospaced, large) and mono (monospaced text).
+# Each role lists candidates in order; DejaVu is the fallback for all.
+FONT_SETS = {
+    'inter': {
+        'clock': ['opentype/inter/InterDisplay-ExtraLight.otf', 'opentype/inter/InterDisplay-Light.otf'],
+        'text': ['opentype/inter/Inter-Regular.otf'],
+        'status': ['opentype/inter/InterDisplay-Medium.otf', 'opentype/inter/Inter-Medium.otf'],
+        'label': ['opentype/inter/Inter-Medium.otf'],
+        'unit': ['opentype/inter/Inter-Light.otf', 'opentype/inter/Inter-Regular.otf'],
+        'figures': ['truetype/jetbrains-mono/JetBrainsMono-Light.ttf',
+                    'truetype/jetbrains-mono/JetBrainsMono-Regular.ttf'],
+        'mono': ['truetype/jetbrains-mono/JetBrainsMono-Regular.ttf'],
+    },
+    # Airbus's cockpit display typeface (fonts-b612)
+    'b612': {
+        'clock': ['opentype/b612/B612-Regular.otf'],
+        'text': ['opentype/b612/B612-Regular.otf'],
+        'status': ['opentype/b612/B612-Bold.otf'],
+        'label': ['opentype/b612/B612-Bold.otf'],
+        'unit': ['opentype/b612/B612-Regular.otf'],
+        'figures': ['opentype/b612/B612Mono-Regular.otf'],
+        'mono': ['opentype/b612/B612Mono-Regular.otf'],
+    },
+    # Geometric (fonts-manrope) with Cascadia Mono figures (fonts-cascadia-code)
+    'manrope': {
+        'clock': ['truetype/manrope/Manrope-ExtraLight.ttf', 'truetype/manrope/Manrope-Light.ttf'],
+        'text': ['truetype/manrope/Manrope-Regular.ttf'],
+        'status': ['truetype/manrope/Manrope-SemiBold.ttf'],
+        'label': ['truetype/manrope/Manrope-Medium.ttf'],
+        'unit': ['truetype/manrope/Manrope-Light.ttf'],
+        'figures': ['truetype/cascadia-code/CascadiaMono.ttf'],
+        'mono': ['truetype/cascadia-code/CascadiaMono.ttf'],
+    },
+    # Geometric display (fonts-sora) with Hack figures (fonts-hack)
+    'sora': {
+        'clock': ['opentype/sora/Sora-ExtraLight.otf', 'opentype/sora/Sora-Light.otf'],
+        'text': ['opentype/sora/Sora-Regular.otf'],
+        'status': ['opentype/sora/Sora-SemiBold.otf'],
+        'label': ['opentype/sora/Sora-SemiBold.otf'],
+        'unit': ['opentype/sora/Sora-Light.otf'],
+        'figures': ['truetype/hack/Hack-Regular.ttf'],
+        'mono': ['truetype/hack/Hack-Regular.ttf'],
+    },
+    # Humanist (fonts-adobe-sourcesans3) with JetBrains Mono figures
+    'sourcesans': {
+        'clock': ['opentype/sourcesans3/SourceSans3-ExtraLight.otf', 'opentype/sourcesans3/SourceSans3-Light.otf'],
+        'text': ['opentype/sourcesans3/SourceSans3-Regular.otf'],
+        'status': ['opentype/sourcesans3/SourceSans3-Semibold.otf'],
+        'label': ['opentype/sourcesans3/SourceSans3-Medium.otf'],
+        'unit': ['opentype/sourcesans3/SourceSans3-Light.otf'],
+        'figures': ['truetype/jetbrains-mono/JetBrainsMono-Light.ttf',
+                    'truetype/jetbrains-mono/JetBrainsMono-Regular.ttf'],
+        'mono': ['truetype/jetbrains-mono/JetBrainsMono-Regular.ttf'],
+    },
+    # Braille Institute's legibility typeface (fonts-atkinson-hyperlegible) with Hack
+    'atkinson': {
+        'clock': ['opentype/atkinson-hyperlegible/AtkinsonHyperlegible-Regular.otf'],
+        'text': ['opentype/atkinson-hyperlegible/AtkinsonHyperlegible-Regular.otf'],
+        'status': ['opentype/atkinson-hyperlegible/AtkinsonHyperlegible-Bold.otf'],
+        'label': ['opentype/atkinson-hyperlegible/AtkinsonHyperlegible-Bold.otf'],
+        'unit': ['opentype/atkinson-hyperlegible/AtkinsonHyperlegible-Regular.otf'],
+        'figures': ['truetype/hack/Hack-Regular.ttf'],
+        'mono': ['truetype/hack/Hack-Regular.ttf'],
+    },
+}
+FALLBACK = {
+    'clock': ['truetype/dejavu/DejaVuSans-ExtraLight.ttf', 'truetype/dejavu/DejaVuSans.ttf'],
+    'text': ['truetype/dejavu/DejaVuSans.ttf'],
+    'status': ['truetype/dejavu/DejaVuSans-Bold.ttf'],
+    'label': ['truetype/dejavu/DejaVuSans-Bold.ttf'],
+    'unit': ['truetype/dejavu/DejaVuSans.ttf'],
+    'figures': ['truetype/dejavu/DejaVuSansMono.ttf'],
+    'mono': ['truetype/dejavu/DejaVuSansMono.ttf'],
+}
+
+# True black for the AMOLED, warm white type, one accent for warnings.
+BG = (0, 0, 0)
+FG = (236, 233, 226)
+MID = (152, 156, 164)
+DIM = (96, 100, 108)
+RULE = (38, 41, 47)
+LINE = (118, 124, 134)
+AMBER = (245, 166, 35)
+SHIFTS = [(0, 0), (7, 4), (-6, 7), (5, -6), (-7, -4), (3, 8), (-8, -2)]
+
+
+def read_conf():
+    conf = dict(DEFAULTS)
+    try:
+        with open(CONF) as f:
+            for line in f:
+                line = line.split('#', 1)[0].strip()
+                if '=' in line:
+                    key, value = (x.strip() for x in line.split('=', 1))
+                    if key in conf:
+                        conf[key] = type(DEFAULTS[key])(value)
+    except (OSError, ValueError):
+        pass
+    conf['FONT_SET'] = os.environ.get('TABS3_FONT_SET', conf['FONT_SET'])
+    # tabs3-dashboard-theme saves the chosen design here; THEME in the
+    # configuration file is the default when nothing was chosen
+    saved = read_text(THEME_STATE).strip()
+    if saved in THEMES:
+        conf['THEME'] = saved
+    conf['THEME'] = os.environ.get('TABS3_THEME', conf['THEME'])
+    return conf
+
+
+def read_text(path, default=''):
+    try:
+        with open(path) as f:
+            return f.read().strip()
+    except OSError:
+        return default
+
+
+def read_int(path, default=None):
+    try:
+        return int(read_text(path))
+    except ValueError:
+        return default
+
+
+class Framebuffer:
+    """The panel's framebuffer, 32 or 16 bits per pixel, written whole."""
+
+    def __init__(self, path=FB, preview=None):
+        self.preview = preview
+        if preview:
+            self.width, self.height, self.bpp, self.stride = 2048, 1536, 32, 2048 * 4
+            self.fd = None
+            return
+        # The visible mode ("U:2048x1536p-0"); the virtual size may be taller
+        mode = read_text(f'{FB_SYS}/modes', '').split('\n')[0]
+        m = re.search(r'(\d+)x(\d+)', mode)
+        if m:
+            self.width, self.height = int(m.group(1)), int(m.group(2))
+        else:
+            size = read_text(f'{FB_SYS}/virtual_size', '2048,1536').split(',')
+            self.width, self.height = int(size[0]), int(size[1])
+        self.bpp = read_int(f'{FB_SYS}/bits_per_pixel', 32)
+        self.stride = read_int(f'{FB_SYS}/stride', self.width * self.bpp // 8)
+        self.fd = os.open(path, os.O_RDWR)
+
+    def show(self, image):
+        if self.preview:
+            image.save(self.preview)
+            return
+        if self.bpp == 32:
+            raw = image.tobytes('raw', 'BGRX')
+            row = self.width * 4
+        elif self.bpp == 16:
+            raw = image.convert('RGB').tobytes('raw', 'BGR;16')
+            row = self.width * 2
+        else:
+            raise SystemExit(f'unsupported framebuffer depth {self.bpp}')
+        if self.stride != row:
+            pad = b'\0' * (self.stride - row)
+            raw = b''.join(raw[i:i + row] + pad for i in range(0, len(raw), row))
+        os.pwrite(self.fd, raw, 0)
+
+
+class Console:
+    """Own a virtual terminal in graphics mode so the text console stays off."""
+
+    def __init__(self, vt=VT):
+        self.fd = None
+        try:
+            self.fd = os.open(f'/dev/tty{vt}', os.O_RDWR | os.O_NOCTTY)
+            fcntl.ioctl(self.fd, VT_ACTIVATE, vt)
+            fcntl.ioctl(self.fd, VT_WAITACTIVE, vt)
+            fcntl.ioctl(self.fd, KDSETMODE, KD_GRAPHICS)
+        except OSError as exc:
+            print(f'no virtual terminal {vt}: {exc}', file=sys.stderr)
+
+    def release(self):
+        if self.fd is None:
+            return
+        try:
+            fcntl.ioctl(self.fd, KDSETMODE, KD_TEXT)
+            fcntl.ioctl(self.fd, VT_ACTIVATE, 1)
+        except OSError:
+            pass
+        os.close(self.fd)
+        self.fd = None
+
+
+def screen_on():
+    if not DPMS:
+        return read_int(f'{FB_SYS}/blank', 0) == 0
+    return read_text(DPMS[0]) == 'On'
+
+
+class Sensors:
+    """The Sensor Manager's light sensor and accelerometer through IIO."""
+
+    def __init__(self):
+        self.light = self.accel = None
+        self.light_scale = self.accel_scale = 1.0
+        for dev in glob.glob('/sys/bus/iio/devices/iio:device*'):
+            name = read_text(f'{dev}/name')
+            if name == 'qcom-smgr-light':
+                self.light = dev
+                self.light_scale = float(read_text(f'{dev}/in_illuminance_scale', '1'))
+            elif name == 'qcom-smgr-accel':
+                self.accel = dev
+                self.accel_scale = float(read_text(f'{dev}/in_accel_scale', '1'))
+
+    def lux(self):
+        if not self.light:
+            return None
+        raw = read_int(f'{self.light}/in_illuminance_raw')
+        return None if raw is None else raw * self.light_scale
+
+    def acceleration(self):
+        """Magnitude of the acceleration in m/s^2, None when unavailable."""
+        if not self.accel:
+            return None
+        values = [read_int(f'{self.accel}/in_accel_{axis}_raw') for axis in 'xyz']
+        if None in values:
+            return None
+        return math.sqrt(sum((v * self.accel_scale) ** 2 for v in values))
+
+
+# WCD9335 analog microphone (ADC3) -> DEC0 -> SLIM TX0 -> MultiMedia3, the
+# route the UCM "Mic" device uses; set once, idempotent.
+MIC_ROUTE = (
+    ('MultiMedia3 Mixer SLIMBUS_0_TX', '1'),
+    ('ADC MUX0', 'AMIC'),
+    ('AMIC MUX0', 'ADC3'),
+    ('ADC3 Volume', '12'),
+    ('SLIM TX0 MUX', 'DEC0'),
+    ('AIF1_CAP Mixer SLIM TX0', '1'),
+)
+
+
+class SoundLevel:
+    """Level at the analog microphone: 100 ms windows in dBFS from one ALSA
+    capture that stays open once started (closing a capture stalls the audio
+    DSP for five seconds and the next one can come back silent), with the
+    quietest window of the last half minute as the room's floor."""
+
+    RATE, WINDOW = 48000, 0.1
+
+    def __init__(self, device):
+        self.device = device
+        self.proc = None
+        self.lock = threading.Lock()
+        self.level = None
+        self.recent = collections.deque(maxlen=300)
+        self.loud_polls = 0
+        self.routed = False
+
+    def start(self):
+        if self.proc:
+            return
+        if not self.routed:
+            for name, value in MIC_ROUTE:
+                subprocess.run(['amixer', '-q', '-c', '0', 'cset', f'name={name}', value],
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            self.routed = True
+        try:
+            self.proc = subprocess.Popen(
+                ['arecord', '-q', '-D', self.device, '-f', 'S16_LE', '-r', str(self.RATE),
+                 '-c', '1', '-t', 'raw', '-'],
+                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        except OSError as exc:
+            print(f'microphone capture failed: {exc}', file=sys.stderr, flush=True)
+            self.proc = None
+            return
+        with self.lock:
+            self.level = None
+            self.recent.clear()
+        self.loud_polls = 0
+        threading.Thread(target=self.read, args=(self.proc,), daemon=True).start()
+
+    def stop(self):
+        proc, self.proc = self.proc, None
+        if proc:
+            proc.terminate()
+            try:
+                proc.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+        with self.lock:
+            self.level = None
+
+    def read(self, proc):
+        size = int(self.RATE * self.WINDOW) * 2
+        while True:
+            data = proc.stdout.read(size)
+            if len(data) < size:
+                break
+            samples = array.array('h', data)[::4]
+            rms = math.sqrt(sum(v * v for v in samples) / len(samples))
+            level = 20 * math.log10(max(rms, 1.0) / 32768.0)
+            with self.lock:
+                self.level = level
+                self.recent.append(level)
+        # the capture ended (arecord died): the next screen-off restarts it
+        with self.lock:
+            self.level = None
+        if self.proc is proc:
+            self.proc = None
+
+    def rise(self, rise_db, min_dbfs):
+        """(level, dB above the floor) once two consecutive polls are loud."""
+        with self.lock:
+            level = self.level
+            floor = min(self.recent) if len(self.recent) >= 20 else None
+        if level is None or floor is None:
+            return None
+        if level >= min_dbfs and level - floor >= rise_db:
+            self.loud_polls += 1
+        else:
+            self.loud_polls = 0
+        return (level, level - floor) if self.loud_polls >= 2 else None
+
+
+class Presence:
+    """Wake the screen on a light change, a jolt, a sound or motion seen by
+    the front camera while it is off."""
+
+    def __init__(self, conf, sensors):
+        self.conf = conf
+        self.sensors = sensors
+        self.reason = 'none yet'
+        self.last_wake = 0.0
+        self.off_since = None
+        self.lux_base = None
+        self.acc_base = None
+        self.acc_hits = 0
+        self.sound = SoundLevel(conf['SOUND_DEVICE']) if conf['WAKE_ON_SOUND'] else None
+        self.motion = None
+        if conf['WAKE_ON_CAMERA'] and tabs3_camera:
+            self.motion = tabs3_camera.MotionSampler('front', conf['CAMERA_INTERVAL'],
+                                                     conf['CAMERA_CHANGE_PERCENT'],
+                                                     log=lambda msg: print(msg, flush=True))
+        elif conf['WAKE_ON_CAMERA']:
+            print('camera presence wake needs tabs3-base 0.1.25 (tabs3_camera)', flush=True)
+
+    def screen_went_off(self):
+        self.off_since = time.monotonic()
+        self.lux_base = self.acc_base = None
+        self.acc_hits = 0
+        if self.sound:
+            self.sound.start()
+        if self.motion:
+            self.motion.start()
+
+    def screen_came_on(self):
+        self.off_since = None
+        if self.motion:
+            self.motion.stop()
+
+    def poll(self, now):
+        """Called twice a second while the screen is off."""
+        if self.off_since is None or now - self.off_since < self.conf['SETTLE_AFTER_OFF']:
+            return False
+        if now - self.last_wake < self.conf['WAKE_HOLDOFF']:
+            return False
+        reason = None
+        if self.conf['WAKE_ON_LIGHT']:
+            lux = self.sensors.lux()
+            if lux is not None:
+                if self.lux_base is None:
+                    self.lux_base = lux
+                else:
+                    delta = abs(lux - self.lux_base)
+                    if (delta >= self.conf['LIGHT_CHANGE_LUX'] and
+                            delta / max(self.lux_base, 1.0) * 100 >= self.conf['LIGHT_CHANGE_PERCENT']):
+                        reason = f'light {self.lux_base:.0f} to {lux:.0f} lux'
+                    # The baseline follows slow drifts (dusk, clouds)
+                    self.lux_base += (lux - self.lux_base) * 0.05
+        if reason is None and self.conf['WAKE_ON_MOTION']:
+            acc = self.sensors.acceleration()
+            if acc is not None:
+                if self.acc_base is None:
+                    self.acc_base = acc
+                else:
+                    if abs(acc - self.acc_base) >= self.conf['MOTION_THRESHOLD']:
+                        self.acc_hits += 1
+                        if self.acc_hits >= 2:
+                            reason = f'motion {abs(acc - self.acc_base):.2f} m/s²'
+                    else:
+                        self.acc_hits = 0
+                    self.acc_base += (acc - self.acc_base) * 0.1
+        if reason is None and self.sound:
+            hit = self.sound.rise(self.conf['SOUND_RISE_DB'], self.conf['SOUND_MIN_DBFS'])
+            if hit:
+                reason = f'sound {hit[0]:.0f} dBFS, {hit[1]:.0f} dB over the floor'
+        if reason is None and self.motion:
+            hit = self.motion.sample(now)
+            if hit:
+                reason = f'camera: {hit}'
+        if reason is None:
+            return False
+        self.reason = f'{time.strftime("%H:%M")} {reason}'
+        self.last_wake = now
+        print(f'presence wake: {reason}', flush=True)
+        return self.wake()
+
+    @staticmethod
+    def wake():
+        try:
+            fd = os.open(WAKE_PIPE, os.O_WRONLY | os.O_NONBLOCK)
+            try:
+                os.write(fd, b'wake\n')
+            finally:
+                os.close(fd)
+        except OSError as exc:
+            print(f'wake request failed: {exc}', file=sys.stderr, flush=True)
+            return False
+        return True
+
+
+class Metrics:
+    """Everything the dashboard shows, sampled from /proc and /sys."""
+
+    def __init__(self, history):
+        self.cpu_prev = None
+        self.net_prev = {}
+        self.net_time = None
+        self.hist = {k: collections.deque(maxlen=history)
+                     for k in ('cpu', 'temp', 'battery', 'memory')}
+        self.addr_at = 0.0
+        self.addresses = {}
+        self.sessions = 0
+        self.hostname = socket.gethostname()
+        self.release = self.read_release()
+
+    @staticmethod
+    def read_release():
+        release = {}
+        for line in read_text('/etc/tabs3-release').splitlines():
+            if '=' in line:
+                k, v = line.split('=', 1)
+                release[k] = v
+        try:
+            out = subprocess.run(['dpkg-query', '-W', '-f', '${Version}', 'linux-tabs3'],
+                                 capture_output=True, text=True, timeout=5).stdout
+            release['KERNEL_PACKAGE'] = out.strip()
+        except (OSError, subprocess.SubprocessError):
+            pass
+        return release
+
+    def cpu_percent(self):
+        parts = read_text('/proc/stat').split('\n', 1)[0].split()
+        values = [int(v) for v in parts[1:9]]
+        idle = values[3] + values[4]
+        total = sum(values)
+        prev = self.cpu_prev
+        self.cpu_prev = (idle, total)
+        if prev is None or total == prev[1]:
+            return 0.0
+        return 100.0 * (1 - (idle - prev[0]) / (total - prev[1]))
+
+    @staticmethod
+    def cpu_freqs():
+        freqs = []
+        for path in sorted(glob.glob('/sys/devices/system/cpu/cpu[0-9]*/cpufreq/scaling_cur_freq')):
+            v = read_int(path)
+            if v is not None:
+                freqs.append(v / 1000)
+        return freqs
+
+    @staticmethod
+    def thermal():
+        zones = {}
+        for zone in glob.glob('/sys/class/thermal/thermal_zone*'):
+            kind = read_text(f'{zone}/type')
+            temp = read_int(f'{zone}/temp')
+            if kind and temp is not None:
+                zones[kind] = temp / 1000
+        cpu = [t for k, t in zones.items() if 'cpu' in k]
+        gpu = [t for k, t in zones.items() if 'gpu' in k]
+        ap = [t for k, t in zones.items() if 'ap' in k.split('-') or 'skin' in k or 'thermistor' in k]
+        return {'cpu': max(cpu) if cpu else None, 'gpu': max(gpu) if gpu else None,
+                'ap': max(ap) if ap else None}
+
+    @staticmethod
+    def battery():
+        base = '/sys/class/power_supply/sm5705-battery'
+        charger = '/sys/class/power_supply/sm5705-charger'
+        temp = read_int(f'{base}/temp')
+        current = read_int(f'{base}/current_now')
+        voltage = read_int(f'{base}/voltage_now')
+        return {'capacity': read_int(f'{base}/capacity'),
+                'status': read_text(f'{base}/status', '?'),
+                'temp': None if temp is None else temp / 10,
+                'current': None if current is None else current / 1000,
+                'voltage': None if voltage is None else voltage / 1e6,
+                'charger': read_int(f'{charger}/online'),
+                'charger_type': read_text(f'{charger}/type', ''),
+                'charge_behaviour': charge_behaviour(read_text(f'{charger}/charge_behaviour')),
+                'keeper_target': keeper_target(read_text('/etc/tabs3/battery.conf'))}
+
+    @staticmethod
+    def memory():
+        info = {}
+        for line in read_text('/proc/meminfo').splitlines():
+            key, rest = line.split(':', 1)
+            info[key] = int(rest.split()[0]) * 1024
+        total = info.get('MemTotal', 0)
+        avail = info.get('MemAvailable', 0)
+        return {'total': total, 'used': total - avail}
+
+    @staticmethod
+    def storage():
+        st = os.statvfs('/')
+        total = st.f_blocks * st.f_frsize
+        free = st.f_bavail * st.f_frsize
+        return {'total': total, 'used': total - free}
+
+    def network(self, now):
+        rates = {}
+        for iface in sorted(os.listdir('/sys/class/net')):
+            if iface == 'lo':
+                continue
+            rx = read_int(f'/sys/class/net/{iface}/statistics/rx_bytes', 0)
+            tx = read_int(f'/sys/class/net/{iface}/statistics/tx_bytes', 0)
+            up = read_text(f'/sys/class/net/{iface}/operstate') == 'up'
+            prev = self.net_prev.get(iface)
+            rate = (0.0, 0.0)
+            if prev and self.net_time and now > self.net_time:
+                dt = now - self.net_time
+                rate = ((rx - prev[0]) / dt, (tx - prev[1]) / dt)
+            self.net_prev[iface] = (rx, tx)
+            rates[iface] = {'up': up, 'rx': rate[0], 'tx': rate[1]}
+        self.net_time = now
+        if now - self.addr_at > 10:
+            self.addr_at = now
+            self.addresses = {}
+            try:
+                out = subprocess.run(['ip', '-4', '-o', 'addr'], capture_output=True,
+                                     text=True, timeout=5).stdout
+                for line in out.splitlines():
+                    m = re.match(r'\d+:\s+(\S+)\s+inet\s+([\d.]+)', line)
+                    if m and m.group(1) != 'lo':
+                        self.addresses.setdefault(m.group(1), m.group(2))
+            except (OSError, subprocess.SubprocessError):
+                pass
+            try:
+                out = subprocess.run(['who'], capture_output=True, text=True, timeout=5).stdout
+                self.sessions = len([l for l in out.splitlines() if l.strip()])
+            except (OSError, subprocess.SubprocessError):
+                self.sessions = 0
+        for iface, addr in self.addresses.items():
+            rates.setdefault(iface, {'up': False, 'rx': 0.0, 'tx': 0.0})['addr'] = addr
+        return rates
+
+    @staticmethod
+    def remoteprocs():
+        """Remote processors by role: the modem, the audio DSP and the sensor DSP."""
+        procs = {}
+        for rp in glob.glob('/sys/class/remoteproc/remoteproc*'):
+            name = read_text(f'{rp}/name')
+            firmware = read_text(f'{rp}/firmware')
+            text = f'{name} {firmware}'
+            if 'adsp' in text:
+                role = 'audio DSP'
+            elif 'slpi' in text:
+                role = 'sensor DSP'
+            elif 'mss' in text or 'modem' in text or 'mba' in text:
+                role = 'modem'
+            else:
+                role = name.split('.')[-1] or rp
+            procs[role] = read_text(f'{rp}/state')
+        return procs
+
+    def sample(self, now, sensors):
+        thermal = self.thermal()
+        cpu = self.cpu_percent()
+        bat = self.battery()
+        mem = self.memory()
+        self.hist['cpu'].append(cpu)
+        self.hist['temp'].append(thermal['cpu'])
+        self.hist['battery'].append(bat['capacity'])
+        self.hist['memory'].append(100.0 * mem['used'] / mem['total'] if mem['total'] else None)
+        load = read_text('/proc/loadavg').split()[:3]
+        uptime = float(read_text('/proc/uptime', '0 0').split()[0])
+        r = self.release
+        return {'now': now, 'cpu': cpu, 'freqs': self.cpu_freqs(), 'thermal': thermal,
+                'battery': bat, 'memory': mem, 'storage': self.storage(),
+                'network': self.network(now), 'sessions': self.sessions,
+                'remoteprocs': self.remoteprocs(), 'load': load, 'uptime': uptime,
+                'lux': sensors.lux() if sensors else None, 'hostname': self.hostname,
+                'release': f'tabS3 {r.get("VERSION", "?")}',
+                'kernel': f'kernel {r.get("KERNEL_PACKAGE", "?")}', 'hist': self.hist}
+
+
+def fake_metrics():
+    """Synthetic values for --preview on a PC."""
+    import random
+    random.seed(4)
+    n = 300
+    hist = {'cpu': collections.deque([max(2, 30 + 25 * math.sin(i / 14) + random.random() * 12)
+                                      for i in range(n)]),
+            'temp': collections.deque([42 + 9 * math.sin(i / 20) + random.random() for i in range(n)]),
+            'battery': collections.deque([100] * n),
+            'memory': collections.deque([15.5 + 2 * math.sin(i / 40) for i in range(n)])}
+    return {'now': time.time(), 'cpu': 37.5, 'freqs': [960.0, 960.0, 940.8, 940.8],
+            'thermal': {'cpu': 44.3, 'gpu': 35.1, 'ap': 36.2},
+            'battery': {'capacity': 100, 'status': 'Full', 'temp': 27.5, 'current': 12.0,
+                        'voltage': 4.33, 'charger': 1, 'charger_type': 'USB'},
+            'memory': {'total': 3789447168, 'used': 612000000},
+            'storage': {'total': 30064771072, 'used': 7816000000},
+            'network': {'usb0': {'up': True, 'rx': 12000.0, 'tx': 3400.0, 'addr': '172.16.42.2'},
+                        'wlan0': {'up': True, 'rx': 950.0, 'tx': 210.0, 'addr': '10.0.0.42'}},
+            'sessions': 2, 'remoteprocs': {'mss': 'running', 'adsp': 'running', 'slpi': 'running'},
+            'load': ['0.42', '0.31', '0.22'], 'uptime': 3 * 86400 + 4 * 3600 + 721, 'lux': 212.0,
+            'hostname': 'tabs3', 'release': 'tabS3 0.1.20', 'kernel': 'kernel 6.18.56-62',
+            'hist': hist}
+
+
+def human_bytes(n):
+    for unit in ('B', 'KB', 'MB', 'GB', 'TB'):
+        if n < 1024 or unit == 'TB':
+            return f'{n:.0f} {unit}' if unit == 'B' else f'{n:.1f} {unit}'
+        n /= 1024
+
+
+def duration(seconds):
+    seconds = int(seconds)
+    days, seconds = divmod(seconds, 86400)
+    hours, seconds = divmod(seconds, 3600)
+    minutes = seconds // 60
+    return (f'{days}d {hours}h {minutes}m' if days else
+            f'{hours}h {minutes:02d}m' if hours else f'{minutes}m')
+
+
+def status_of(m):
+    """One word about the server, and whether it deserves the accent colour."""
+    cpu_t = m['thermal']['cpu']
+    cap = m['battery']['capacity']
+    sto = m['storage']
+    if cpu_t is not None and cpu_t >= 85:
+        return 'Hot', True
+    if cap is not None and cap < 20:
+        return 'Battery low', True
+    if sto['total'] and sto['used'] / sto['total'] > 0.92:
+        return 'Storage nearly full', True
+    if cpu_t is not None and cpu_t >= 70:
+        return 'Warm', True
+    if not m['battery']['charger']:
+        return 'On battery', True
+    return 'Normal', False
+
+
+class Renderer:
+    """A quiet instrument panel: one type family, hairlines, no boxes."""
+
+    def __init__(self, width, height, font_set='inter'):
+        self.w, self.h = width, height
+        self.s = width / 2048
+        roles = FONT_SETS.get(font_set, FONT_SETS['b612'])
+
+        def load(role, size):
+            for path in roles.get(role, []) + FALLBACK[role]:
+                try:
+                    return ImageFont.truetype(f'{FONTS}/{path}', int(size * self.s))
+                except OSError:
+                    continue
+            return ImageFont.load_default(int(size * self.s))
+
+        self.f_clock = load('clock', 280)
+        self.f_date = load('text', 54)
+        self.f_status = load('status', 72)
+        self.f_label = load('label', 28)
+        self.f_text = load('text', 38)
+        self.f_small = load('text', 31)
+        self.f_value = load('figures', 100)
+        self.f_unit = load('unit', 44)
+        self.f_mono = load('mono', 36)
+        self.cache = {}
+
+    def px(self, v):
+        return int(round(v * self.s))
+
+    def text(self, img, xy, text, font, fill, anchor='la'):
+        """Draw a string from a cache of rendered strings (most repeat)."""
+        key = (text, id(font), fill, anchor)
+        tile = self.cache.get(key)
+        if tile is None:
+            left, top, right, bottom = font.getbbox(text, anchor=anchor)
+            tile = Image.new('RGBA', (max(1, right - left), max(1, bottom - top)), (0, 0, 0, 0))
+            ImageDraw.Draw(tile).text((-left, -top), text, font=font, fill=fill, anchor=anchor)
+            if len(self.cache) > 600:
+                self.cache.clear()
+            self.cache[key] = (tile, left, top)
+        else:
+            tile, left, top = tile
+        img.paste(tile, (int(xy[0]) + left, int(xy[1]) + top), tile)
+
+    def caps(self, img, x, y, text, fill=DIM, tracking=4):
+        """Small capitals with letter spacing, for section labels."""
+        for ch in text.upper():
+            self.text(img, (x, y), ch, self.f_label, fill)
+            x += self.f_label.getlength(ch) + self.px(tracking)
+        return x
+
+    def rule(self, d, x1, y, x2, color=RULE):
+        d.line([(x1, y), (x2, y)], fill=color, width=max(1, self.px(2)))
+
+    def sparkline(self, d, x, y, w, h, series, lo, hi, color=LINE, dot=FG, accent=None):
+        pts = []
+        series = list(series)
+        n = len(series)
+        for i, v in enumerate(series):
+            if v is None:
+                continue
+            vx = x + (w * i / (n - 1) if n > 1 else 0)
+            vy = y + h - h * (min(max(v, lo), hi) - lo) / (hi - lo)
+            pts.append((vx, vy))
+        if len(pts) >= 2:
+            d.line(pts, fill=color, width=self.px(3), joint='curve')
+        if pts:
+            r = self.px(7)
+            lx, ly = pts[-1]
+            d.ellipse((lx - r, ly - r, lx + r, ly + r), fill=accent or dot)
+
+    def row(self, img, d, x, y, w, label, value, unit, detail, series, lo, hi, warn=False, bar=None):
+        """One ruled metric row: label, big value, detail text, sparkline."""
+        px = self.px
+        self.caps(img, x, y + px(14), label)
+        color = AMBER if warn else FG
+        self.text(img, (x, y + px(46)), value, self.f_value, color)
+        vx = x + self.f_value.getlength(value) + px(10)
+        self.text(img, (vx, y + px(96)), unit, self.f_unit, MID)
+        self.text(img, (x + px(380), y + px(104)), detail, self.f_text, MID)
+        # The sparkline sits beside the label, above the detail line
+        gx, gw = x + w - px(300), px(300)
+        if bar is not None:
+            self.rule(d, gx, y + px(60), gx + gw, RULE)
+            d.line([(gx, y + px(60)), (gx + int(gw * max(0.0, min(1.0, bar))), y + px(60))],
+                   fill=AMBER if warn else LINE, width=px(6))
+        elif series is not None:
+            self.sparkline(d, gx, y + px(22), gw, px(70), series, lo, hi,
+                           accent=AMBER if warn else None)
+        self.rule(d, x, y + px(170), x + w)
+
+    def render(self, m, reason, shift=(0, 0)):
+        px = self.px
+        img = Image.new('RGB', (self.w, self.h), BG)
+        d = ImageDraw.Draw(img)
+        t = time.localtime(m['now'])
+        left, right = px(96), self.w - px(96)
+        col = px(1000)                     # the metric column starts here
+        # Clock, date, status
+        self.text(img, (left - px(14), px(36)), time.strftime('%H:%M', t), self.f_clock, FG)
+        self.text(img, (left, px(384)), time.strftime('%A %d %B', t), self.f_date, MID)
+        status, warn = status_of(m)
+        self.text(img, (left, px(500)), status, self.f_status, AMBER if warn else FG)
+        b = m['battery']
+        th = m['thermal']
+        bits = []
+        if th['cpu'] is not None:
+            bits.append(f'CPU {th["cpu"]:.0f} °C')
+        if b['capacity'] is not None:
+            bits.append(f'battery {b["capacity"]} %')
+        bits.append(f'{m["sessions"]} login' + ('s' if m['sessions'] != 1 else ''))
+        self.text(img, (left, px(600)), ' · '.join(bits), self.f_text, MID)
+        self.rule(d, left, px(690), col - px(90))
+
+        # Network
+        y = px(726)
+        self.caps(img, left, y, 'Network')
+        y += px(50)
+        nets = [(n, v) for n, v in sorted(m['network'].items()) if v.get('up') or v.get('addr')]
+        for name, v in nets or [('none', {})]:
+            self.text(img, (left, y), f'{name:<6} {v.get("addr", "no address")}', self.f_mono, FG)
+            if v:
+                rate = f'{human_bytes(v["rx"])}/s ↓   {human_bytes(v["tx"])}/s ↑'
+                self.text(img, (col - px(90), y + px(2)), rate, self.f_small, MID, 'ra')
+            y += px(52)
+        self.rule(d, left, y + px(22), col - px(90))
+
+        # Firmware
+        y += px(58)
+        self.caps(img, left, y, 'Firmware')
+        y += px(50)
+        procs = m['remoteprocs']
+        if procs:
+            order = {'modem': 0, 'audio DSP': 1, 'sensor DSP': 2}
+            for key, state in sorted(procs.items(), key=lambda kv: (order.get(kv[0], 9), kv[0])):
+                self.text(img, (left, y), key, self.f_text, FG)
+                self.text(img, (col - px(90), y), state, font=self.f_text,
+                       fill=MID if state == 'running' else AMBER, anchor='ra')
+                y += px(50)
+        else:
+            self.text(img, (left, y), 'no remote processors', self.f_text, MID)
+            y += px(50)
+        self.rule(d, left, y + px(22), col - px(90))
+
+        # System
+        y += px(58)
+        self.caps(img, left, y, 'System')
+        y += px(50)
+        for label, text in [('up', duration(m['uptime'])), ('load', ' '.join(m['load'])),
+                            ('host', m['hostname']), ('', f'{m["release"]} · {m["kernel"]}')]:
+            self.text(img, (left, y), f'{label:<5} {text}' if label else text, font=self.f_mono,
+                   fill=FG if label else MID)
+            y += px(48)
+
+        # Metric rows
+        hist = m['hist']
+        y = px(60)
+        rw = right - col
+        freqs = m['freqs']
+        detail = (f'{min(freqs):.0f}–{max(freqs):.0f} MHz' if freqs else '') + \
+                 (f'   GPU {th["gpu"]:.0f} °C' if th['gpu'] is not None else '')
+        self.row(img, d, col, y, rw, 'Processor', f'{m["cpu"]:.0f}', '%', detail, hist['cpu'], 0, 100)
+        y += px(170)
+        cpu_t = th['cpu']
+        detail = '   '.join(x for x in [
+            f'board {th["ap"]:.1f} °C' if th['ap'] is not None else '',
+            f'battery {b["temp"]:.1f} °C' if b['temp'] is not None else ''] if x)
+        self.row(img, d, col, y, rw, 'Temperature', f'{cpu_t:.0f}' if cpu_t is not None else '–', '°C',
+                 detail, hist['temp'], 20, 90, warn=cpu_t is not None and cpu_t >= 70)
+        y += px(170)
+        cap = b['capacity']
+        detail = '   '.join(x for x in [
+            battery_status(b).lower(),
+            f'{b["current"]:+.0f} mA' if b['current'] is not None else '',
+            f'{b["voltage"]:.2f} V' if b['voltage'] else '',
+            power_source(b).lower()] if x)
+        self.row(img, d, col, y, rw, 'Battery', f'{cap}' if cap is not None else '–', '%', detail,
+                 hist['battery'], 0, 100, warn=cap is not None and cap < 20)
+        y += px(170)
+        mem = m['memory']
+        self.row(img, d, col, y, rw, 'Memory', f'{100 * mem["used"] / mem["total"]:.0f}', '%',
+                 f'{human_bytes(mem["used"])} of {human_bytes(mem["total"])}', hist['memory'], 0, 100)
+        y += px(170)
+        sto = m['storage']
+        frac = sto['used'] / sto['total'] if sto['total'] else 0
+        self.row(img, d, col, y, rw, 'Storage', f'{100 * frac:.0f}', '%',
+                 f'{human_bytes(sto["used"])} of {human_bytes(sto["total"])}', None, 0, 100,
+                 warn=frac > 0.92, bar=frac)
+        y += px(170)
+
+        # History strip: processor use and temperature over the last ten minutes
+        gy, gh = y + px(70), px(360)
+        self.caps(img, col, gy - px(30), 'Last ten minutes')
+        self.text(img, (right, gy - px(32)), 'processor use in %  ·  temperature in °C',
+               font=self.f_small, fill=MID, anchor='ra')
+        gtop = gy + px(20)
+        for frac_y, text in ((0.0, '100 %'), (0.5, '50 %'), (1.0, '0')):
+            yy = gtop + gh * frac_y
+            self.rule(d, col + px(70), yy, right, RULE)
+            self.text(img, (col + px(56), yy), text, self.f_small, DIM, 'rm')
+        self.sparkline(d, col + px(70), gtop, right - col - px(70), gh, hist['temp'], 0, 100,
+                       color=AMBER, dot=AMBER)
+        self.sparkline(d, col + px(70), gtop, right - col - px(70), gh, hist['cpu'], 0, 100)
+        self.text(img, (col + px(70), gtop + gh + px(14)), '−10 min', self.f_small, DIM)
+        self.text(img, (right, gtop + gh + px(14)), 'now', self.f_small, DIM, 'ra')
+
+        # Footer
+        lux = m['lux']
+        foot = ((f'light {lux:.0f} lux' if lux is not None else 'light sensor off') +
+                f'   ·   last presence wake {reason}')
+        self.text(img, (left, self.h - px(96)), foot, self.f_small, DIM)
+
+        if shift == (0, 0):
+            return img
+        canvas = Image.new('RGB', (self.w, self.h), BG)
+        canvas.paste(img, shift)
+        return canvas
+
+
+def make_renderer(width, height, font_set, theme='original'):
+    if theme == 'original':
+        return Renderer(width, height, font_set)
+    if theme not in THEMES:
+        raise ValueError(f'unknown dashboard theme: {theme}')
+    renderer = ThemeRenderer
+    if theme == 'silicon':
+        from tabs3_dashboard_silicon import SiliconRenderer
+        renderer = SiliconRenderer
+    return renderer(width, height, theme, FONTS,
+                    FONT_SETS.get(font_set, FONT_SETS['b612']), FALLBACK,
+                    human_bytes, duration, status_of)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__.split('\n', 1)[0])
+    parser.add_argument('--preview', metavar='PNG', help='render one frame to a PNG and exit')
+    parser.add_argument('--fake', action='store_true', help='with --preview: synthetic values')
+    parser.add_argument('--theme', choices=THEMES, help='override THEME from dashboard.conf')
+    args = parser.parse_args()
+    conf = read_conf()
+    theme = args.theme or conf['THEME']
+    if theme not in THEMES:
+        parser.error(f'unknown theme {theme!r}; choose from {", ".join(THEMES)}')
+    history = int(conf['HISTORY_MINUTES'] * 60 / max(conf['REFRESH'], 0.5))
+    fb = Framebuffer(preview=args.preview)
+    renderer = make_renderer(fb.width, fb.height, conf['FONT_SET'], theme)
+    if args.preview and args.fake:
+        fb.show(renderer.render(fake_metrics(), 'none yet'))
+        return 0
+    sensors = Sensors()
+    metrics = Metrics(history)
+    presence = Presence(conf, sensors)
+    console = None if args.preview else Console()
+    stop = []
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        signal.signal(sig, lambda *_: stop.append(1))
+    was_on = True
+    started = time.monotonic()
+    try:
+        while not stop:
+            now = time.monotonic()
+            on = screen_on() or bool(args.preview)
+            if on:
+                if not was_on:
+                    presence.screen_came_on()
+                m = metrics.sample(time.time(), sensors)
+                period = max(conf['PIXEL_SHIFT_SECONDS'], 1)
+                shift = SHIFTS[int((now - started) // period) % len(SHIFTS)]
+                shift = (renderer.px(shift[0]), renderer.px(shift[1]))
+                fb.show(renderer.render(m, presence.reason, shift))
+                if args.preview:
+                    return 0
+                time.sleep(conf['REFRESH'])
+            else:
+                if was_on:
+                    presence.screen_went_off()
+                presence.poll(now)
+                time.sleep(0.5)
+            was_on = on
+    finally:
+        if presence.sound:
+            presence.sound.stop()
+        if presence.motion:
+            presence.motion.stop()
+        if console:
+            console.release()
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

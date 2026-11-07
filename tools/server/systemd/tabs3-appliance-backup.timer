@@ -1,0 +1,10 @@
+[Unit]
+Description=Back up Tab S3 appliance settings and boot images daily
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

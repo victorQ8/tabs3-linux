@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/* Initial internal-storage variant. Keep the verified USB/RAM baseline. */
+#include "msm8996-samsung-gts3llte.dts"
+
+&sdhc1 {
+	status = "okay";
+	/* Cap the clock for bring-up. The controller can still select HS200 from
+	 * its hardware capabilities (observed at an actual 50 MHz on SM-T825).
+	 */
+	/delete-property/ mmc-hs400-1_8v;
+	/delete-property/ mmc-hs200-1_8v;
+	cap-mmc-highspeed;
+	max-frequency = <52000000>;
+};

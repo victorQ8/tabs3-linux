@@ -1,0 +1,46 @@
+  Service Version Instance Node  Port
+       66       1      100    0     1 Service registry notification service
+       43       1        0    0     3 Subsystem control service
+       43       2       18    0     4 Subsystem control service
+       15       1        0    0    19 Test service
+      232       1        1    0    20 <unknown>
+       21       1        0    0    21 Modem embedded file system service
+       24       1        0    0    23 Thermal mitigation device service
+       23       1        0    0    24 Thermal sensors service
+       22       1        1    0    25 Time service
+       36       1        0    0    27 Persistent device configuration service
+      227       1        1    0    28 <unknown>
+       49       1        2    0    29 IPA control service
+       54       1        0    0    31 <unknown>
+       17       1        0    0    32 Specific absorption rate service
+       34       1        0    0    33 Coexistence service
+       41       1        1    0    34 RF radiated performance enhancement service
+       55       1        2    0    43 QMI-SLIM service
+        9       2        0    0    44 Voice service
+        3       1        0    0    45 Network Access Service
+       12       1        0    0    47 Phonebook Management service
+        5       1        0    0    48 Wireless Messaging Service
+       10       2        0    0    49 Card Application Toolkit service (v2)
+       47       1        0    0    50 Data Port Mapper service
+       11       1        0    0    51 User Identity Module service
+       16       2        0    0    52 Location service (~ PDS v2)
+        1       1        0    0    54 Wireless Data Service
+        4       1        0    0    55 Quality Of Service service
+       26       1        0    0    56 Wireless data administrative service
+        7       1        0    0    57 Authentication service
+        8       1        0    0    58 AT service
+       29       1        0    0    59 Circuit switched videotelephony service
+       42       1        0    0    61 Data system determination service
+        2       1        0    0    62 Device Management Service
+       48       1        0    0    63 QMI DFS service
+       46       1        0    0    64 <unknown>
+       68       1        0    0    65 <unknown>
+       14       1        0    1    14 Remote file system service
+       64       1        0    1 16388 Service registry locator service
+       15       1        8    5     2 Test service
+       66       1        4    5     4 Service registry notification service
+       43       2       20    5     6 Subsystem control service
+       24       1        1    5     8 Thermal mitigation device service
+       15       1        0    5     9 Test service
+      769       1        0    5    12 SLIMbus control service
+       57       1        0    5    19 WLPS service

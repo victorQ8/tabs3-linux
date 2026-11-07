@@ -1,0 +1,41 @@
+{
+  "date": "2026-11-07",
+  "scope": "Public source snapshot; workstation checks only; no tablet changes",
+  "host_tests": {
+    "count": 142,
+    "passed": true,
+    "skipped": 0,
+    "kernel_source_prepared": true
+  },
+  "patch_stack": {
+    "pinned_archive_verified": true,
+    "applied": true,
+    "fuzzy_matching": false
+  },
+  "packages_built_sha256": {
+    "tabs3-base_0.1.35_all.deb": "7fdd870dfddcd30acc2ced9ef680d431cf63d0b0c58590220a83cd085dfbe264",
+    "tabs3-dashboard_0.1.9_all.deb": "85edd1f6ca3d573b6e6f4b19412805be430e3d0ae37cc95a758775909f13a5d7",
+    "tabs3-sensors_0.1.1_arm64.deb": "8a8b7403e509122aa2ced477fbd7688ce0ef087412f8c6fafc0e40ef0f10379a"
+  },
+  "dashboard_screenshots": {
+    "count": 6,
+    "dimensions": [
+      2048,
+      1536
+    ],
+    "synthetic_readings": true,
+    "visually_inspected": true
+  },
+  "markdown_local_targets_missing": 0,
+  "publication_scan": {
+    "credential_matches": 0,
+    "private_artifact_matches": 0
+  },
+  "not_performed": [
+    "Fresh kernel compilation in this publication task",
+    "Fresh device installation",
+    "Candidate hardware boot",
+    "Production endurance qualification"
+  ],
+  "installation_tool_changes": "Read-only probe receipt tied to eMMC identity; display variant selection; local image validation before recovery UI pause. Host tested, fresh-install hardware validation pending."
+}

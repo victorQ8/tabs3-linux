@@ -1,0 +1,14 @@
+modemst1: copied, matches backup, partition read-only=1
+modemst2: copied, matches backup, partition read-only=1
+fsg: copied, matches backup, partition read-only=1
+fsc: copied, matches backup, partition read-only=1
+modem remoteproc: /sys/class/remoteproc/remoteproc0 state=offline recovery=disabled
+active
+modem state after 1s: running
+--- kernel messages:
+[  125.904040] remoteproc remoteproc0: powering up 2080000.remoteproc
+[  125.912708] remoteproc remoteproc0: Booting fw image qcom/msm8996/samsung/gts3llte/mba.mbn, size 213824
+[  126.016879] qcom-q6v5-mss 2080000.remoteproc: MBA booted without debug policy, loading mpss
+[  128.666197] remoteproc remoteproc0: remote processor 2080000.remoteproc is now up
+--- rmtfs log:
+Started rmtfs-test.service - [systemd-run] /usr/bin/rmtfs -o /run/rmtfs-test -r -v.

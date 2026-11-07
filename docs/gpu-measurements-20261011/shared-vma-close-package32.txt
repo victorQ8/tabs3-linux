@@ -1,0 +1,8 @@
+kernel: 6.19.5-gts3l1 #17, linux-tabs3 6.19.5-32 (patch 0032)
+command: sudo python3 -I shared-vma-close.py /dev/dri/renderD128 (committed as tools/gpu-shared-vma-check)
+shared BO: app iova 0x1078000, compositor iova 0x1078000
+after app close: new app BO iova 0x1178000, compositor re-query 0x1078000
+compositor's cached address reused by another BO: False
+compositor's BO moved to a new address: False
+RESULT: mapping kept
+exit=0

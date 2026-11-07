@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-12T13:07:39+00:00",
+  "installed": {
+    "linux-tabs3": "6.19.5-41",
+    "tabs3-base": "0.1.8",
+    "tabs3-desktop": "0.1.9",
+    "boot_partition": "written with flushed readback verification",
+    "recovery": "unchanged (package 29)",
+    "previous": "6.19.5-39"
+  },
+  "source": {
+    "patch_stack": "cleaned 15-patch stack, kernel/PATCHES.md",
+    "ci": "scripts/ci.sh on commit 8fb8574: 18 patches applied with --fuzz=0, kernel, DTBs, modules and packages built from scratch in 10 min 50 s with 6 jobs, no compiler warnings in patched files; its DTBs are identical to the installed package"
+  },
+  "boot": {
+    "reachable_after_reboot_s": 24,
+    "running_kernel_matches_package": true,
+    "failed_units": 0,
+    "gpu_faults": 0,
+    "oops_bug_warning": 0,
+    "clk_rcg2_update_config_warnings": 0,
+    "kernel_error_messages": "13 probe-time messages, the same set as package 39"
+  },
+  "checks": {
+    "panel": "DSI-1 connected and enabled, no panel or DSI errors, backlight level 78 applied",
+    "panel_power_cycles": "one off/on cycle after 2 s and two immediate off/on cycles all relit at level 78; DPU 'encoder is disabled' wait messages as on earlier packages",
+    "wifi": "up; the PCIe PHY bound with qcom,msm8996-v3-qmp-pcie-phy and the QCA6174 trained",
+    "audio": "ADSP running, sound card SMT825 present",
+    "modem": "MPSS running; no SIM inserted",
+    "buttons": "pm8941_pwrkey, pm8941_resin, gpio-keys and tm2-touchkey input devices present",
+    "gpu_shared_vma_check": "mapping kept after the client's close; buffers freed (20 GEM objects before and after)",
+    "usb": "role switch present in device mode; sm5705_otg_vbus regulator registered (off, 5.1 V)",
+    "microsd": "SDHC2 controller probed with its card-detect GPIO; no card inserted",
+    "battery": "100 %, charging from the PC port, 20.3 C"
+  },
+  "power_on_without_user": "After systemctl poweroff on 2026-10-11 17:24 UTC with the USB cable to the PC attached, the tablet booted again about 4 s later. PM8994 PON_REASON1 (0x808) read 0x40: cable power-on. On USB power the tablet cannot stay off.",
+  "pending_on_hardware": [
+    "visual panel check: startup without garbling, colours, wake",
+    "microSD card insertion",
+    "USB Ethernet adapter with tabs3-usb-host host, on battery",
+    "button presses (tools/buttons-log)",
+    "headphone listening",
+    "SIM insertion"
+  ]
+}

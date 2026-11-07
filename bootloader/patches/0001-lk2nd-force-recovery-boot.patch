@@ -1,0 +1,37 @@
+Subject: [PATCH] lk2nd: optionally force booting the recovery partition
+
+A second lk2nd copy in the recovery partition (LK2ND_PARTITION_BASE=recovery)
+must boot the Linux image placed after it there. Samsung's bootloader starts
+that copy for the Home + Volume Up + Power combination and for a PON
+recovery reboot reason, which it may consume before lk2nd runs, so the build
+flag sets the recovery boot unconditionally. Default builds are unchanged.
+
+diff -ru a/app/aboot/aboot.c b/app/aboot/aboot.c
+--- a/app/aboot/aboot.c
++++ b/app/aboot/aboot.c
+@@ -5650,6 +5650,11 @@
+ #endif
+ 
+ normal_boot:
++#if LK2ND_FORCE_RECOVERY
++	/* This build lives in the recovery partition and boots only from it. */
++	boot_into_recovery = 1;
++	dprintf(INFO, "Recovery boot was forced with compile-time flag.\n");
++#endif
+ 	if (!boot_into_fastboot)
+ 	{
+ #if WITH_LK2ND_BOOT
+diff -ru a/lk2nd/project/base.mk b/lk2nd/project/base.mk
+--- a/lk2nd/project/base.mk
++++ b/lk2nd/project/base.mk
+@@ -55,6 +55,10 @@
+ 	DEFINES += LK2ND_FORCE_FASTBOOT=1
+ endif
+ 
++ifeq ($(LK2ND_FORCE_RECOVERY), 1)
++	DEFINES += LK2ND_FORCE_RECOVERY=1
++endif
++
+ ifdef LK2ND_FASTBOOT_DELAY
+ 	DEFINES += LK2ND_FASTBOOT_DELAY=$(LK2ND_FASTBOOT_DELAY)
+ endif

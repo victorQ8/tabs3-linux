@@ -1,0 +1,100 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * S Pen digitizer: a Wacom W9019 EMR controller running Samsung's firmware
+ * (stock "epen/w9019_gts3l.fw", ic_type 0x233b), I2C address 0x56 on BLSP2
+ * QUP6 (stock i2c_12, i2c@75ba000, TLMM 87/88, 400 kHz). The bootloader
+ * address 0x09 is only used for firmware flashing and gets no node.
+ *
+ * Stock tree (wacom@56, epen_* pin states, wacom_ldo_en):
+ *   INT  TLMM 34   controller output, active low, falling-edge interrupt
+ *   PDCT TLMM 117  controller's pen-in-range output (low = pen detected);
+ *                  only a sanity gate in the vendor driver, not a silo switch
+ *   FWE  TLMM 24   sampled at controller power-up: low = application
+ *                  firmware at 0x56, high = bootloader at 0x09
+ *   VDD  3.3 V     fixed regulator, enable TLMM 126 (active high, boot-on)
+ *
+ * Needs patch 0035 (the "wacom,w9019" Samsung-protocol variant of the
+ * mainline wacom_i2c driver): the application firmware uses single-byte
+ * commands, a 15-byte big-endian query reply and 14-byte reports.
+ */
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+
+/ {
+	vreg_wacom_3p3: regulator-wacom-3p3 {
+		compatible = "regulator-fixed";
+		regulator-name = "vreg_wacom_3p3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		gpio = <&tlmm 126 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+		regulator-boot-on;
+		pinctrl-names = "default";
+		pinctrl-0 = <&wacom_ldo_en_default>;
+	};
+};
+
+&blsp2_i2c6 {
+	/* stock qcom,clk-freq-out = <400000> and qcom,disable-dma */
+	clock-frequency = <400000>;
+	/delete-property/ dmas;
+	/delete-property/ dma-names;
+	status = "okay";
+
+	digitizer@56 {
+		compatible = "wacom,w9019";
+		reg = <0x56>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <34 IRQ_TYPE_EDGE_FALLING>;
+		vdd-supply = <&vreg_wacom_3p3>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&wacom_int_default>, <&wacom_fwe_default>;
+
+		/*
+		 * Raw digitizer axes (query reply, stock wacom,max_coords):
+		 * X 0..19661 along the long edge, Y 0..14746 along the short
+		 * edge, 0.01 mm units. The panel's native mode is 2048x1536
+		 * landscape with the Home key on the right; the mapping is
+		 * confirmed on the hardware (touchscreen-inverted-x/-y or
+		 * touchscreen-swapped-x-y if the axes turn out mirrored).
+		 */
+	};
+};
+
+/* Stock i2c_12_active/sleep: drive-strength 2, no pull, I2C kept in sleep */
+&blsp2_i2c6_default {
+	drive-strength = <2>;
+};
+
+&blsp2_i2c6_sleep {
+	function = "blsp_i2c12";
+};
+
+&tlmm {
+	/* stock epen_int_active: INT (34) and PDCT (117), inputs, no pull */
+	wacom_int_default: wacom-int-default-state {
+		pins = "gpio34", "gpio117";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	/*
+	 * stock epen_fwel_active: FWE held low so every power-up of the
+	 * controller runs the application firmware, never the bootloader.
+	 */
+	wacom_fwe_default: wacom-fwe-default-state {
+		pins = "gpio24";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-pull-down;
+		output-low;
+	};
+
+	wacom_ldo_en_default: wacom-ldo-en-default-state {
+		pins = "gpio126";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+};

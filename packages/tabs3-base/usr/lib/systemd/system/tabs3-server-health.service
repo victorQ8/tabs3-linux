@@ -1,0 +1,21 @@
+[Unit]
+Description=Record Tab S3 server health without changing hardware
+ConditionPathExists=/sys/firmware/devicetree/base/compatible
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/tabs3-server-health
+LogsDirectory=tabs3-server
+LogsDirectoryMode=0700
+UMask=0077
+TimeoutStartSec=15
+Nice=10
+MemoryMax=64M
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+PrivateTmp=yes
+RestrictAddressFamilies=AF_UNIX

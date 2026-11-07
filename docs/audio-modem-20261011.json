@@ -1,0 +1,78 @@
+{
+  "recorded_utc": "2026-10-11T16:29:04.129659+00:00",
+  "device": "SM-T825 LTE rev05",
+  "packages": {
+    "linux-tabs3": "6.19.5-39",
+    "tabs3-base": "0.1.7",
+    "tabs3-desktop": "0.1.8"
+  },
+  "firmware": "tools/install-dsp-firmware copies this tablet's own signed adsp.mdt/.bNN, mba.mbn and modem.mdt/.bNN from the read-only mounted modem partition to /usr/lib/firmware/qcom/msm8996/samsung/gts3llte; hashes kept privately (private/audio/dsp-firmware-sha256.txt); no vendor binaries in Git.",
+  "memory_layout": "Signed images exceed mainline MSM8996 carve-outs: modem.mdt spans 0x6c00000 at 0x88800000 (stock), relocatable adsp.mdt 0x2100000. GPU variant: mpss 0x88800000+0x6c00000, adsp 0x8f400000+0x2100000, gpu zap 0x91500000+1M, venus 0x91600000+5M, mba 0x91b00000+2M, rest of stock peripheral region 0x91d00000+8M; SLPI region dropped. No overlaps; GPU zap still loads, 0 GPU faults.",
+  "audio": {
+    "status": "Headphones and analog mics work through the ADSP; built-in speakers not supported yet.",
+    "chain": "ADSP (PAS 1, SMD APR) -> SLIMbus NGD -> WCD9335 v2.0 (reset TLMM 74, IRQ TLMM 79, MCLK PM8994 GPIO15 div_clk1, S4 supplies)",
+    "fixes": [
+      "QCOM_SNS_REG disabled: the ADSP requested qcom/sensors/sns.reg; the 60 s firmware fallback stalled udev and delayed the sound card to ~130 s.",
+      "Each MIC BIAS routed to MCLK as in stock: capture returned only zeros because the decimators were unclocked.",
+      "Patch 0035: back end fixed at S16_LE; the ADSP rejects AFE_PORT_CMD_DEVICE_START for 24-bit SLIMbus ports.",
+      "Patch 0036: backport of mainline q6asm-dai stream-close fixes (cee3e63e7106, 048c540ee76d, 4b4db09f283d).",
+      "Patch 0037: capture stop pauses and flushes like downstream instead of EOS (EOS left CMD_CLOSE failing in a loop).",
+      "WirePlumber rule: microphones opened as S16LE (24-bit ASM capture open fails) and period-interrupt scheduling.",
+      "UCM profile Samsung/gts3llte HiFi: Headphones (digital ceiling -12 dB), Internal Microphone (AMIC3), Headset Microphone (AMIC2)."
+    ],
+    "validation": {
+      "playback": "Silent streams only (no listener): DAPM showed SLIMBUS_6_RX, SLIM RX5/6, RX INT1/2 and HPHL/HPHR PA powered with MCLK enabled; PipeWire Headphones sink played 3 of 3 sessions after idle with 0 DSP errors.",
+      "capture": "Main mic -64.9 dBFS and sub mic -66.2 dBFS room noise via ALSA; headset input -76.7 dBFS with nothing plugged in. PipeWire: first recording works; repeated recordings remain unreliable (DSP CMD_CLOSE timeout after pause/flush).",
+      "physical_listening": "Pending owner check with wired headphones."
+    },
+    "limits": [
+      "Speakers: four Richtek RT5508 boosted amplifiers on BLSP1 I2C3 and primary TDM have no mainline driver; porting needs care to avoid speaker damage.",
+      "No headphone jack detection (mainline wcd9335 has no MBHC): Headphones and headset mic are always offered.",
+      "Repeated PipeWire capture sessions are unreliable."
+    ]
+  },
+  "modem": {
+    "status": "Modem boots on mainline, serves QMI over QRTR; SIM test pending.",
+    "safety": "Before the first boot fsg and fsc were backed up (they had no backup), with modemst1/2, device and host SHA-256 matched (private/backups/<UTC>-modem-fs). modemst2 differed from the 2026-10-10 backup (an Android boot after it); both kept. rmtfs runs with -r (writes stay in RAM, files opened O_RDONLY, sync is a no-op) and the four partitions are set read-only at the block layer (tabs3-base rmtfs drop-in).",
+    "validation": "MBA authenticated and loaded mpss; remoteproc running; 36 QRTR services announced on the modem node (DMS, NAS, WMS, Voice, UIM, WDS, ...); firmware MPSS.TH.2.0.1.c1-00136 (2019-11-20); operating mode online; IMEI readable (not recorded); SIM absent; without a SIM the radio found a GSM network with limited (emergency) service at about -55 dBm; starts at boot.",
+    "limits": [
+      "Mobile data: MSM8996 uses IPA v2.5, which mainline does not support; ModemManager and oFono will not create a modem without an IPA network device, so no data, SMS or calls through the desktop yet.",
+      "Modem EFS changes are discarded at every reboot (read-only rmtfs) by design.",
+      "tqftpserv is installed but disabled; carrier MCFG files (modem_pr) are not served."
+    ]
+  },
+  "buttons": "Kernel package 34+ (patch 0034, gpio-keys, PON RESIN, TC305K): devices probe, firmware 0x18 answers, no idle interrupts; physical presses pending.",
+  "known_issues": [
+    "Intermittent pclk0/pclk1 'rcg didn't update its configuration' warnings while the panel driver loads (pre-existing)."
+  ],
+  "evidence": {
+    "alsa-mic-and-headphone-path-package36.txt": {
+      "path": "docs/audio-modem-measurements-20261011/alsa-mic-and-headphone-path-package36.txt",
+      "sha256": "4b8b2e0ac7d4da6e7e4feeda81a44d0a41a2c8cb2d1041f5124eda4278ce173f"
+    },
+    "boot-check-package39.txt": {
+      "path": "docs/audio-modem-measurements-20261011/boot-check-package39.txt",
+      "sha256": "45d16bf8661525403ac70c9ce77135d7fdd73ad8f68277ecde7179b34fb5e7d1"
+    },
+    "boot-package39.txt": {
+      "path": "docs/audio-modem-measurements-20261011/boot-package39.txt",
+      "sha256": "e235d6f65e693894e3e36c4844e35fa1ca2892e0aac271b87bbca6d65c5dfde2"
+    },
+    "modem-first-boot.txt": {
+      "path": "docs/audio-modem-measurements-20261011/modem-first-boot.txt",
+      "sha256": "eaf673a5316a33cf139f428627c9028a47cd8c9b582512e5cae351307ff45017"
+    },
+    "modem-status-no-sim.txt": {
+      "path": "docs/audio-modem-measurements-20261011/modem-status-no-sim.txt",
+      "sha256": "dbdbefb6154682686a5cdfb0842761b09171eac9fcbbf1bcc7cfedde0f1db194"
+    },
+    "pipewire-sessions-package39.txt": {
+      "path": "docs/audio-modem-measurements-20261011/pipewire-sessions-package39.txt",
+      "sha256": "56e3d553e82a8c94e5e88b996d15dbd36fd38149a0b9fd848bd9228f15537fff"
+    },
+    "qrtr-services.txt": {
+      "path": "docs/audio-modem-measurements-20261011/qrtr-services.txt",
+      "sha256": "475eefe313b995a52ebabf277ce64a793184e7319a7efc933e7c0f42586e54fe"
+    }
+  }
+}

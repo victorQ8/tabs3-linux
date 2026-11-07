@@ -1,0 +1,166 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-11T07:27:09.841037+00:00",
+  "scope": "On-device measurements only. Source analysis is assigned to Claude. No new functional display patch, build, flash, reboot, display write or power transition during the passive capture.",
+  "device": {
+    "model": "SM-T825 LTE rev05",
+    "environment": "Linux recovery",
+    "kernel_release": "6.19.5-gts3l1",
+    "kernel_build": 10,
+    "package_version": "6.19.5-25",
+    "image_hashes": {
+      "boot": "89f638f0a3f7a3c6b3504b45300c2fc9d6691299a07396eef23a78448c37c296",
+      "recovery": "4a009bfc7a286c588cde298513345bdef38c637fe1a4c8c58220a3e8c5ff28c9",
+      "package": "050e25faac94480ce8f8cb5171942e7fc2e9505f4b56c7be628a3202b9b96cab"
+    }
+  },
+  "physical_observation": {
+    "before_previous_replay": "User reported totally black after fresh recovery boot.",
+    "after_replay_and_during_passive_baseline": "User confirmed Black screen without pressing buttons.",
+    "successful_state_captured": false
+  },
+  "driver_vs_manual": {
+    "trace": "private/display-re-20261011/driver-vs-manual.trace",
+    "parsed_packets": "private/display-re-20261011/comparison.json",
+    "method": "Kprobe at msm:dsi_host_transfer records message type, flags, tx length and first two payload bytes; return probe records transfer result. DPU kickoff events are recorded in the same trace.",
+    "normal_packets_equal": true,
+    "normal_packet_count": 10,
+    "normal_packets_all_hs": true,
+    "normal_packet_payload_length": 2,
+    "driver_normal_interval_uptime_seconds": [
+      295.364073,
+      295.365714
+    ],
+    "manual_normal_interval_uptime_seconds": [
+      297.543881,
+      297.54491
+    ],
+    "step2_interval_uptime_seconds": [
+      294.756098,
+      294.757292
+    ],
+    "frame_kickoffs_uptime_seconds": [
+      294.25706,
+      294.290474,
+      298.273577
+    ],
+    "observation": "No DPU kickoff occurred between step 2 and step 3 in this replay. The timer delay did not ensure a new frame started between the two steps.",
+    "limits": [
+      "Both sequences were executed in the same already-failed state. This is not a matched successful-vs-failed comparison.",
+      "Host-entry values and nonnegative transfer returns do not prove that the panel accepted or latched a setting.",
+      "Only the first two bytes of the 34-byte gamma packet were captured. The ten normal-setting packets are each two bytes and were captured completely.",
+      "A replay after boot is not a cold-boot initialization trace.",
+      "The kickoff-only trace does not prove absence of a completion from an earlier in-flight frame."
+    ]
+  },
+  "passive_baseline": {
+    "trace": "private/display-re-20261011/passive-baseline.trace",
+    "duration_seconds": 20.007102,
+    "start_uptime_seconds": 571.209783,
+    "end_uptime_seconds": 591.216885,
+    "trace_entries": 57,
+    "event_counts": {
+      "tracing_mark_write": 2,
+      "dpu_crtc_vblank": 10,
+      "dpu_enc_kickoff": 9,
+      "dpu_enc_frame_done_cb": 9,
+      "dpu_enc_phys_cmd_pp_tx_done": 18,
+      "dpu_crtc_frame_event_done": 9
+    },
+    "kickoff_count": 9,
+    "tx_done_counts_by_pingpong": {
+      "0": 9,
+      "1": 9
+    },
+    "kickoff_to_tx_done_milliseconds": {
+      "0": [
+        25.44,
+        27.8,
+        27.238,
+        27.702,
+        27.573,
+        27.791,
+        27.529,
+        27.653,
+        27.485
+      ],
+      "1": [
+        25.456,
+        27.815,
+        27.26,
+        27.72,
+        27.59,
+        27.807,
+        27.553,
+        27.672,
+        27.52
+      ]
+    },
+    "enabled_error_events_without_occurrences": [
+      "dpu_enc_frame_done_timeout",
+      "dpu_enc_phys_cmd_pdone_timeout",
+      "dpu_enc_underrun_cb"
+    ],
+    "interrupt_deltas": {
+      "79": {
+        "delta": 1200,
+        "description": "msm_mdss   0 Edge      msm"
+      },
+      "80": {
+        "delta": 9,
+        "description": "msm_mdss   5 Edge      dsi_isr"
+      },
+      "81": {
+        "delta": 9,
+        "description": "msm_mdss   4 Edge      dsi_isr"
+      }
+    },
+    "observation": "Nine DPU kickoffs each had a transmit-done callback on both pingpong blocks and a CRTC frame-done event, while the user still saw black. No enabled timeout or underrun event was recorded. The trace reports 57 entries written and 57 retained.",
+    "limits": [
+      "These callbacks show the SoC display pipeline completing work; they do not prove valid panel scanout or visible emission.",
+      "The aggregate MDSS interrupt delta is not proof of a particular TE frequency or source.",
+      "A 20-second capture cannot exclude intermittent failures outside its window.",
+      "There was no forced refresh or pixel-content change; recovery continued its own normal UI activity."
+    ]
+  },
+  "state_checks": {
+    "backlight_bl_power": 0,
+    "battery_capacity_percent": 60,
+    "battery_temperature_deci_celsius": 233,
+    "charger_input_limit_microamps": 500000,
+    "battery_status": "Charging",
+    "debian_root_mounted": false,
+    "active_trace_or_kprobes_after_capture": false
+  },
+  "conclusions": [
+    "The latest physical display failure remains unresolved. Neither lower power draw nor successful host writes proves it is fixed.",
+    "The ten normal-setting packets no longer differ between driver and manual HS paths in package 25. The earlier package-23 hard-coded LP bug was real, but is insufficient to explain the current failure.",
+    "The black screen can coexist with completed frame work on both pingpong blocks. It is not explained by absence of all framebuffer updates during this measurement.",
+    "A real frame-event ordering hypothesis is worth comparing to stock, but the measured gap alone is not a proven root cause."
+  ],
+  "pending_source_questions": [
+    "Which actual frame event(s) must precede display-on, compression or brightness latching, and which events must follow them?",
+    "Which complete brightness batch, command grouping and master/slave delivery semantics does stock require, beyond the ten ACL/ELVSS packets?",
+    "Which state must survive or be reapplied for display-off/display-on wake versus full panel sleep and reset?"
+  ],
+  "next_step": "Compare these measurements with Claude\u2019s cited source reports, then agree on discriminating experiments and their expected outcomes before changing functional driver behavior.",
+  "evidence_sha256": {
+    "driver-vs-manual.trace": "8493b9b9ce6aeb78779701900e4f6ae55b4ad07e6e46fd73d06511446974d510",
+    "comparison.json": "78a470fc0bb3f4a993fe94ade5ca5557b8e59a0988783621558a008f59659ea8",
+    "passive-baseline.trace": "e7679f8ae768a6485eea5f4ec00873ad8f971d1e3062ce19a71e39d88f1f700b",
+    "interrupts-before.txt": "9aaf6025f1c837bec28d3919e1e6f7f466d33058a661a6f1ce28336314de942a",
+    "interrupts-after.txt": "b0c943d12b84aca65eadd735484ffaff9ef4839fb5431b142cc7fb28e0f75be7",
+    "clocks.txt": "149bddf03ec48cc0bc5bd0119d59a6b53bc97e255c5ce18de3c93da549c9ce20",
+    "drm-state.txt": "5901171c31019a34ceab281273d7e389bcccb5ca285ad9ffa738f850da6c5032",
+    "dmesg.txt": "cbdfafbc222d94204d302d9f87792c8d8d45627187c2b3b49208c975af874757",
+    "state.txt": "b32facf3844498f368b69be4603cfd8174c8d879b93487c47509f3af8ad8fc69",
+    "framebuffer.raw": "65cc7163922a10b54d4b2ffcf57c3ffe67a5a3c681e011aa3755040849e9ddba",
+    "dmesg-after-passive.txt": "3760df3655533b13354399d1d68032142d93185c0f4278ead6bffc89bbc9c9f8"
+  },
+  "committed_evidence": {
+    "driver-vs-manual.trace": "docs/panel-measurements-20261011/driver-vs-manual.trace",
+    "passive-baseline.trace": "docs/panel-measurements-20261011/passive-baseline.trace",
+    "comparison.json": "docs/panel-measurements-20261011/comparison.json"
+  },
+  "evidence_availability": "The listed committed evidence files are included in the repository. Full dmesg, framebuffer and other device snapshots remain in the local private evidence directory."
+}

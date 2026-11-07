@@ -1,0 +1,175 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/* QCA6174 Wi-Fi (PCIe) and Bluetooth (UART). */
+#include <dt-bindings/gpio/gpio.h>
+
+#include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
+
+/*
+ * Wi-Fi/Bluetooth: QCA6174 on PCIe RC0, ath10k_pci. Stock qcom,cnss uses
+ * pcie@600000 with PERST# on TLMM 35 and WAKE# on TLMM 37; WLAN_EN is
+ * PM8994 GPIO 8 (stock wlan_en_vreg). Same wiring as the Xiaomi MSM8996
+ * boards in mainline, plus two Samsung supplies from stock qcom,cnss:
+ * vdd-wlan is rome_vreg on PM8994 GPIO 9 and vdd-wlan-xtal is PM8994 L30.
+ * wlan_en takes rome_vreg as its input, so enabling it powers the chip
+ * first. The chip also needs its 32.768 kHz sleep clock: stock drives
+ * PM8994 GPIO 18 in function 2 (DIV_CLK), like divclk4 on the Xiaomi and
+ * OnePlus MSM8996 boards.
+ */
+/ {
+	divclk4: divclk4 {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <32768>;
+		clock-output-names = "divclk4";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&divclk4_pin_a>;
+	};
+
+	rome_vreg: rome-vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "rome_vreg";
+		gpio = <&pm8994_gpios 9 GPIO_ACTIVE_HIGH>;
+		startup-delay-us = <4000>;
+		enable-active-high;
+		pinctrl-names = "default";
+		pinctrl-0 = <&rome_en_default>;
+	};
+
+	wlan_en: wlan-en-1-8v {
+		compatible = "regulator-fixed";
+		regulator-name = "wlan-en-regulator";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		gpio = <&pm8994_gpios 8 GPIO_ACTIVE_HIGH>;
+		vin-supply = <&rome_vreg>;
+		/* WLAN card specific delay */
+		startup-delay-us = <70000>;
+		enable-active-high;
+		pinctrl-names = "default";
+		pinctrl-0 = <&wlan_en_default>;
+	};
+
+	/*
+	 * The combo chip's Wi-Fi PCIe link only trained after BT_EN (PM8994
+	 * GPIO 19, stock qca,bt-reset-gpio) rose with WLAN_EN already high;
+	 * the bootloader leaves it high, so drive it low at probe and raise it
+	 * last in the chain, before PERST# is released.
+	 */
+	bt_en_vreg: bt-en-vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "bt_en_vreg";
+		gpio = <&pm8994_gpios 19 GPIO_ACTIVE_HIGH>;
+		vin-supply = <&wlan_en>;
+		startup-delay-us = <100000>;
+		enable-active-high;
+		pinctrl-names = "default";
+		pinctrl-0 = <&bt_en_default>;
+	};
+};
+
+&pm8994_gpios {
+	divclk4_pin_a: divclk4-state {
+		pins = "gpio18";
+		function = PMIC_GPIO_FUNC_FUNC2;
+		output-enable;
+		bias-disable;
+		power-source = <PM8994_GPIO_S4>;
+	};
+
+	/* Stock drives PM8994 GPIO 16-18 as function-2 outputs (clocks).
+	 * Not needed for Wi-Fi; kept for reference, not referenced. */
+	pm_gpio16_clk_default: gpio16-clk-state {
+		pins = "gpio16";
+		function = PMIC_GPIO_FUNC_FUNC2;
+		output-enable;
+		bias-disable;
+		power-source = <PM8994_GPIO_S4>;
+	};
+
+	bt_en_default: bt-en-state {
+		pins = "gpio19";
+		function = PMIC_GPIO_FUNC_NORMAL;
+		output-low;
+		qcom,drive-strength = <PMIC_GPIO_STRENGTH_LOW>;
+		power-source = <PM8994_GPIO_S4>;
+		bias-disable;
+	};
+
+	rome_en_default: rome-en-state {
+		pins = "gpio9";
+		function = PMIC_GPIO_FUNC_NORMAL;
+		output-low;
+		qcom,drive-strength = <PMIC_GPIO_STRENGTH_LOW>;
+		power-source = <PM8994_GPIO_S4>;
+		bias-disable;
+	};
+
+	wlan_en_default: wlan-en-state {
+		pins = "gpio8";
+		function = PMIC_GPIO_FUNC_NORMAL;
+		output-low;
+		qcom,drive-strength = <PMIC_GPIO_STRENGTH_LOW>;
+		power-source = <PM8994_GPIO_S4>;
+		bias-disable;
+	};
+};
+
+&pcie0 {
+	status = "okay";
+
+	/* Supplied by vdd_3v3; wlan_en drives the card enable pin high */
+	vddpe-3v3-supply = <&bt_en_vreg>;
+	vdda-supply = <&vreg_l28a_0p925>;
+
+	perst-gpios = <&tlmm 35 GPIO_ACTIVE_LOW>;
+	wake-gpios = <&tlmm 37 GPIO_ACTIVE_HIGH>;
+
+	/* Bring-up: stock waits 10 ms after PERST# (patch 0007); Gen1 as tested */
+	qcom,ep-latency = <100>;
+	max-link-speed = <1>;
+};
+
+&pcie_phy {
+	/* The QCA6174 only trains with the downstream PHY v3 tables (patch 0008) */
+	compatible = "qcom,msm8996-v3-qmp-pcie-phy", "qcom,msm8996-qmp-pcie-phy";
+	status = "okay";
+
+	vdda-phy-supply = <&vreg_l28a_0p925>;
+	vdda-pll-supply = <&vreg_l12a_1p8>;
+};
+
+&rpm_requests {
+	regulators-0 {
+		vdd_l8_l16_l30-supply = <&vph_pwr>;
+
+		vreg_l30a_1p8: l30 {
+			regulator-name = "vreg_l30a_1p8";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+
+			/* QCA6174 vddio-xtal (stock vdd-wlan-xtal) */
+			regulator-always-on;
+		};
+	};
+};
+
+/*
+ * Bluetooth half of the QCA6174 on BLSP1 UART2 (stock uart@7570000,
+ * TLMM 41-44); BT_EN is PM8994 GPIO 19 (stock qca,bt-reset-gpio).
+ */
+&blsp1_uart2 {
+	/*
+	 * The first Bluetooth test let hci_qca own BT_EN (enable-gpios), which
+	 * held it low through panel bring-up, and that boot left the panel dark.
+	 * BT_EN now belongs to bt_en_vreg in the Wi-Fi chain and is high before
+	 * hci_qca probes, so the driver runs without power control.
+	 */
+	status = "okay";
+
+	bluetooth {
+		compatible = "qcom,qca6174-bt";
+		/* BT_EN is owned by bt_en_vreg (Wi-Fi power chain) */
+		clocks = <&divclk4>;
+	};
+};

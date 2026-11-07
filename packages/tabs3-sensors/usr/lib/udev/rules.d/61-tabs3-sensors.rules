@@ -1,0 +1,9 @@
+# Samsung Galaxy Tab S3 LTE (SM-T825): Sensor Manager accelerometer.
+# The SLPI reports in the SAE frame of Android's portrait orientation (x to the
+# camera end, y to the right edge, z into the screen). The panel's native
+# orientation is landscape with the Home button on the right, so this matrix
+# gives iio-sensor-proxy's axes for it. 10 Hz is plenty for screen rotation;
+# the driver's default is the sensor's maximum, 416 Hz.
+ACTION!="remove", SUBSYSTEM=="iio", ATTR{name}=="qcom-smgr-accel", \
+  ENV{ACCEL_MOUNT_MATRIX}="1, 0, 0; 0, -1, 0; 0, 0, -1", \
+  ATTR{in_accel_sampling_frequency}="10"

@@ -1,0 +1,126 @@
+#!/usr/bin/python3
+"""Orderly shutdown on sustained low-battery drain. No charger control.
+
+Without --enforce this only prints a fresh decision and changes nothing.
+The timer uses --enforce, with boot-local, consecutive-sample confirmation.
+"""
+import argparse
+import fcntl
+import json
+import math
+import os
+from pathlib import Path
+import subprocess
+
+LOW = 5
+CRITICAL = 2
+CONFIRM_SECONDS = 60
+CRITICAL_SECONDS = 30
+MAX_SAMPLE_GAP = 45
+
+
+def read(path):
+    try:
+        return path.read_text().strip()
+    except OSError:
+        return None
+
+
+def integer(path):
+    try:
+        return int(read(path))
+    except (TypeError, ValueError):
+        return None
+
+
+def collect(root=Path('/')):
+    compatible = read(root / 'sys/firmware/devicetree/base/compatible') or ''
+    if 'samsung,gts3llte' not in compatible.split('\0'):
+        raise RuntimeError('Expected SM-T825 device tree')
+    supplies = root / 'sys/class/power_supply'
+    battery, charger = supplies / 'sm5705-battery', supplies / 'sm5705-charger'
+    return {
+        'boot_id': read(root / 'proc/sys/kernel/random/boot_id'),
+        'uptime_s': float((read(root / 'proc/uptime') or '').split()[0]),
+        'capacity': integer(battery / 'capacity'),
+        'voltage_uv': integer(battery / 'voltage_now'),
+        'current_ua': integer(battery / 'current_now'),
+        'charger_online': integer(charger / 'online'),
+    }
+
+
+def number(value):
+    return type(value) in (int, float) and math.isfinite(value)
+
+
+def decide(sample, previous=None):
+    """Only continuous, plausible evidence can request poweroff."""
+    result = dict(sample, low_since_s=None, critical_since_s=None,
+                  action='none', reason='battery_above_reserve')
+    cap, volt, now = sample['capacity'], sample['voltage_uv'], sample['uptime_s']
+    current, online = sample['current_ua'], sample['charger_online']
+    valid = (type(cap) is int and 0 <= cap <= 100 and type(volt) is int and
+             2500000 <= volt <= 5000000 and number(now) and now >= 0 and
+             bool(sample.get('boot_id')))
+    if not valid:
+        result['reason'] = 'battery_telemetry_invalid'
+        return result
+    if cap > LOW:
+        return result
+    # A cable is not proof of adequate power. Conversely, do not shut down a
+    # freshly plugged-in, nearly empty tablet whose battery is recovering.
+    valid_current = type(current) is int and -10000000 <= current <= 10000000
+    draining = (online == 0 or (valid_current and current < -50000))
+    if not draining:
+        result['reason'] = ('external_power_recovering' if online == 1 and
+                            valid_current and current >= -50000
+                            else 'drain_telemetry_unavailable')
+        return result
+    previous = previous if isinstance(previous, dict) else {}
+    last = previous.get('uptime_s')
+    continuous = (previous.get('boot_id') == sample['boot_id'] and number(last)
+                  and 0 < now - last <= MAX_SAMPLE_GAP)
+    for key, eligible in (('low_since_s', True), ('critical_since_s', cap <= CRITICAL)):
+        start = previous.get(key) if continuous and eligible else None
+        result[key] = (start if number(start) and 0 <= start <= last
+                       else now) if eligible else None
+    result['reason'] = 'confirming_low_battery_drain'
+    if (now - result['low_since_s'] >= CONFIRM_SECONDS or
+            (cap <= CRITICAL and now - result['critical_since_s'] >= CRITICAL_SECONDS)):
+        result.update(action='poweroff', reason='sustained_low_battery_drain')
+    return result
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--enforce', action='store_true', help='allow orderly system poweroff')
+    args = parser.parse_args()
+    os.umask(0o077)
+    if not args.enforce:
+        print(json.dumps(decide(collect()), sort_keys=True))
+        return
+    directory = Path('/run/tabs3-power-guard')
+    directory.mkdir(mode=0o700, exist_ok=True)
+    with (directory / 'lock').open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        previous = None
+        try:
+            previous = json.loads((directory / 'latest.json').read_text())
+        except (OSError, ValueError):
+            pass
+        result = decide(collect(), previous)
+        temporary = directory / 'latest.tmp'
+        temporary.write_text(json.dumps(result, sort_keys=True) + '\n')
+        temporary.replace(directory / 'latest.json')
+        if not isinstance(previous, dict) or result['reason'] != previous.get('reason'):
+            print('power guard: ' + result['reason'], flush=True)
+        if result['action'] == 'poweroff':
+            print(f"power guard: battery {result['capacity']}%, sustained drain; orderly shutdown",
+                  flush=True)
+            # No force, no hardware cutoff: systemd stops services and unmounts.
+            subprocess.run(['/usr/bin/systemctl', '--no-block', 'poweroff'],
+                           check=True, timeout=10)
+
+
+if __name__ == '__main__':
+    main()

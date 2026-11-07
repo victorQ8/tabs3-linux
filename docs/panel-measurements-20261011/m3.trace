@@ -1,0 +1,306 @@
+# tracer: nop
+#
+# entries-in-buffer/entries-written: 294/294   #P:4
+#
+#                                _-----=> irqs-off/BH-disabled
+#                               / _----=> need-resched
+#                              | / _---=> hardirq/softirq
+#                              || / _--=> preempt-depth
+#                              ||| / _-=> migrate-disable
+#                              |||| /     delay
+#           TASK-PID     CPU#  |||||  TIMESTAMP  FUNCTION
+#              | |         |   |||||     |         |
+              sh-486     [002] ...1.   110.325129: tracing_mark_write: STATIC_VERIFY_START
+              sh-486     [001] ...1.   113.347803: tracing_mark_write: M3_BEFORE_FIXUP_BEGIN
+              sh-486     [001] ...1.   113.362945: tracing_mark_write: SEND 15 b0 5a
+              sh-486     [001] d....   113.363396: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x5a
+              sh-486     [001] d..1.   113.363759: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-486     [003] ...1.   113.384738: tracing_mark_write: SEND 24 d8 01 1
+              sh-486     [003] d....   113.384965: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd8 b1=0x1
+              sh-486     [003] d..1.   113.385276: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-486     [000] ...1.   113.402899: tracing_mark_write: SEND 15 b0 d0
+              sh-486     [000] d....   113.403166: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0xd0
+              sh-486     [000] d..1.   113.403390: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-486     [001] ...1.   113.421108: tracing_mark_write: SEND 24 d1 01 1
+              sh-486     [001] d....   113.421351: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd1 b1=0x1
+              sh-486     [001] d..1.   113.422279: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-486     [000] ...1.   113.440538: tracing_mark_write: SEND 15 b0 51
+              sh-486     [000] d....   113.440806: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x51
+              sh-486     [000] d..1.   113.441058: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-486     [003] ...1.   113.459351: tracing_mark_write: SEND 24 d1 01 1
+              sh-486     [003] d....   113.459620: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd1 b1=0x1
+              sh-486     [003] d..1.   113.459992: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-486     [000] ...1.   113.484314: tracing_mark_write: SEND 15 b0 d9
+              sh-486     [000] d....   113.484729: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0xd9
+              sh-486     [000] d..1.   113.485025: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-486     [000] ...1.   113.503611: tracing_mark_write: SEND 24 d1 01 1
+              sh-486     [000] d....   113.504073: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd1 b1=0x1
+              sh-486     [000] d..1.   113.504484: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-486     [001] ...1.   113.522497: tracing_mark_write: SEND 15 b0 70
+              sh-486     [001] d....   113.522714: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x70
+              sh-486     [001] d..1.   113.522974: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-486     [000] ...1.   113.542368: tracing_mark_write: SEND 24 d2 01 1
+              sh-486     [000] d....   113.542749: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-486     [000] d..1.   113.543167: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-486     [003] ...1.   113.562134: tracing_mark_write: SEND 15 b0 67
+              sh-486     [003] d....   113.562595: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x67
+              sh-486     [003] d..1.   113.562899: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-486     [000] ...1.   113.588104: tracing_mark_write: SEND 24 d2 01 1
+              sh-486     [000] d....   113.588572: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-486     [000] d..1.   113.589127: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-486     [000] ...1.   113.609631: tracing_mark_write: SEND 15 b0 36
+              sh-486     [000] d....   113.610209: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x36
+              sh-486     [000] d..1.   113.610502: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-486     [000] ...1.   113.630081: tracing_mark_write: SEND 24 d2 01 1
+              sh-486     [000] d....   113.630346: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-486     [000] d..1.   113.630800: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-486     [001] ...1.   113.652401: tracing_mark_write: SEND 15 b0 4d
+              sh-486     [001] d....   113.652627: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x4d
+              sh-486     [001] d..1.   113.652898: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-486     [001] ...1.   113.675321: tracing_mark_write: SEND 24 d2 01 1
+              sh-486     [001] d....   113.675538: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-486     [001] d..1.   113.675854: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-486     [003] ...1.   113.697830: tracing_mark_write: SEND 15 b0 49
+              sh-486     [003] d....   113.698109: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x49
+              sh-486     [003] d..1.   113.698422: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-486     [003] ...1.   113.723333: tracing_mark_write: SEND 24 d2 01 1
+              sh-486     [003] d....   113.723784: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-486     [003] d..1.   113.724224: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-486     [003] ...1.   113.748212: tracing_mark_write: SEND 06 0a 1
+              sh-486     [003] d....   113.748449: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x6 flags=0x0 len=1 b0=0xa b1=0x1
+              sh-486     [003] d..1.   113.748939: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-486     [002] ...1.   113.772559: tracing_mark_write: SEND 06 0e 1
+              sh-486     [002] d....   113.773143: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x6 flags=0x0 len=1 b0=0xe b1=0x1
+              sh-486     [002] d..1.   113.773822: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-486     [003] ...1.   113.795511: tracing_mark_write: SEND 06 0f 1
+              sh-486     [003] d....   113.795983: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x6 flags=0x0 len=1 b0=0xf b1=0x1
+              sh-486     [003] d..1.   113.796428: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-486     [003] ...1.   113.803559: tracing_mark_write: M3_BEFORE_FIXUP_END
+              sh-486     [003] ...1.   113.803693: tracing_mark_write: M3_MANUAL_FIXUP_BEGIN
+     kworker/0:0-9       [000] d....   113.857552: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x5 flags=0x0 len=1 b0=0x29 b1=0x0
+     kworker/0:0-9       [000] d..1.   113.857822: result: (mipi_dsi_device_transfer+0x50/0x70 <- dsi_host_transfer) ret=4
+     kworker/2:4-286     [002] .....   113.882166: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   113.909914: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   113.909936: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:4-286     [002] .....   113.999791: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   114.027559: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   114.027578: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:4-286     [002] .....   114.100806: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   114.128386: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   114.128405: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:4-286     [002] .....   114.218263: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   114.246037: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   114.246056: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:4-286     [002] .....   114.319085: dpu_enc_kickoff: id=33
+     kworker/0:0-9       [000] d.h2.   114.346874: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+     kworker/0:0-9       [000] d.h2.   114.346896: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:4-286     [002] .....   114.436836: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   114.464516: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   114.464537: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/0:2-62      [000] d....   114.469456: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0xd9
+     kworker/0:2-62      [000] d..1.   114.469680: result: (mipi_dsi_device_transfer+0x50/0x70 <- dsi_host_transfer) ret=4
+     kworker/0:2-62      [000] d....   114.469698: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb1 b1=0x0
+     kworker/0:2-62      [000] d..1.   114.469816: result: (ams968hh01_write_register+0x90/0xf8 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+     kworker/2:4-286     [002] .....   114.537908: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   114.565348: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   114.565371: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:4-286     [002] .....   114.655316: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   114.682992: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   114.683011: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:4-286     [002] .....   114.756272: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   114.783826: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   114.783844: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:4-286     [002] .....   114.873813: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   114.901480: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   114.901503: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:4-286     [002] .....   114.974508: dpu_enc_kickoff: id=33
+          <idle>-0       [000] D.H3.   115.002299: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] D.H3.   115.002321: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/0:2-62      [000] d....   115.077445: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0xd9
+     kworker/0:2-62      [000] d..1.   115.077673: result: (mipi_dsi_device_transfer+0x50/0x70 <- dsi_host_transfer) ret=4
+     kworker/0:2-62      [000] d....   115.077692: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb1 b1=0x8
+     kworker/0:2-62      [000] d..1.   115.077804: result: (ams968hh01_write_register+0x90/0xf8 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+     kworker/0:2-62      [000] d....   115.077816: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x51
+     kworker/0:2-62      [000] d..1.   115.077920: result: (mipi_dsi_device_transfer+0x50/0x70 <- dsi_host_transfer) ret=4
+     kworker/0:2-62      [000] d....   115.077931: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb1 b1=0x6
+     kworker/0:2-62      [000] d..1.   115.078036: result: (ams968hh01_write_register+0x90/0xf8 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+     kworker/0:2-62      [000] d....   115.078049: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=34 b0=0x83 b1=0xb3
+     kworker/0:2-62      [000] d..1.   115.078154: result: (mipi_dsi_device_transfer+0x50/0x70 <- dsi_host_transfer) ret=40
+     kworker/0:2-62      [000] d....   115.078166: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x35
+     kworker/0:2-62      [000] d..1.   115.078269: result: (mipi_dsi_device_transfer+0x50/0x70 <- dsi_host_transfer) ret=4
+     kworker/0:2-62      [000] d....   115.078282: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb2 b1=0x1
+     kworker/0:2-62      [000] d..1.   115.078386: result: (ams968hh01_write_register+0x90/0xf8 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+     kworker/2:4-286     [002] .....   115.095328: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   115.126783: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   115.126809: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:4-286     [002] .....   115.199913: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   115.227601: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   115.227621: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:4-286     [002] .....   115.300687: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   115.328437: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   115.328455: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:0-28      [002] .....   115.418324: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   115.446091: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   115.446113: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:0-28      [002] .....   115.520081: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   115.546916: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   115.546936: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:0-28      [002] .....   115.636882: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   115.664561: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   115.664583: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/0:2-62      [000] d....   115.685456: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x4d
+     kworker/0:2-62      [000] d..1.   115.685683: result: (mipi_dsi_device_transfer+0x50/0x70 <- dsi_host_transfer) ret=4
+     kworker/0:2-62      [000] d....   115.685702: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb2 b1=0x5
+     kworker/0:2-62      [000] d..1.   115.685816: result: (ams968hh01_write_register+0x90/0xf8 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+     kworker/0:2-62      [000] d....   115.685827: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x49
+     kworker/0:2-62      [000] d..1.   115.685936: result: (mipi_dsi_device_transfer+0x50/0x70 <- dsi_host_transfer) ret=4
+     kworker/0:2-62      [000] d....   115.685948: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb2 b1=0x7f
+     kworker/0:2-62      [000] d..1.   115.686052: result: (ams968hh01_write_register+0x90/0xf8 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+     kworker/0:2-62      [000] d....   115.686063: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x36
+     kworker/0:2-62      [000] d..1.   115.686167: result: (mipi_dsi_device_transfer+0x50/0x70 <- dsi_host_transfer) ret=4
+     kworker/0:2-62      [000] d....   115.686179: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb2 b1=0x12
+     kworker/0:2-62      [000] d..1.   115.686285: result: (ams968hh01_write_register+0x90/0xf8 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+     kworker/0:2-62      [000] d....   115.686296: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x67
+     kworker/0:2-62      [000] d..1.   115.686400: result: (mipi_dsi_device_transfer+0x50/0x70 <- dsi_host_transfer) ret=4
+     kworker/0:2-62      [000] d....   115.686411: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb2 b1=0x1b
+     kworker/0:2-62      [000] d..1.   115.686515: result: (ams968hh01_write_register+0x90/0xf8 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+     kworker/0:2-62      [000] d....   115.686527: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x35
+     kworker/0:2-62      [000] d..1.   115.686629: result: (mipi_dsi_device_transfer+0x50/0x70 <- dsi_host_transfer) ret=4
+     kworker/0:2-62      [000] d....   115.686640: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x39 flags=0x0 len=2 b0=0xb2 b1=0x1
+     kworker/0:2-62      [000] d..1.   115.686796: result: (ams968hh01_write_register+0x90/0xf8 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=8
+     kworker/2:0-28      [002] .....   115.739304: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   115.765401: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   115.765424: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:0-28      [002] .....   115.855279: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   115.883046: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   115.883068: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:0-28      [002] .....   115.956067: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   115.983857: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   115.983873: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/3:0-33      [003] .....   116.073812: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   116.101526: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   116.101547: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:0-28      [002] .....   116.191459: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   116.219171: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   116.219194: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:0-28      [002] .....   116.292227: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   116.319997: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   116.320017: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/1:2-166     [001] .....   116.409806: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   116.437666: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   116.437713: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/3:0-33      [003] .....   116.510756: dpu_enc_kickoff: id=33
+          <idle>-0       [000] D.H2.   116.538471: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] D.H2.   116.538497: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/3:0-33      [003] .....   116.628342: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   116.656122: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   116.656144: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:4-286     [002] .....   116.729169: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   116.756953: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   116.756977: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:4-286     [002] .....   116.846823: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   116.874594: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   116.874615: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:4-286     [002] .....   116.964550: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   116.992236: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   116.992256: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:4-286     [002] .....   117.065545: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   117.093065: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   117.093084: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:4-286     [002] .....   117.182954: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   117.210713: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   117.210734: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:4-286     [002] .....   117.283975: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   117.311561: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   117.311582: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:4-286     [002] .....   117.401538: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   117.429181: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   117.429201: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:4-286     [002] .....   117.502242: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   117.530023: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   117.530042: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:4-286     [002] .....   117.619994: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   117.647664: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   117.647684: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:4-286     [002] .....   117.720948: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   117.748517: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   117.748541: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:4-286     [002] .....   117.838382: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   117.866142: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   117.866163: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:4-286     [002] .....   117.939421: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   117.966979: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   117.966999: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:4-286     [002] .....   118.056931: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   118.084635: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   118.084657: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+     kworker/2:4-286     [002] .....   118.157872: dpu_enc_kickoff: id=33
+          <idle>-0       [000] d.h2.   118.185458: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=0, new_count=1, event=1
+          <idle>-0       [000] d.h2.   118.185477: dpu_enc_phys_cmd_pp_tx_done: id=33, pp=1, new_count=1, event=1
+              sh-486     [003] ...1.   119.333598: tracing_mark_write: M3_MANUAL_FIXUP_END
+              sh-486     [003] ...1.   119.334004: tracing_mark_write: M3_AFTER_FIXUP_BEGIN
+              sh-486     [001] ...1.   119.348599: tracing_mark_write: SEND 15 b0 5a
+              sh-486     [001] d....   119.349301: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x5a
+              sh-486     [001] d..1.   119.349635: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-486     [001] ...1.   119.374663: tracing_mark_write: SEND 24 d8 01 1
+              sh-486     [001] d....   119.375333: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd8 b1=0x1
+              sh-486     [001] d..1.   119.376250: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-486     [002] ...1.   119.402661: tracing_mark_write: SEND 15 b0 d0
+              sh-486     [002] d....   119.403120: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0xd0
+              sh-486     [002] d..1.   119.403424: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-486     [003] ...1.   119.428164: tracing_mark_write: SEND 24 d1 01 1
+              sh-486     [003] d....   119.428637: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd1 b1=0x1
+              sh-486     [003] d..1.   119.429214: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-486     [003] ...1.   119.452586: tracing_mark_write: SEND 15 b0 51
+              sh-486     [003] d....   119.452769: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x51
+              sh-486     [003] d..1.   119.452942: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-486     [002] ...1.   119.481033: tracing_mark_write: SEND 24 d1 01 1
+              sh-486     [002] d....   119.481493: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd1 b1=0x1
+              sh-486     [002] d..1.   119.482069: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-486     [001] ...1.   119.509276: tracing_mark_write: SEND 15 b0 d9
+              sh-486     [001] d....   119.509603: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0xd9
+              sh-486     [001] d..1.   119.509893: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-486     [000] ...1.   119.532471: tracing_mark_write: SEND 24 d1 01 1
+              sh-486     [000] d....   119.532853: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd1 b1=0x1
+              sh-486     [000] d..1.   119.533340: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-486     [001] ...1.   119.554922: tracing_mark_write: SEND 15 b0 70
+              sh-486     [001] d....   119.555179: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x70
+              sh-486     [001] d..1.   119.555443: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-486     [000] ...1.   119.577965: tracing_mark_write: SEND 24 d2 01 1
+              sh-486     [000] d....   119.578483: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-486     [000] d..1.   119.578987: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-486     [001] ...1.   119.600808: tracing_mark_write: SEND 15 b0 67
+              sh-486     [001] d....   119.601055: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x67
+              sh-486     [001] d..1.   119.601791: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-486     [001] ...1.   119.627506: tracing_mark_write: SEND 24 d2 01 1
+              sh-486     [001] d....   119.627724: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-486     [001] d..1.   119.628054: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-486     [001] ...1.   119.648987: tracing_mark_write: SEND 15 b0 36
+              sh-486     [001] d....   119.650011: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x36
+              sh-486     [001] d..1.   119.650326: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-486     [001] ...1.   119.671954: tracing_mark_write: SEND 24 d2 01 1
+              sh-486     [001] d....   119.672204: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-486     [001] d..1.   119.672539: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-486     [001] ...1.   119.696178: tracing_mark_write: SEND 15 b0 4d
+              sh-486     [001] d....   119.696428: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x4d
+              sh-486     [001] d..1.   119.696690: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-486     [001] ...1.   119.719346: tracing_mark_write: SEND 24 d2 01 1
+              sh-486     [001] d....   119.719612: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-486     [001] d..1.   119.719964: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-486     [000] ...1.   119.742525: tracing_mark_write: SEND 15 b0 49
+              sh-486     [000] d....   119.742829: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x15 flags=0x0 len=2 b0=0xb0 b1=0x49
+              sh-486     [000] d..1.   119.743093: result: (ams968hh01_cmd_write+0x2f0/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=4
+              sh-486     [000] ...1.   119.765669: tracing_mark_write: SEND 24 d2 01 1
+              sh-486     [000] d....   119.766095: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x24 flags=0x0 len=2 b0=0xd2 b1=0x1
+              sh-486     [000] d..1.   119.766547: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-486     [000] ...1.   119.792409: tracing_mark_write: SEND 06 0a 1
+              sh-486     [000] d....   119.792794: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x6 flags=0x0 len=1 b0=0xa b1=0x1
+              sh-486     [000] d..1.   119.793400: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-486     [001] ...1.   119.818838: tracing_mark_write: SEND 06 0e 1
+              sh-486     [001] d....   119.819589: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x6 flags=0x0 len=1 b0=0xe b1=0x1
+              sh-486     [001] d..1.   119.820111: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-486     [000] ...1.   119.846060: tracing_mark_write: SEND 06 0f 1
+              sh-486     [000] d....   119.846473: send: (dsi_host_transfer+0x0/0x90 [msm]) type=0x6 flags=0x0 len=1 b0=0xf b1=0x1
+              sh-486     [000] d..1.   119.847314: result: (ams968hh01_cmd_write+0x174/0x358 [panel_samsung_ams968hh01] <- dsi_host_transfer) ret=1
+              sh-486     [000] ...1.   119.855032: tracing_mark_write: M3_AFTER_FIXUP_END
+              sh-486     [000] ...1.   119.855482: tracing_mark_write: M3_END
