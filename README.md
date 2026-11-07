@@ -38,8 +38,9 @@ path. A working recovery and your own backups are prerequisites.
 
 There is **no shared password, preconfigured login image, or bundled Samsung
 firmware**. You choose a console password and supply your SSH public key during
-the build. The initial account is `dev`; SSH is key-only, root SSH is disabled,
-and `dev` initially has passwordless sudo. [Set up your accounts](docs/accounts.md).
+the build. The initial account is `dev`, with passwordless sudo. Users can choose
+SSH keys or enable password login; root SSH is disabled by default in installed
+Debian. [Set up your accounts and SSH login](docs/accounts.md).
 
 The last recorded installed baseline is kernel package `6.18.56-80`, base
 `0.1.35`, dashboard `0.1.9` (2026-11-05). This source snapshot builds candidate

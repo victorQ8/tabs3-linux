@@ -7,7 +7,7 @@ rm "$root/tmp/tabs3-base.deb"
 chroot "$root" useradd --uid 1000 --create-home --shell /bin/bash --groups sudo dev
 install -d -m 0700 -o 1000 -g 1000 "$root/home/dev/.ssh"
 install -m 0600 -o 1000 -g 1000 /run/tabs3-authorized-key.pub "$root/home/dev/.ssh/authorized_keys"
-# Console login only; sshd stays key-only (10-tabs3.conf).
+# Account password; SSH password login is disabled by default (10-tabs3.conf).
 hash=$(cat /run/tabs3-dev-password.hash)
 [[ "$hash" == "\$6\$"* ]]
 chroot "$root" usermod -p "$hash" dev

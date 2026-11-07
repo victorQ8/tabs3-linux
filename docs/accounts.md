@@ -5,8 +5,8 @@
 | Setting | Fresh build |
 | --- | --- |
 | Local account | `dev` (UID 1000), Bash, member of `sudo` |
-| Console password | Chosen by you; there is no default |
-| SSH account | `dev`, your supplied public key only |
+| Account password | Chosen by you; there is no default |
+| SSH account | `dev`, public-key login enabled; password login optional |
 | Root SSH | Disabled in installed Debian |
 | Sudo | Initially passwordless for `dev` |
 | Hostname | `tabs3` |
@@ -16,7 +16,12 @@ The RAM diagnostic/recovery environment is different: it uses
 `root@172.16.42.2`, key-only, and ephemeral host keys. Installed Debian has
 persistent host keys generated at first boot.
 
-## Choose your key and console password before building
+For installed Debian, you can use SSH keys, account passwords, or both.
+Fresh builds disable SSH password authentication until you enable it below.
+The build still needs a public key for initial access and the separate recovery
+environment, even if you choose password login for everyday use.
+
+## Choose your key and account password before building
 
 On your computer, from the repository:
 
@@ -59,10 +64,72 @@ An unexpected key change needs investigation; do not disable global host-key
 checking. After a deliberate reinstall, remove only the old entry in this
 dedicated known-hosts file once the new fingerprint has been verified.
 
+## Enable SSH password login
+
+On installed Debian, sign in at the console or through your existing SSH key.
+The password is the same account password chosen during the build. To set or
+change it, run `passwd` as that user.
+
+Open an administrator-owned configuration file:
+
+```sh
+sudoedit /etc/ssh/sshd_config.d/00-local-auth.conf
+```
+
+Add these settings, preserving any unrelated settings already in that file:
+
+```sshdconfig
+PubkeyAuthentication yes
+PasswordAuthentication yes
+KbdInteractiveAuthentication no
+PermitRootLogin no
+PermitEmptyPasswords no
+```
+
+This allows either a key or an account password. The local file is read before
+`00-tabs3-server.conf` and `10-tabs3.conf`, so the project defaults do not
+override your choice when you run `tabs3-server-enable` again. OpenSSH uses
+the first value it reads for these settings; see the
+[Debian SSH configuration reference](https://manpages.debian.org/trixie/openssh-server/sshd_config.5.en.html).
+
+Validate the configuration and inspect the effective settings:
+
+```sh
+sudo /usr/sbin/sshd -t
+sudo /usr/sbin/sshd -T -C user=dev,addr=172.16.42.1,host=usb-client \
+    | grep -E '^(pubkeyauthentication|passwordauthentication|permitrootlogin|permitemptypasswords|authenticationmethods) '
+```
+
+For the standard configuration, expect `pubkeyauthentication yes`,
+`passwordauthentication yes`, `permitrootlogin no`, `permitemptypasswords no`,
+and `authenticationmethods any`. Use your actual username and client address
+when checking a different account or Wi-Fi connection. Resolve validation
+errors or conflicting local rules before reloading:
+
+```sh
+sudo systemctl reload ssh.service
+```
+
+Keep the existing session open while testing a second connection. From your
+computer, force a password login to verify the choice:
+
+```sh
+ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no \
+    -o UserKnownHostsFile=private/installed-known-hosts dev@172.16.42.2
+```
+
+Enter your account password at the prompt. Ordinary `ssh dev@172.16.42.2`
+can use either enabled method. To return to key-only login, change
+`PasswordAuthentication` to `no` in the same local file, validate, and reload.
+These settings apply to installed Debian; diagnostic and recovery images
+continue to use their configured root SSH key.
+
 ## Change a password or key
 
 On installed Debian, logged in as `dev`, run `passwd`. This changes the local
-console password; it does not enable SSH password login or change your SSH key.
+account password, including the password used by SSH when password login is
+enabled. It does not change your SSH keys or enable password authentication
+on its own.
 
 To replace a key, add its public half to `~/.ssh/authorized_keys`, test a second
 connection, then remove the old public key. Keep `.ssh` at mode `700` and

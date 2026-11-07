@@ -63,9 +63,12 @@ Reporters are credited with their permission.
 
 Please test only on devices you own or have explicit permission to test.
 
-## Authentication defaults
+## Authentication
 
-- Installed Debian uses key-only SSH, with root SSH login disabled.
+- Users can choose SSH keys or account-password login for installed Debian.
+  Password login can be enabled using the [account setup guide](docs/accounts.md#enable-ssh-password-login).
+  Fresh builds start with password authentication disabled; root SSH login is
+  disabled by default.
 - Diagnostic and recovery images intentionally allow **root SSH using the
   owner's public key**; password authentication remains disabled.
 - The initial `dev` account has **passwordless sudo**. See

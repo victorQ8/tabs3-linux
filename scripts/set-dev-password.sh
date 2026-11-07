@@ -1,9 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-# Console login password for the tablet's dev account. Only a SHA-512 crypt
-# hash is kept, in private/dev-password.hash; SSH stays key-only. Reads one
-# line from standard input when it is not a terminal.
+# Account password for the tablet's dev user. Only a SHA-512 crypt hash is
+# kept, in private/dev-password.hash. SSH password login is optional and
+# disabled by default. Reads one line from stdin when it is not a terminal.
 if [[ -t 0 ]]; then
     read -rsp 'Password for dev on the tablet: ' pw; echo
     read -rsp 'Again: ' again; echo

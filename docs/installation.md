@@ -153,7 +153,8 @@ assume the Android boot backup restores erased user data.
 
 ## 6. First login, network, and dashboard
 
-Installed Debian uses `dev`, your chosen console password, and key-only SSH.
+Installed Debian starts with `dev`, your chosen account password, and key-based
+SSH. You can also [enable SSH password login](accounts.md#enable-ssh-password-login).
 Configure USB networking and [connect](accounts.md#first-ssh-connection), then
 connect Wi-Fi using [the user guide](user-guide.md#wi-fi).
 

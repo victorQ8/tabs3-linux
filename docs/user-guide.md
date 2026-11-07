@@ -20,6 +20,8 @@ ssh -i private/id_ed25519 -o IdentitiesOnly=yes \
 This temporary computer-side address does not configure internet sharing.
 Use Wi-Fi for internet access. Do not assign it to your Wi-Fi/Ethernet interface.
 Only one tablet with the default USB addressing should use this link at a time.
+If you prefer an account password, follow the
+[password-login setup and connection example](accounts.md#enable-ssh-password-login).
 
 ## Wi-Fi
 

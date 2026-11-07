@@ -28,7 +28,8 @@ previous=$(mktemp)
 had_previous=false
 if [ -e "$conf" ]; then cp -p "$conf" "$previous"; had_previous=true; fi
 cat > "$conf" <<'EOF'
-# The local console password is unchanged. Remote server access uses keys.
+# Default SSH settings. An earlier administrator drop-in such as
+# 00-local-auth.conf can enable account-password login.
 PubkeyAuthentication yes
 PasswordAuthentication no
 KbdInteractiveAuthentication no
@@ -66,4 +67,4 @@ EOF
 chmod 0644 /etc/apt/apt.conf.d/90-tabs3-server
 apt-config dump >/dev/null
 systemctl enable --now apt-daily.timer apt-daily-upgrade.timer
-echo 'Server maintenance configured: SSH keys, Debian security updates, no automatic reboot.'
+echo 'Server maintenance configured: SSH defaults, Debian security updates, no automatic reboot.'
